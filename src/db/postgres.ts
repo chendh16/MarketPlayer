@@ -39,7 +39,7 @@ export async function query<T = any>(
   const client = await getPool().connect();
   try {
     const result = await client.query(text, params);
-    return result.rows;
+    return result.rows.map((row) => toCamelCaseKeys(row)) as T[];
   } finally {
     client.release();
   }
@@ -78,3 +78,18 @@ export async function closePostgres(): Promise<void> {
   }
 }
 
+function toCamelCaseKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => toCamelCaseKeys(item));
+  }
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const input = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(input)) {
+      const camel = key.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+      out[camel] = toCamelCaseKeys(val);
+    }
+    return out;
+  }
+  return value;
+}

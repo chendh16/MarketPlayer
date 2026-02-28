@@ -218,6 +218,7 @@ async function pushSignalToUsers(signal: Signal): Promise<void> {
         signalId: signal.id,
         userId: user.id,
         orderToken,
+        riskCheckResult: riskCheck,
         sentAt: new Date(),
       });
 

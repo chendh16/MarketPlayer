@@ -170,13 +170,14 @@ export async function updateSignalStatus(signalId: string, status: string): Prom
 export async function createSignalDelivery(data: Partial<SignalDelivery>): Promise<SignalDelivery> {
   const result = await queryOne<SignalDelivery>(`
     INSERT INTO signal_deliveries (
-      signal_id, user_id, order_token, sent_at, status
-    ) VALUES ($1, $2, $3, $4, $5)
+      signal_id, user_id, order_token, risk_check_result, sent_at, status
+    ) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
   `, [
     data.signalId,
     data.userId,
     data.orderToken,
+    JSON.stringify(data.riskCheckResult ?? {}),
     data.sentAt,
     data.status || 'pending',
   ]);
@@ -203,6 +204,10 @@ export async function updateSignalDelivery(
   if (updates.status !== undefined) {
     fields.push(`status = $${paramIndex++}`);
     values.push(updates.status);
+  }
+  if (updates.orderToken !== undefined) {
+    fields.push(`order_token = $${paramIndex++}`);
+    values.push(updates.orderToken);
   }
   if (fields.length === 0) return;
 
