@@ -35,9 +35,15 @@ export async function getActiveUsersWithFutu(): Promise<User[]> {
   return query<User>(`
     SELECT DISTINCT u.* FROM users u
     JOIN broker_accounts ba ON u.id = ba.user_id
-    WHERE u.is_active = true 
-      AND ba.broker = 'futu' 
+    WHERE u.is_active = true
+      AND ba.broker = 'futu'
       AND ba.is_active = true
+  `);
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  return query<User>(`
+    SELECT * FROM users WHERE is_active = true
   `);
 }
 
@@ -161,6 +167,51 @@ export async function updateSignalStatus(signalId: string, status: string): Prom
 
 // ==================== 信号推送相关 ====================
 
+export async function createSignalDelivery(data: Partial<SignalDelivery>): Promise<SignalDelivery> {
+  const result = await queryOne<SignalDelivery>(`
+    INSERT INTO signal_deliveries (
+      signal_id, user_id, order_token, sent_at, status
+    ) VALUES ($1, $2, $3, $4, $5)
+    RETURNING *
+  `, [
+    data.signalId,
+    data.userId,
+    data.orderToken,
+    data.sentAt,
+    data.status || 'pending',
+  ]);
+  if (!result) throw new Error('Failed to create signal delivery');
+  return result;
+}
+
+export async function updateSignalDelivery(
+  deliveryId: string,
+  updates: Partial<SignalDelivery>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+
+  if (updates.discordMessageId !== undefined) {
+    fields.push(`discord_message_id = $${paramIndex++}`);
+    values.push(updates.discordMessageId);
+  }
+  if (updates.discordChannelId !== undefined) {
+    fields.push(`discord_channel_id = $${paramIndex++}`);
+    values.push(updates.discordChannelId);
+  }
+  if (updates.status !== undefined) {
+    fields.push(`status = $${paramIndex++}`);
+    values.push(updates.status);
+  }
+  if (fields.length === 0) return;
+
+  values.push(deliveryId);
+  await query(`
+    UPDATE signal_deliveries SET ${fields.join(', ')} WHERE id = $${paramIndex}
+  `, values);
+}
+
 export async function createDelivery(data: Partial<SignalDelivery>): Promise<SignalDelivery> {
   const result = await queryOne<SignalDelivery>(`
     INSERT INTO signal_deliveries (
@@ -220,6 +271,15 @@ export async function updateDeliveryStatus(
   await query(`
     UPDATE signal_deliveries SET ${fields.join(', ')} WHERE id = $${paramIndex}
   `, values);
+}
+
+export async function updateAdjustedPositionPct(
+  deliveryId: string,
+  adjustedPositionPct: number
+): Promise<void> {
+  await query(`
+    UPDATE signal_deliveries SET adjusted_position_pct = $1 WHERE id = $2
+  `, [adjustedPositionPct, deliveryId]);
 }
 
 // ==================== 订单相关 ====================
@@ -305,4 +365,3 @@ export async function logRiskOverride(data: {
     JSON.stringify(data.riskSnapshot),
   ]);
 }
-

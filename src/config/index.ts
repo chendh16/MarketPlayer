@@ -16,16 +16,42 @@ const configSchema = z.object({
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string().optional(),
 
-  // AI
-  ANTHROPIC_API_KEY: z.string().min(1),
+  // AI 配置（可插拔）
+  AI_PROVIDER: z.enum(['anthropic', 'openai', 'azure', 'custom']).default('anthropic'),
+  AI_API_KEY: z.string().min(1),
+  AI_API_BASE_URL: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.string().url().optional()
+  ), // 自定义 API 地址
+  AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
   AI_DAILY_CALL_LIMIT: z.coerce.number().default(500),
   AI_HOURLY_COST_ALERT_USD: z.coerce.number().default(5.0),
   AI_HOURLY_COST_BRAKE_USD: z.coerce.number().default(10.0),
+
+  // 兼容旧配置（可选）
+  ANTHROPIC_API_KEY: z.string().optional(),
 
   // 富途
   FUTU_API_HOST: z.string().default('127.0.0.1'),
   FUTU_API_PORT: z.coerce.number().default(11111),
   FUTU_ORDER_MODE: z.enum(['A', 'B', 'C']).default('B'),
+  FUTU_TRD_ENV: z.enum(['SIMULATE', 'REAL']).default('SIMULATE'),
+  FUTU_TRADE_ACC_ID: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().optional()
+  ),
+  FUTU_TRADE_ACC_INDEX: z.coerce.number().default(0),
+  FUTU_TRADE_PASSWORD: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.string().optional()
+  ),
+  FUTU_TRADE_PASSWORD_MD5: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.string().length(32).optional()
+  ),
+  FUTU_AUTO_UNLOCK: z.coerce.boolean().default(true),
+  FUTU_FALLBACK_TO_PLAN_B: z.coerce.boolean().default(true),
+  FUTU_ORDER_PRICE_SLIPPAGE_PCT: z.coerce.number().default(0.01),
 
   // 加密
   ENCRYPTION_KEY: z.string().length(64), // 32 bytes hex
@@ -59,4 +85,3 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 export type Config = z.infer<typeof configSchema>;
-

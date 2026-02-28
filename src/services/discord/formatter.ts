@@ -1,6 +1,7 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { Signal, SignalDelivery, RiskCheckResult } from '../../models/signal';
+import { Signal, SignalDelivery, RiskCheckResult, NewsItem } from '../../models/signal';
 import { AccountSnapshot } from '../../models/position';
+import { AnalysisResult } from '../ai/analyzer';
 
 // 正常交易参考
 export function buildNormalSignalMessage(
@@ -52,6 +53,16 @@ export function buildNormalSignalMessage(
       .setLabel('❌ 忽略')
       .setStyle(ButtonStyle.Danger),
   );
+
+  // A股仅支持手动执行，补充一键复制交易信息入口
+  if (signal.market === 'a') {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`copy_trade:${delivery.id}:${delivery.orderToken}`)
+        .setLabel('📋 复制交易信息')
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
   
   const expiresAt = new Date(delivery.sentAt.getTime() + 15 * 60 * 1000);
   return {
@@ -92,7 +103,44 @@ export function buildWarningSignalMessage(
       .setLabel('❌ 忽略')
       .setStyle(ButtonStyle.Secondary),
   );
+
+  if (signal.market === 'a') {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`copy_trade:${delivery.id}:${delivery.orderToken}`)
+        .setLabel('📋 复制交易信息')
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
   
   return { embeds: [embed], components: [row] };
 }
 
+// 纯资讯解读（置信度不足，不生成交易信号）
+export function buildNewsOnlyMessage(newsItem: NewsItem, analysis: AnalysisResult) {
+  const sentimentEmoji = analysis.sentiment === 'positive' ? '📈' : analysis.sentiment === 'negative' ? '📉' : '📊';
+  const importanceColor = analysis.importance === 'high' ? 0xFF6B00 : analysis.importance === 'medium' ? 0x4A90D9 : 0x888888;
+  const importanceLabel = analysis.importance === 'high' ? '重要' : analysis.importance === 'medium' ? '一般' : '参考';
+  const marketLabel = newsItem.market.toUpperCase();
+
+  const lines = [
+    `**摘要：** ${analysis.summary}`,
+    '',
+    `**市场影响：** ${analysis.impact}`,
+  ];
+  if (newsItem.symbols && newsItem.symbols.length > 0) {
+    lines.push('', `**相关标的：** ${newsItem.symbols.join(', ')}`);
+  }
+  if (newsItem.url) {
+    lines.push('', `[查看原文](${newsItem.url})`);
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(importanceColor)
+    .setTitle(`${sentimentEmoji} 资讯解读｜${marketLabel} · ${importanceLabel}`)
+    .setDescription(lines.join('\n'))
+    .setFooter({ text: '置信度不足，仅供参考，不构成投资建议' })
+    .setTimestamp(newsItem.publishedAt);
+
+  return { embeds: [embed] };
+}

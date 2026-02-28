@@ -21,6 +21,11 @@ export async function markOrderTokenProcessed(orderToken: string): Promise<void>
   await redisClient.setEx(key, 86400, 'processed'); // 24小时
 }
 
+export async function resetOrderTokenProcessing(orderToken: string): Promise<void> {
+  const key = `order:token:${orderToken}`;
+  await redisClient.del(key);
+}
+
 export async function acquireDistributedLock(
   lockKey: string,
   ttlSeconds: number = 10
@@ -35,4 +40,3 @@ export async function acquireDistributedLock(
 export async function releaseDistributedLock(lockKey: string): Promise<void> {
   await redisClient.del(lockKey);
 }
-

@@ -32,6 +32,7 @@ export interface SignalDelivery {
 
 export type DeliveryStatus =
   | 'pending'
+  | 'sent'
   | 'confirmed'
   | 'ignored'
   | 'expired'

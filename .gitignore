@@ -7,10 +7,12 @@ yarn.lock
 dist/
 build/
 
-# Environment variables
+# Environment variables - 绝对不能提交！
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
 
 # Logs
 logs/
@@ -37,4 +39,31 @@ coverage/
 # Temporary files
 tmp/
 temp/
+/tmp/
+
+# 密钥和证书 - 绝对不能提交！
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# 数据库备份 - 可能包含敏感数据
+*.sql
+*.dump
+*.bak
+db-backup/
+
+# MCP 测试服务器日志
+/tmp/mcp-server.log
+
+# 测试报告
+test-results/
+junit.xml
+
+# 生成的文档（如果包含敏感信息）
+PHASE1_COMPLETE.md
+SETUP_COMPLETE.md
 

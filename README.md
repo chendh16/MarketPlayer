@@ -17,24 +17,34 @@
 
 MarketPlayer 是一个基于 AI 的智能交易助手系统，7×24 监控 **A股/港股/美股/BTC** 市场，通过 Discord Bot 推送 AI 信号参考，用户人工确认后自动在富途下单。
 
+### 核心价值
+
+- ✅ **7×24 全市场监控**：自动抓取四大市场资讯，主动推送关键信号
+- ✅ **AI 中文解读**：Claude AI 深度分析，生成中文交易参考
+- ✅ **智能风控**：实时持仓检查，多层风控保障
+- ✅ **人工确认**：永不自动下单，所有交易必须用户确认
+- ✅ **一键执行**：Discord 内确认后自动在富途下单
+
 ### 核心流程
 
 ```mermaid
 graph LR
-    A[资讯抓取] --> B[AI分析]
-    B --> C[风控检查]
-    C --> D[Discord推送]
-    D --> E[用户确认]
-    E --> F[富途下单]
+    A[资讯抓取] --> B[规则预筛选]
+    B --> C[AI分析]
+    C --> D[风控检查]
+    D --> E[Discord推送]
+    E --> F[用户确认]
+    F --> G[富途下单]
+    G --> H[执行反馈]
 ```
 
 ### 项目特点
 
-- ✅ **安全第一**：强制人工确认，永不自动下单
-- ✅ **智能分析**：Claude AI 深度分析市场资讯
+- ✅ **安全第一**：强制人工确认，永不绕过人工确认
+- ✅ **智能分析**：支持多种 AI 提供商（Anthropic、OpenAI、Azure、自定义）
 - ✅ **风控保障**：多层风控检查，实时持仓验证
 - ✅ **幂等性**：防止重复下单，分布式锁保护
-- ✅ **模块化**：清晰的架构设计，易于扩展
+- ✅ **可插拔架构**：AI 和资讯获取都支持多种方式
 - ✅ **生产就绪**：Docker 部署，PM2 管理，完整日志
 
 ## 🛠️ 技术栈
@@ -50,9 +60,10 @@ graph LR
 - **缓存/队列**: Redis 7+ (持仓缓存、分布式锁、消息队列)
 
 ### AI & 外部服务
-- **AI 模型**: Anthropic Claude Sonnet 4
+- **AI 模型**: 可插拔架构，支持 Anthropic Claude、OpenAI、Azure、自定义 API
 - **推送渠道**: Discord.js v14 (主渠道) + Telegram (备用)
 - **券商对接**: 富途 API (futu-api)
+- **资讯获取**: 可插拔架构，支持 API、Skill、MCP 等多种方式
 
 ### 基础设施
 - **容器化**: Docker + Docker Compose
@@ -109,8 +120,12 @@ REDIS_URL=redis://localhost:6379
 DISCORD_BOT_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_discord_client_id
 
-# Anthropic AI（在 https://console.anthropic.com/ 获取）
-ANTHROPIC_API_KEY=your_anthropic_api_key
+# AI 配置（可插拔）
+AI_PROVIDER=anthropic
+AI_API_KEY=your_api_key
+AI_MODEL=claude-sonnet-4-20250514
+# 可选：OpenAI 兼容 API 地址
+AI_API_BASE_URL=
 
 # 加密密钥（使用 npm run generate-keys 生成）
 ENCRYPTION_KEY=your_generated_key
@@ -225,9 +240,10 @@ MarketPlayer/
 ### 1. 📰 资讯抓取与AI处理
 
 - **多市场监控**：美股、港股、A股、BTC 全覆盖
+- **可插拔数据源**：支持 API、Skill、MCP 等多种方式获取资讯
 - **定时抓取**：每5分钟自动抓取最新资讯
 - **智能预筛选**：规则过滤减少 30-40% 无效 AI 调用
-- **AI 深度分析**：Claude Sonnet 4 生成交易信号
+- **AI 深度分析**：支持多种 AI 提供商（Anthropic、OpenAI、Azure、自定义）
 - **成本控制**：每日调用限制，实时成本监控
 
 ### 2. 🛡️ 风控引擎
@@ -253,7 +269,8 @@ MarketPlayer/
 - **幂等性保障**：每个订单唯一 Token，防止重复下单
 - **分布式锁**：用户维度锁，防止并发冲突
 - **二次风控**：下单前实时拉取持仓再次验证
-- **失败重试**：网络超时自动重试，价格偏移提示用户
+- **自动重试**：`retryable` 错误自动指数退避重试（2s/4s/8s，最多3次）
+- **状态回写**：订单重试中/成功/失败会回写到原 Discord 消息
 - **多种模式**：
   - 方案A：全自动下单（需富途 API 权限）
   - 方案B：深链接跳转（MVP 默认）
@@ -268,13 +285,24 @@ MarketPlayer/
 | `DATABASE_URL` | PostgreSQL 连接字符串 | - | ✅ |
 | `REDIS_URL` | Redis 连接字符串 | - | ✅ |
 | `DISCORD_BOT_TOKEN` | Discord Bot Token | - | ✅ |
-| `ANTHROPIC_API_KEY` | Claude API Key | - | ✅ |
+| `AI_PROVIDER` | AI 提供商（anthropic/openai/azure/custom） | `anthropic` | ✅ |
+| `AI_API_KEY` | AI API Key | - | ✅ |
+| `AI_MODEL` | AI 模型名 | `claude-sonnet-4-20250514` | - |
+| `AI_API_BASE_URL` | 自定义 AI API 地址 | - | - |
 | `ENCRYPTION_KEY` | 加密密钥（32字节hex） | - | ✅ |
 | `ENCRYPTION_IV` | 加密IV（16字节hex） | - | ✅ |
 | `JWT_SECRET` | JWT 密钥 | - | ✅ |
 | `COLD_START_MODE` | 测试模式（禁用实际下单） | `true` | ⚠️ |
 | `AI_DAILY_CALL_LIMIT` | AI 每日调用上限 | `500` | - |
 | `FUTU_ORDER_MODE` | 富途下单模式 | `B` | - |
+| `FUTU_TRD_ENV` | 富途交易环境（SIMULATE/REAL） | `SIMULATE` | - |
+| `FUTU_TRADE_ACC_ID` | 富途交易账号 ID | - | - |
+| `FUTU_TRADE_ACC_INDEX` | 富途账号索引 | `0` | - |
+| `FUTU_TRADE_PASSWORD` | 富途交易密码（明文） | - | - |
+| `FUTU_TRADE_PASSWORD_MD5` | 富途交易密码（MD5） | - | - |
+| `FUTU_AUTO_UNLOCK` | 是否自动解锁交易 | `true` | - |
+| `FUTU_FALLBACK_TO_PLAN_B` | 方案A失败时降级到方案B | `true` | - |
+| `FUTU_ORDER_PRICE_SLIPPAGE_PCT` | 方案A下单价格滑点比例 | `0.01` | - |
 | `PORT` | API 服务端口 | `3000` | - |
 | `LOG_LEVEL` | 日志级别 | `info` | - |
 
@@ -282,6 +310,7 @@ MarketPlayer/
 - `A` = 全自动下单（需富途交易级 API 权限）
 - `B` = 深链接跳转（MVP 默认，无需特殊权限）
 - `C` = 纯推送通知（仅提示，不执行）
+- `A` 模式需安装 `futu-api` 并配置交易参数（见 `.env.example`）
 
 ## 📝 常用命令
 
@@ -313,6 +342,8 @@ pm2 stop market-player   # 停止服务
 |------|------|
 | [DATABASE_SETUP.md](DATABASE_SETUP.md) | 数据库安装指南 |
 | [INSTALLATION.md](INSTALLATION.md) | 完整安装指南 |
+| [AI_PROVIDER_GUIDE.md](AI_PROVIDER_GUIDE.md) | AI 提供商配置指南 |
+| [NEWS_ADAPTER_GUIDE.md](NEWS_ADAPTER_GUIDE.md) | 资讯获取架构指南 |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | 项目状态报告 |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | 开发指南 |
 | [dev-docs/00-INDEX.md](dev-docs/00-INDEX.md) | 文档索引 |
@@ -328,7 +359,7 @@ pm2 stop market-player   # 停止服务
 
 ### 核心安全原则
 
-1. ✅ **永不自动下单**：所有交易必须用户在 Discord 手动确认
+1. ✅ **永不绕过人工确认**：所有交易必须用户在 Discord 手动确认后才会进入执行流程
 2. ✅ **加密存储**：API 密钥使用 AES-256 加密存储
 3. ✅ **幂等性保障**：每个订单唯一 Token，防止重复下单
 4. ✅ **二次验证**：下单前实时拉取持仓再次风控检查
@@ -401,12 +432,27 @@ A:
 - **测试模式** (`COLD_START_MODE=true`)：禁用实际下单，仅推送信号
 - **生产模式** (`COLD_START_MODE=false`)：启用真实下单功能
 
+### Q: 如何测试完整流程？
+A:
+```bash
+# 1. 启动 MCP 测试服务器（第一个终端）
+npm run mcp-server
+
+# 2. 运行端到端测试（第二个终端）
+npm run test-e2e
+
+# 3. 检查 Discord 私信是否收到信号推送
+```
+
+详细测试指南请查看 [E2E_TEST_GUIDE.md](E2E_TEST_GUIDE.md)
+
 ### Q: 如何添加新的资讯源？
 A:
-1. 在 `src/services/news/sources/` 创建新文件
-2. 实现 `fetch*News()` 函数
-3. 在 `src/services/scheduler/news-fetcher.ts` 添加定时任务
-4. 更新配置文件
+1. 配置 MCP 服务器或 Skill 适配器
+2. 在 `.env` 中添加 `NEWS_ADAPTERS` 配置
+3. 重启服务即可
+
+详细配置请查看 [NEWS_ADAPTER_GUIDE.md](NEWS_ADAPTER_GUIDE.md)
 
 ### Q: 数据库迁移失败怎么办？
 A:
@@ -434,10 +480,29 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 ## 📊 项目状态
 
 - **当前版本**: V1.0 MVP
-- **开发状态**: 🟢 骨架完成，可开始业务开发
+- **开发状态**: 🟢 第一阶段完成（新闻获取 → Discord 推送）
 - **代码质量**: ✅ 无 TypeScript 错误
 - **文档完整度**: ✅ 100%
-- **测试覆盖**: 🟡 基础测试已完成
+- **测试覆盖**: 🟡 基础测试 + 端到端测试
+
+### 已完成功能
+
+✅ **Phase 1: 核心流程**
+- [x] MCP 新闻服务器（测试）
+- [x] 资讯获取可插拔架构（API/Skill/MCP）
+- [x] AI 分析可插拔架构（Anthropic/OpenAI/Azure/自定义）
+- [x] 规则预筛选
+- [x] AI 深度分析
+- [x] 风控引擎
+- [x] Discord Bot 推送
+- [x] 端到端测试
+
+### 进行中
+
+🚧 **Phase 2: 完善交互**
+- [ ] Discord 按钮交互处理
+- [ ] 订单执行逻辑
+- [ ] 富途 API 对接
 
 详细状态请查看 [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
@@ -514,4 +579,3 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 Made with ❤️ by MarketPlayer Team
 
 </div>
-

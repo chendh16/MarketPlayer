@@ -28,7 +28,16 @@ async function bootstrap() {
     
     // 3. 启动 Discord Bot
     logger.info('Starting Discord Bot...');
-    await startDiscordBot();
+    try {
+      await startDiscordBot();
+    } catch (error: any) {
+      if (config.COLD_START_MODE) {
+        logger.warn('Discord Bot failed to start in Cold Start Mode, continuing without it...');
+        logger.warn(`Discord error: ${error.message}`);
+      } else {
+        throw error;
+      }
+    }
     
     // 4. 启动 BullMQ Workers
     logger.info('Starting BullMQ workers...');

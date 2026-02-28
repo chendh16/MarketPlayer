@@ -1,10 +1,25 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
 import { redisClient } from '../../db/redis';
 import { query } from '../../db/postgres';
+import { AIProviderFactory, AIProvider } from './base';
 
-const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
+// 初始化 AI 提供商
+let aiProvider: AIProvider;
+
+function getAIProvider(): AIProvider {
+  if (!aiProvider) {
+    // 优先使用新配置
+    const apiKey = config.AI_API_KEY || config.ANTHROPIC_API_KEY || '';
+    const provider = config.AI_PROVIDER || 'anthropic';
+    const baseUrl = config.AI_API_BASE_URL;
+    const model = config.AI_MODEL;
+
+    aiProvider = AIProviderFactory.create(provider, apiKey, baseUrl, model);
+    logger.info(`AI Provider initialized: ${aiProvider.getProviderName()}`);
+  }
+  return aiProvider;
+}
 
 export interface AnalysisResult {
   summary: string;
@@ -76,13 +91,12 @@ async function logAICost(params: {
 // 调用1：摘要 + 影响分析
 export async function analyzeNewsItem(newsItem: any): Promise<AnalysisResult> {
   await checkAndIncrementCostCounter('analysis');
-  
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 800,
-    messages: [{
-      role: 'user',
-      content: `你是一个专业的金融分析师。请分析以下资讯并以 JSON 格式返回结果。
+
+  const provider = getAIProvider();
+
+  const response = await provider.sendMessage([{
+    role: 'user',
+    content: `你是一个专业的金融分析师。请分析以下资讯并以 JSON 格式返回结果。
 
 资讯标题：${newsItem.title}
 资讯内容：${newsItem.content ?? ''}
@@ -96,20 +110,21 @@ export async function analyzeNewsItem(newsItem: any): Promise<AnalysisResult> {
   "sentiment": "positive | negative | neutral",
   "importance": "high | medium | low"
 }`
-    }]
+  }], {
+    maxTokens: 800,
+    temperature: 0.7,
   });
-  
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  const result = JSON.parse(text);
-  
+
+  const result = JSON.parse(response.content);
+
   await logAICost({
     callType: 'analysis',
-    model: 'claude-sonnet-4-20250514',
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    model: response.model,
+    inputTokens: response.usage.inputTokens,
+    outputTokens: response.usage.outputTokens,
     newsItemId: newsItem.id,
   });
-  
+
   return result;
 }
 
@@ -120,12 +135,11 @@ export async function generateSignal(
 ): Promise<SignalResult | null> {
   await checkAndIncrementCostCounter('signal');
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 500,
-    messages: [{
-      role: 'user',
-      content: `你是一个专业的股票交易信号分析师。基于以下分析，生成交易参考信号。
+  const provider = getAIProvider();
+
+  const response = await provider.sendMessage([{
+    role: 'user',
+    content: `你是一个专业的股票交易信号分析师。基于以下分析，生成交易参考信号。
 
 资讯摘要：${analysis.summary}
 市场影响：${analysis.impact}
@@ -146,17 +160,18 @@ export async function generateSignal(
 - confidence < 40 时 should_generate 应为 false
 - 这是信号参考，不是投资建议
 - 要保守，宁可不推也不要推错误信号`
-    }]
+  }], {
+    maxTokens: 500,
+    temperature: 0.7,
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  const result = JSON.parse(text);
+  const result = JSON.parse(response.content);
 
   await logAICost({
     callType: 'signal',
-    model: 'claude-sonnet-4-20250514',
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    model: response.model,
+    inputTokens: response.usage.inputTokens,
+    outputTokens: response.usage.outputTokens,
     newsItemId: newsItem.id,
   });
 

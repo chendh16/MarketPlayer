@@ -11,19 +11,29 @@
     "cost-report": "ts-node src/scripts/cost-report.ts",
     "generate-keys": "node scripts/generate-keys.js",
     "test": "jest",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "mcp-server": "node scripts/mcp-news-server.js",
+    "test-mcp": "ts-node scripts/test-mcp-news.ts",
+    "test-e2e": "ts-node scripts/test-news-to-discord.ts"
   },
-  "keywords": ["trading", "ai", "discord", "bot"],
+  "keywords": [
+    "trading",
+    "ai",
+    "discord",
+    "bot"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
     "@sentry/node": "^7.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.6.0",
     "bullmq": "^5.0.0",
     "discord.js": "^14.14.0",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
+    "jsonwebtoken": "^9.0.3",
     "luxon": "^3.4.0",
     "node-cron": "^3.0.0",
     "node-telegram-bot-api": "^0.65.0",
@@ -33,13 +43,13 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/express": "^4.17.0",
     "@types/jest": "^29.0.0",
     "@types/luxon": "^3.3.0",
     "@types/node": "^20.0.0",
     "@types/node-cron": "^3.0.0",
     "@types/pg": "^8.11.0",
-    "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
@@ -48,4 +58,3 @@
     "typescript-eslint": "^8.0.0"
   }
 }
-
