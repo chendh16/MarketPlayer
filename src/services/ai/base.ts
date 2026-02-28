@@ -2,6 +2,8 @@
  * AI 服务基础接口
  * 支持多种 AI 提供商的统一接口
  */
+import Anthropic from '@anthropic-ai/sdk';
+import axios from 'axios';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -73,19 +75,34 @@ class AnthropicProvider implements AIProvider {
   }
 
   async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const Anthropic = require('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: this.apiKey });
+    const systemPrompt = options?.systemPrompt
+      || messages
+        .filter((m) => m.role === 'system')
+        .map((m) => m.content)
+        .join('\n')
+      || undefined;
+
+    const chatMessages = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
 
     const response = await client.messages.create({
       model: this.model,
       max_tokens: options?.maxTokens || 4096,
       temperature: options?.temperature || 0.7,
-      system: options?.systemPrompt,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      system: systemPrompt,
+      messages: chatMessages,
     });
 
+    const firstBlock = response.content[0];
+    const content = firstBlock?.type === 'text' ? firstBlock.text : '';
+
     return {
-      content: response.content[0].text,
+      content,
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -119,24 +136,24 @@ class OpenAIProvider implements AIProvider {
   }
 
   async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const OpenAI = require('openai');
-    const client = new OpenAI({
-      apiKey: this.apiKey,
-      baseURL: this.baseUrl,
-    });
-
-    const response = await client.chat.completions.create({
+    const baseURL = this.baseUrl || 'https://api.openai.com/v1';
+    const response = await axios.post(`${baseURL}/chat/completions`, {
       model: this.model,
       max_tokens: options?.maxTokens || 4096,
       temperature: options?.temperature || 0.7,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     return {
-      content: response.choices[0].message.content || '',
+      content: response.data.choices?.[0]?.message?.content || '',
       usage: {
-        inputTokens: response.usage?.prompt_tokens || 0,
-        outputTokens: response.usage?.completion_tokens || 0,
+        inputTokens: response.data.usage?.prompt_tokens || 0,
+        outputTokens: response.data.usage?.completion_tokens || 0,
       },
       model: this.model,
     };
@@ -167,25 +184,23 @@ class AzureProvider implements AIProvider {
   }
 
   async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const OpenAI = require('openai');
-    const client = new OpenAI({
-      apiKey: this.apiKey,
-      baseURL: this.baseUrl,
-      defaultHeaders: { 'api-key': this.apiKey },
-    });
-
-    const response = await client.chat.completions.create({
+    const response = await axios.post(`${this.baseUrl}/chat/completions`, {
       model: this.model,
       max_tokens: options?.maxTokens || 4096,
       temperature: options?.temperature || 0.7,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }, {
+      headers: {
+        'api-key': this.apiKey,
+        'Content-Type': 'application/json',
+      },
     });
 
     return {
-      content: response.choices[0].message.content || '',
+      content: response.data.choices?.[0]?.message?.content || '',
       usage: {
-        inputTokens: response.usage?.prompt_tokens || 0,
-        outputTokens: response.usage?.completion_tokens || 0,
+        inputTokens: response.data.usage?.prompt_tokens || 0,
+        outputTokens: response.data.usage?.completion_tokens || 0,
       },
       model: this.model,
     };
@@ -216,24 +231,23 @@ class CustomProvider implements AIProvider {
   }
 
   async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const OpenAI = require('openai');
-    const client = new OpenAI({
-      apiKey: this.apiKey,
-      baseURL: this.baseUrl,
-    });
-
-    const response = await client.chat.completions.create({
+    const response = await axios.post(`${this.baseUrl}/chat/completions`, {
       model: this.model,
       max_tokens: options?.maxTokens || 4096,
       temperature: options?.temperature || 0.7,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     return {
-      content: response.choices[0].message.content || '',
+      content: response.data.choices?.[0]?.message?.content || '',
       usage: {
-        inputTokens: response.usage?.prompt_tokens || 0,
-        outputTokens: response.usage?.completion_tokens || 0,
+        inputTokens: response.data.usage?.prompt_tokens || 0,
+        outputTokens: response.data.usage?.completion_tokens || 0,
       },
       model: this.model,
     };
@@ -248,4 +262,3 @@ class CustomProvider implements AIProvider {
     return (inputTokens / 1_000_000) * 5 + (outputTokens / 1_000_000) * 15;
   }
 }
-

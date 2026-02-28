@@ -1,7 +1,14 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { config } from '../../config';
-import { getDelivery, getSignal, updateDeliveryStatus } from '../../db/queries';
 import { logger } from '../../utils/logger';
+import {
+  stepConfirmOrder,
+  stepIgnoreDelivery,
+  stepAbandonDelivery,
+  stepAdjustAndConfirm,
+  stepGetCopyTradeInfo,
+} from '../../queues/steps/order-interact';
+import type { ConfirmOrderResult } from '../../queues/steps/order-interact';
 
 export const discordClient = new Client({
   intents: [
@@ -13,85 +20,101 @@ export const discordClient = new Client({
 
 // 提醒记录（内存中，重启会丢失，符合预期）
 const pendingReminders = new Map<string, ReturnType<typeof setTimeout>>();
+let startPromise: Promise<void> | null = null;
+let handlersRegistered = false;
 
 export async function startDiscordBot(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  if (discordClient.isReady()) {
+    return;
+  }
+
+  if (startPromise) {
+    return startPromise;
+  }
+
+  if (!handlersRegistered) {
+    registerDiscordHandlers();
+    handlersRegistered = true;
+  }
+
+  const loginPromise = new Promise<void>((resolve, reject) => {
     discordClient.once('ready', () => {
       logger.info(`Discord Bot online: ${discordClient.user?.tag}`);
       resolve();
     });
 
-    discordClient.on('error', (error) => {
-      logger.error('Discord client error:', error);
-    });
+    discordClient.login(config.DISCORD_BOT_TOKEN).catch(reject);
+  }).finally(() => {
+    if (!discordClient.isReady()) {
+      startPromise = null;
+    }
+  });
 
-    // 按钮交互处理
-    discordClient.on('interactionCreate', async (interaction) => {
-      // Modal 提交处理
-      if (interaction.isModalSubmit()) {
-        try {
-          const [action, deliveryId, orderToken] = interaction.customId.split(':');
-          if (action === 'adjust_modal') {
-            const positionPctStr = interaction.fields.getTextInputValue('position_pct');
-            const positionPct = parseFloat(positionPctStr);
+  startPromise = loginPromise;
+  return loginPromise;
+}
 
-            if (isNaN(positionPct) || positionPct < 1 || positionPct > 20) {
-              await interaction.reply({ content: '❌ 请输入 1-20 之间的数字', ephemeral: true });
-              return;
-            }
+function registerDiscordHandlers(): void {
+  discordClient.on('error', (error) => {
+    logger.error('Discord client error:', error);
+  });
 
-            await interaction.deferUpdate();
+  // 按钮交互处理
+  discordClient.on('interactionCreate', async (interaction) => {
+    // Modal 提交处理
+    if (interaction.isModalSubmit()) {
+      try {
+        const [action, deliveryId, orderToken] = interaction.customId.split(':');
+        if (action === 'adjust_modal') {
+          const positionPctStr = interaction.fields.getTextInputValue('position_pct');
+          const result = await stepAdjustAndConfirm(deliveryId, orderToken, positionPctStr);
 
-            // 更新 delivery 的 adjustedPositionPct
-            const { updateAdjustedPositionPct } = await import('../../db/queries');
-            await updateAdjustedPositionPct(deliveryId, positionPct);
-
-            // 加入订单队列
-            const { orderQueue } = await import('../../queues/order-queue');
-            await orderQueue.add('place-order', { deliveryId, orderToken });
-
-            await interaction.editReply({
-              content: `⏳ 已调整仓位至 ${positionPct}%，正在执行下单...`,
-              components: [],
-            });
+          if (result.kind === 'validation_error') {
+            await interaction.reply({ content: `❌ ${result.message}`, ephemeral: true });
+            return;
           }
-        } catch (err) {
-          logger.error('Modal submit handler error:', err);
+
+          await interaction.deferUpdate();
+          await replyConfirmResult(result as ConfirmOrderResult, interaction);
         }
+      } catch (err) {
+        logger.error('Modal submit handler error:', err);
+      }
+      return;
+    }
+
+    if (!interaction.isButton()) return;
+
+    try {
+      // 解析 customId: "action:deliveryId:orderToken"
+      const [action, deliveryId, orderToken] = interaction.customId.split(':');
+
+      // adjust 需要直接在 button interaction 上调用 showModal，
+      // 不能在 deferUpdate 之后调用，因此提前处理
+      if (action === 'adjust') {
+        await handleAdjustPosition(deliveryId, orderToken, interaction);
+        return;
+      }
+      if (action === 'remind') {
+        await handleRemind(deliveryId, orderToken, interaction);
         return;
       }
 
-      if (!interaction.isButton()) return;
+      // ⚡ 必须立即 ACK，否则 Discord 3秒后显示"交互失败"
+      await interaction.deferUpdate();
 
-      try {
-        // 解析 customId: "action:deliveryId:orderToken"
-        const [action, deliveryId, orderToken] = interaction.customId.split(':');
+      // 立即禁用所有按钮（防止重复点击）
+      await disableAllButtons(interaction);
 
-        // adjust 需要直接在 button interaction 上调用 showModal，
-        // 不能在 deferUpdate 之后调用，因此提前处理
-        if (action === 'adjust') {
-          await handleAdjustPosition(deliveryId, orderToken, interaction);
-          return;
-        }
-
-        // ⚡ 必须立即 ACK，否则 Discord 3秒后显示"交互失败"
-        await interaction.deferUpdate();
-
-        // 立即禁用所有按钮（防止重复点击）
-        await disableAllButtons(interaction);
-
-        // 异步处理业务逻辑
-        await handleButtonAction(action, deliveryId, orderToken, interaction);
-      } catch (err) {
-        logger.error('Button handler error:', err);
-        await interaction.editReply({
-          content: '❌ 处理失败，请重试或手动操作',
-          components: []
-        });
-      }
-    });
-
-    discordClient.login(config.DISCORD_BOT_TOKEN).catch(reject);
+      // 异步处理业务逻辑
+      await handleButtonAction(action, deliveryId, orderToken, interaction);
+    } catch (err) {
+      logger.error('Button handler error:', err);
+      await interaction.editReply({
+        content: '❌ 处理失败，请重试或手动操作',
+        components: []
+      });
+    }
   });
 }
 
@@ -112,6 +135,26 @@ async function disableAllButtons(interaction: any): Promise<void> {
   await interaction.editReply({ components: disabledComponents });
 }
 
+async function replyConfirmResult(
+  result: ConfirmOrderResult,
+  interaction: any
+): Promise<void> {
+  switch (result.kind) {
+    case 'queued':
+      await interaction.editReply({ content: '⏳ 已确认，正在执行下单并回写结果...', components: [] });
+      break;
+    case 'not_found':
+      await interaction.editReply({ content: '❌ 推送记录不存在或已失效', components: [] });
+      break;
+    case 'wrong_status':
+      await interaction.editReply({ content: `⚠️ 当前状态为 ${result.currentStatus}，无法再次确认`, components: [] });
+      break;
+    case 'token_mismatch':
+      await interaction.editReply({ content: '⚠️ 该按钮已过期，请使用最新消息操作', components: [] });
+      break;
+  }
+}
+
 // 按钮动作处理分发
 async function handleButtonAction(
   action: string,
@@ -123,31 +166,53 @@ async function handleButtonAction(
 
   switch (action) {
     case 'confirm':
-      await confirmOrder(deliveryId, orderToken, interaction, false);
+    case 'retry_order': {
+      const result = await stepConfirmOrder(deliveryId, orderToken, false);
+      await replyConfirmResult(result, interaction);
       break;
-    case 'confirm_warn':
-      await confirmOrder(deliveryId, orderToken, interaction, true);
+    }
+    case 'confirm_warn': {
+      const result = await stepConfirmOrder(deliveryId, orderToken, true);
+      await replyConfirmResult(result, interaction);
       break;
-    case 'retry_order':
-      await confirmOrder(deliveryId, orderToken, interaction, false);
+    }
+    case 'ignore': {
+      const result = await stepIgnoreDelivery(deliveryId);
+      await interaction.editReply({
+        content: result.kind === 'ok' ? '已忽略本次信号参考' : '❌ 推送记录不存在或已失效',
+        components: [],
+      });
       break;
-    case 'ignore':
-      await updateDeliveryStatus(deliveryId, 'ignored', { ignoredAt: new Date() });
-      await interaction.editReply({ content: '已忽略本次信号参考', components: [] });
+    }
+    case 'abandon': {
+      const result = await stepAbandonDelivery(deliveryId);
+      await interaction.editReply({
+        content: result.kind === 'ok' ? '❌ 已放弃本次交易' : '❌ 推送记录不存在或已失效',
+        components: [],
+      });
       break;
-    case 'adjust':
-      await handleAdjustPosition(deliveryId, orderToken, interaction);
+    }
+    case 'copy_trade': {
+      const result = await stepGetCopyTradeInfo(deliveryId);
+      if (result.kind === 'not_found') {
+        await interaction.editReply({ content: '❌ 推送记录或信号不存在', components: [] });
+        break;
+      }
+      const { payload } = result;
+      const text = [
+        '📋 交易信息（可复制）',
+        `标的: ${payload.symbol}`,
+        `市场: ${payload.market.toUpperCase()}`,
+        `方向: ${payload.direction === 'long' ? '买入' : '卖出'}`,
+        `参考仓位: ${payload.suggestedPositionPct}%`,
+        `依据: ${payload.reasoning}`,
+      ].join('\n');
+      await interaction.editReply({
+        content: `\`\`\`\n${text}\n\`\`\`\n请复制后前往券商 App 手动执行。`,
+        components: [],
+      });
       break;
-    case 'remind':
-      await handleRemind(deliveryId, orderToken, interaction);
-      break;
-    case 'copy_trade':
-      await sendCopyTradeInfo(deliveryId, interaction);
-      break;
-    case 'abandon':
-      await updateDeliveryStatus(deliveryId, 'ignored', { ignoredAt: new Date() });
-      await interaction.editReply({ content: '❌ 已放弃本次交易', components: [] });
-      break;
+    }
     default:
       await interaction.editReply({ content: '未知操作', components: [] });
   }
@@ -184,14 +249,11 @@ async function handleRemind(
 ): Promise<void> {
   // 防止重复设置
   if (pendingReminders.has(deliveryId)) {
-    await interaction.editReply({ content: '⏰ 提醒已设置，请等待', components: [] });
+    await interaction.reply({ content: '⏰ 提醒已设置，请等待', ephemeral: true });
     return;
   }
 
-  await interaction.editReply({
-    content: '⏰ 好的，将在 30 分钟后提醒您此信号',
-    components: [],
-  });
+  await interaction.reply({ content: '⏰ 好的，将在 30 分钟后提醒您此信号', ephemeral: true });
 
   const timer = setTimeout(async () => {
     pendingReminders.delete(deliveryId);
@@ -212,63 +274,6 @@ async function handleRemind(
   }, 30 * 60 * 1000);
 
   pendingReminders.set(deliveryId, timer);
-}
-
-async function confirmOrder(
-  deliveryId: string,
-  orderToken: string,
-  interaction: any,
-  overrideWarning: boolean
-): Promise<void> {
-  const delivery = await getDelivery(deliveryId);
-  if (!delivery) {
-    await interaction.editReply({ content: '❌ 推送记录不存在或已失效', components: [] });
-    return;
-  }
-
-  if (!['pending', 'order_failed'].includes(delivery.status)) {
-    await interaction.editReply({ content: `⚠️ 当前状态为 ${delivery.status}，无法再次确认`, components: [] });
-    return;
-  }
-
-  const extra = {
-    confirmedAt: new Date(),
-    overrideRiskWarning: overrideWarning,
-    overrideRiskWarningAt: overrideWarning ? new Date() : undefined,
-  };
-
-  await updateDeliveryStatus(deliveryId, 'confirmed', extra);
-  const { orderQueue } = await import('../../queues/order-queue');
-  await orderQueue.add('place-order', { deliveryId, orderToken });
-  await interaction.editReply({ content: '⏳ 已确认，正在执行下单并回写结果...', components: [] });
-}
-
-async function sendCopyTradeInfo(deliveryId: string, interaction: any): Promise<void> {
-  const delivery = await getDelivery(deliveryId);
-  if (!delivery) {
-    await interaction.editReply({ content: '❌ 推送记录不存在', components: [] });
-    return;
-  }
-
-  const signal = await getSignal(delivery.signalId);
-  if (!signal) {
-    await interaction.editReply({ content: '❌ 信号不存在', components: [] });
-    return;
-  }
-
-  const text = [
-    '📋 交易信息（可复制）',
-    `标的: ${signal.symbol}`,
-    `市场: ${signal.market.toUpperCase()}`,
-    `方向: ${signal.direction === 'long' ? '买入' : '卖出'}`,
-    `参考仓位: ${signal.suggestedPositionPct}%`,
-    `依据: ${signal.reasoning}`,
-  ].join('\n');
-
-  await interaction.editReply({
-    content: `\`\`\`\n${text}\n\`\`\`\n请复制后前往券商 App 手动执行。`,
-    components: [],
-  });
 }
 
 // 推送信号给单个用户
