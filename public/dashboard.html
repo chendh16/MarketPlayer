@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPlayer Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tab-active { border-bottom: 2px solid #6366f1; color: #6366f1; }
+    .tab-inactive { color: #6b7280; }
+    .tab-inactive:hover { color: #374151; }
+    [x-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+      <!-- Left: logo + title -->
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="text-xl">📈</span>
+        <div class="min-w-0">
+          <span class="text-base font-bold text-gray-800 whitespace-nowrap">MarketPlayer Dashboard</span>
+          <span class="hidden sm:inline text-xs text-gray-400 ml-2">后台监控</span>
+        </div>
+      </div>
+      <!-- Right: admin token input -->
+      <div class="flex items-center gap-2 shrink-0">
+        <label for="admin-token-input" class="text-xs text-gray-500 whitespace-nowrap hidden sm:block">Admin Token:</label>
+        <input
+          type="password"
+          id="admin-token-input"
+          placeholder="输入 Admin Token"
+          class="w-40 sm:w-56 text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+        />
+        <button
+          id="save-token-btn"
+          class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors whitespace-nowrap"
+        >保存</button>
+        <span id="token-saved-hint" class="text-xs text-green-600 font-medium hidden">已保存</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tab navigation -->
+  <div class="bg-white border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav class="flex items-center gap-1 overflow-x-auto">
+        <button id="tabnav-overview" onclick="switchTab('overview')" class="tab-active px-4 py-2 font-medium text-sm border-b-2 cursor-pointer whitespace-nowrap">📊 概览</button>
+        <button id="tabnav-news"     onclick="switchTab('news')"     class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📰 资讯</button>
+        <button id="tabnav-signals"  onclick="switchTab('signals')"  class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">🎯 信号</button>
+        <button id="tabnav-orders"   onclick="switchTab('orders')"   class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📋 订单</button>
+        <button id="tabnav-system"   onclick="switchTab('system')"   class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">⚙️ 系统</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ═══════════════ TAB: Overview ═══════════════ -->
+    <div id="tab-overview">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-gray-800">系统概览</h2>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400">最后更新：<span id="overview-last-update">--</span></span>
+          <button
+            onclick="loadOverview()"
+            class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors"
+          >刷新</button>
+        </div>
+      </div>
+
+      <!-- KPI grid: 4 rows x 2 cols -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Row 1: 资讯 -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">今日资讯</div>
+          <div id="ov-news-today" class="text-3xl font-bold text-gray-800">--</div>
+          <div class="text-xs text-gray-400 mt-1">今天抓取的资讯总数</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">待处理资讯</div>
+          <div id="ov-news-pending" class="text-3xl font-bold text-yellow-500">--</div>
+          <div class="text-xs text-gray-400 mt-1">尚未经过 AI 处理的资讯</div>
+        </div>
+
+        <!-- Row 2: 信号 -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">今日信号</div>
+          <div id="ov-signals-today" class="text-3xl font-bold text-indigo-600">--</div>
+          <div class="text-xs text-gray-400 mt-1">今天生成的交易信号数</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">平均置信度</div>
+          <div id="ov-signals-confidence" class="text-3xl font-bold text-gray-800">--</div>
+          <div class="text-xs text-gray-400 mt-1">所有信号的平均置信度</div>
+        </div>
+
+        <!-- Row 3: 订单 -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">今日订单</div>
+          <div id="ov-orders-today" class="text-3xl font-bold text-gray-800">--</div>
+          <div class="text-xs text-gray-400 mt-1">今天创建的订单数</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">成交订单</div>
+          <div id="ov-orders-filled" class="text-3xl font-bold text-green-600">--</div>
+          <div class="text-xs text-gray-400 mt-1">今天成功成交的订单数</div>
+        </div>
+
+        <!-- Row 4: 推送 -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">待确认推送</div>
+          <div id="ov-push-pending" class="text-3xl font-bold text-blue-500">--</div>
+          <div class="text-xs text-gray-400 mt-1">等待用户确认的 Discord 推送</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">已完成推送</div>
+          <div id="ov-push-completed" class="text-3xl font-bold text-gray-800">--</div>
+          <div class="text-xs text-gray-400 mt-1">已完成（确认 / 拒绝）的推送</div>
+        </div>
+      </div>
+
+      <!-- Overview error -->
+      <div id="overview-error" class="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+    </div>
+
+    <!-- ═══════════════ TAB: News ═══════════════ -->
+    <div id="tab-news" style="display:none">
+      <div id="news-panel-root" class="space-y-4">
+
+        <!-- Stats Bar -->
+        <div id="news-stats-bar" class="grid grid-cols-3 gap-4">
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="news-stat-today" class="text-2xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">今日资讯</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="news-stat-processed" class="text-2xl font-bold text-green-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">已 AI 处理</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="news-stat-pending" class="text-2xl font-bold text-yellow-500">--</div>
+            <div class="text-xs text-gray-500 mt-1">待处理</div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-medium text-gray-600">过滤：</span>
+          <button
+            id="news-filter-all"
+            onclick="window._newsSetFilter('all')"
+            class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors"
+          >全部</button>
+          <button
+            id="news-filter-pending"
+            onclick="window._newsSetFilter('pending')"
+            class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          >仅待处理</button>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">时间</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">市场</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">标的</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">标题</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">AI 状态</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">AI 摘要</th>
+                </tr>
+              </thead>
+              <tbody id="news-table-body">
+                <tr>
+                  <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <span>最后刷新：<span id="news-last-refresh">--</span></span>
+          <button
+            onclick="window.loadNewsPanel()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs font-medium"
+          >刷新</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ TAB: Signals ═══════════════ -->
+    <div id="tab-signals" style="display:none">
+      <div id="signals-panel-root" class="p-6">
+
+        <!-- Top stat bar -->
+        <div id="signals-stats-bar" class="grid grid-cols-3 gap-4 mb-6">
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Signals</span>
+            <span id="stat-total-signals" class="text-2xl font-bold text-gray-800">--</span>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Today</span>
+            <span id="stat-today-signals" class="text-2xl font-bold text-gray-800">--</span>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Avg Confidence</span>
+            <span id="stat-avg-confidence" class="text-2xl font-bold text-gray-800">--</span>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex items-center gap-2 mb-5">
+          <span class="text-sm text-gray-500 font-medium mr-1">Filter:</span>
+          <button
+            id="signals-filter-all"
+            onclick="signalsSetFilter('all')"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors"
+          >All</button>
+          <button
+            id="signals-filter-active"
+            onclick="signalsSetFilter('active')"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          >Active Only</button>
+          <button
+            id="signals-filter-expired"
+            onclick="signalsSetFilter('expired')"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          >Expired Only</button>
+          <div class="ml-auto flex items-center gap-2">
+            <span id="signals-refresh-indicator" class="text-xs text-gray-400 hidden">Refreshing...</span>
+            <button
+              onclick="window.loadSignalsPanel()"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+            >Refresh</button>
+          </div>
+        </div>
+
+        <!-- Signal card list -->
+        <div id="signals-list" class="flex flex-col gap-3">
+          <div class="text-center text-gray-400 py-12 text-sm">Loading signals...</div>
+        </div>
+
+        <!-- Error message -->
+        <div id="signals-error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ TAB: Orders ═══════════════ -->
+    <div id="tab-orders" style="display:none">
+      <div id="orders-panel-root" class="p-6">
+
+        <!-- Top stat bar -->
+        <div id="orders-stats-bar" class="grid grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Orders</span>
+            <span id="stat-orders-total" class="text-2xl font-bold text-gray-800">--</span>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Filled</span>
+            <span id="stat-orders-filled" class="text-2xl font-bold text-green-600">--</span>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Failed</span>
+            <span id="stat-orders-failed" class="text-2xl font-bold text-red-500">--</span>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">In Progress</span>
+            <span id="stat-orders-pending" class="text-2xl font-bold text-blue-500">--</span>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex items-center gap-2 mb-5 flex-wrap">
+          <span class="text-sm text-gray-500 font-medium mr-1">Status:</span>
+          <button id="orders-filter-all"         onclick="ordersSetFilter('all')"           class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors">All</button>
+          <button id="orders-filter-filled"      onclick="ordersSetFilter('filled')"        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Filled</button>
+          <button id="orders-filter-submitted"   onclick="ordersSetFilter('submitted')"     class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Submitted</button>
+          <button id="orders-filter-failed"      onclick="ordersSetFilter('failed')"        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Failed</button>
+          <button id="orders-filter-cancelled"   onclick="ordersSetFilter('cancelled')"     class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancelled</button>
+          <div class="ml-auto flex items-center gap-2">
+            <span id="orders-refresh-indicator" class="text-xs text-gray-400 hidden">Refreshing...</span>
+            <button
+              onclick="window.loadOrdersPanel()"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+            >Refresh</button>
+          </div>
+        </div>
+
+        <!-- Table wrapper -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Time</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">User</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Symbol</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Direction</th>
+                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Qty</th>
+                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Ref Price</th>
+                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Exec Price</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                  <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Retries</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-body">
+                <tr>
+                  <td colspan="9" class="text-center text-gray-400 py-12 text-sm">Loading orders...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div id="orders-error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ TAB: System ═══════════════ -->
+    <div id="tab-system" style="display:none">
+      <div id="system-panel-root" class="space-y-6">
+
+        <!-- KPI Cards Row -->
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Today Cost -->
+          <div id="sys-kpi-today-cost" class="rounded-xl border p-5 bg-green-50 border-green-200 transition-colors">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">今日花费</div>
+            <div id="sys-val-today-cost" class="text-3xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">USD</div>
+          </div>
+
+          <!-- Today Call Count -->
+          <div class="rounded-xl border border-gray-200 p-5 bg-white">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">今日调用次数</div>
+            <div id="sys-val-today-calls" class="text-3xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">次</div>
+          </div>
+
+          <!-- Month Cost -->
+          <div class="rounded-xl border border-gray-200 p-5 bg-white">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">本月花费</div>
+            <div id="sys-val-month-cost" class="text-3xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">USD（<span id="sys-val-month-calls">--</span> 次调用）</div>
+          </div>
+        </div>
+
+        <!-- Call Type Breakdown -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700">今日调用类型明细</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">类型</th>
+                  <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">次数</th>
+                  <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">花费</th>
+                </tr>
+              </thead>
+              <tbody id="sys-calltype-body">
+                <tr>
+                  <td colspan="3" class="px-5 py-6 text-center text-gray-400 text-sm">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100">
+            <h3 class="text-sm font-semibold text-gray-700">系统状态</h3>
+          </div>
+          <div class="p-5 grid grid-cols-2 gap-4">
+            <div class="flex items-start gap-3">
+              <div id="sys-health-dot" class="mt-0.5 w-3 h-3 rounded-full bg-gray-300 flex-shrink-0"></div>
+              <div>
+                <div class="text-sm font-medium text-gray-700">API 状态</div>
+                <div id="sys-health-label" class="text-xs text-gray-500 mt-0.5">检测中...</div>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 mb-1">最后检查时间</div>
+              <div id="sys-health-check-time" class="text-sm font-medium text-gray-700">--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <span>最后刷新：<span id="sys-last-refresh">--</span></span>
+          <button
+            onclick="window.loadSystemPanel()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs font-medium"
+          >刷新</button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ══════════════════════════════════════════════════════════════════
+    // 1. Admin token management
+    // ══════════════════════════════════════════════════════════════════
+    function getAdminToken() {
+      return sessionStorage.getItem('mp_admin_token') || '';
+    }
+
+    document.getElementById('save-token-btn').addEventListener('click', function () {
+      var val = document.getElementById('admin-token-input').value.trim();
+      sessionStorage.setItem('mp_admin_token', val);
+      var hint = document.getElementById('token-saved-hint');
+      hint.classList.remove('hidden');
+      setTimeout(function () { hint.classList.add('hidden'); }, 1000);
+    });
+
+    // Fill input from sessionStorage on page load
+    document.getElementById('admin-token-input').value = getAdminToken();
+
+    // ══════════════════════════════════════════════════════════════════
+    // 2. window.dashboardFetch — used by all panels
+    // ══════════════════════════════════════════════════════════════════
+    window.dashboardFetch = async function (url) {
+      var token = getAdminToken();
+      var res = await fetch(url, {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
+      return res.json();
+    };
+
+    // ══════════════════════════════════════════════════════════════════
+    // 3. Tab switching
+    // ══════════════════════════════════════════════════════════════════
+    var TABS = ['overview', 'news', 'signals', 'orders', 'system'];
+
+    function switchTab(tabId) {
+      TABS.forEach(function (t) {
+        document.getElementById('tab-' + t).style.display = t === tabId ? 'block' : 'none';
+        var navEl = document.getElementById('tabnav-' + t);
+        if (t === tabId) {
+          navEl.className = 'tab-active px-4 py-2 font-medium text-sm border-b-2 cursor-pointer whitespace-nowrap';
+        } else {
+          navEl.className = 'tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap';
+        }
+      });
+
+      // Trigger an immediate refresh for the activated tab's panel
+      var loaders = {
+        news:     window.loadNewsPanel,
+        signals:  window.loadSignalsPanel,
+        orders:   window.loadOrdersPanel,
+        system:   window.loadSystemPanel,
+        overview: loadOverview,
+      };
+      if (loaders[tabId]) loaders[tabId]();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 4. Overview tab logic
+    // ══════════════════════════════════════════════════════════════════
+    function fmtOverviewTime(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      var mm  = String(d.getMonth() + 1).padStart(2, '0');
+      var dd  = String(d.getDate()).padStart(2, '0');
+      var HH  = String(d.getHours()).padStart(2, '0');
+      var min = String(d.getMinutes()).padStart(2, '0');
+      var sec = String(d.getSeconds()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + HH + ':' + min + ':' + sec;
+    }
+
+    async function loadOverview() {
+      var errorEl = document.getElementById('overview-error');
+      errorEl.classList.add('hidden');
+
+      try {
+        var data = await window.dashboardFetch('/api/admin/dashboard/stats');
+
+        // News KPIs
+        document.getElementById('ov-news-today').textContent =
+          data.news && data.news.today !== undefined ? data.news.today : '--';
+        document.getElementById('ov-news-pending').textContent =
+          data.news && data.news.pending !== undefined ? data.news.pending : '--';
+
+        // Signal KPIs
+        document.getElementById('ov-signals-today').textContent =
+          data.signals && data.signals.today !== undefined ? data.signals.today : '--';
+        var conf = data.signals && data.signals.avgConfidence !== undefined
+          ? data.signals.avgConfidence
+          : null;
+        document.getElementById('ov-signals-confidence').textContent =
+          conf !== null ? conf + '%' : '--';
+
+        // Order KPIs
+        document.getElementById('ov-orders-today').textContent =
+          data.orders && data.orders.today !== undefined ? data.orders.today : '--';
+        document.getElementById('ov-orders-filled').textContent =
+          data.orders && data.orders.filled !== undefined ? data.orders.filled : '--';
+
+        // Push KPIs
+        document.getElementById('ov-push-pending').textContent =
+          data.deliveries && data.deliveries.pending !== undefined ? data.deliveries.pending : '--';
+        document.getElementById('ov-push-completed').textContent =
+          data.deliveries && data.deliveries.completed !== undefined ? data.deliveries.completed : '--';
+
+      } catch (err) {
+        errorEl.textContent = '概览数据加载失败：' + (err && err.message ? err.message : '未知错误');
+        errorEl.classList.remove('hidden');
+      }
+
+      document.getElementById('overview-last-update').textContent =
+        fmtOverviewTime(new Date().toISOString());
+    }
+
+    // Auto-refresh overview every 30 seconds
+    setInterval(loadOverview, 30000);
+
+    // ══════════════════════════════════════════════════════════════════
+    // 5. Boot: show overview tab by default
+    //    (panels register their window.loadXxxPanel below via their own
+    //     IIFE scripts; overview is loaded here directly)
+    // ══════════════════════════════════════════════════════════════════
+    switchTab('overview');
+  </script>
+
+  <!-- ═══════════════ Panel scripts (each registers window.loadXxxPanel) ═══════════════ -->
+
+  <!-- News panel script -->
+  <script>
+  (function () {
+    /* ── State ── */
+    var _newsAllData = [];
+    var _newsFilter = 'all';
+    var _newsExpandedId = null;
+    var _newsTimerId = null;
+
+    /* ── Helpers ── */
+    function fmtTime(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      var mm  = String(d.getMonth() + 1).padStart(2, '0');
+      var dd  = String(d.getDate()).padStart(2, '0');
+      var HH  = String(d.getHours()).padStart(2, '0');
+      var min = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + HH + ':' + min;
+    }
+
+    function marketBadge(market) {
+      var map = {
+        us:  { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'US' },
+        hk:  { bg: 'bg-red-100',    text: 'text-red-700',    label: 'HK' },
+        a:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'A股' },
+        btc: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'BTC' },
+      };
+      var s = map[market] || { bg: 'bg-gray-100', text: 'text-gray-600', label: market || '--' };
+      return '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
+    }
+
+    function aiStatusBadge(processed) {
+      if (processed) {
+        return '<span class="inline-flex items-center gap-1 text-green-600 font-medium">&#10003; 已处理</span>';
+      }
+      return '<span class="inline-flex items-center gap-1 text-yellow-500 font-medium">&#9203; 待处理</span>';
+    }
+
+    function truncate(str, len) {
+      if (!str) return '<span class="text-gray-300">-</span>';
+      return str.length > len ? str.slice(0, len) + '…' : str;
+    }
+
+    function escHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /* ── Stats bar ── */
+    function renderStats(data) {
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      var todayItems     = data.filter(function (n) { return new Date(n.created_at) >= today; });
+      var processedItems = data.filter(function (n) { return n.ai_processed; });
+      var pendingItems   = data.filter(function (n) { return !n.ai_processed; });
+
+      document.getElementById('news-stat-today').textContent     = todayItems.length;
+      document.getElementById('news-stat-processed').textContent = processedItems.length;
+      document.getElementById('news-stat-pending').textContent   = pendingItems.length;
+    }
+
+    /* ── Filter toggle ── */
+    window._newsSetFilter = function (filter) {
+      _newsFilter = filter;
+      var btnAll     = document.getElementById('news-filter-all');
+      var btnPending = document.getElementById('news-filter-pending');
+      if (filter === 'all') {
+        btnAll.className     = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
+        btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      } else {
+        btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
+        btnAll.className     = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      }
+      renderTable(_newsAllData);
+    };
+
+    /* ── Row expand toggle ── */
+    window._newsToggleRow = function (id) {
+      _newsExpandedId = _newsExpandedId === id ? null : id;
+      renderTable(_newsAllData);
+    };
+
+    /* ── Render table ── */
+    function renderTable(data) {
+      var filtered = _newsFilter === 'pending'
+        ? data.filter(function (n) { return !n.ai_processed; })
+        : data;
+
+      var tbody = document.getElementById('news-table-body');
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">暂无数据</td></tr>';
+        return;
+      }
+
+      var rows = filtered.map(function (item) {
+        var isExpanded = _newsExpandedId === item.id;
+        var symbols = Array.isArray(item.symbols) && item.symbols.length
+          ? item.symbols.slice(0, 3).map(escHtml).join(', ')
+          : '<span class="text-gray-300">-</span>';
+
+        var mainRow = '<tr'
+          + ' onclick="window._newsToggleRow(\'' + escHtml(item.id) + '\')"'
+          + ' class="border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition-colors' + (isExpanded ? ' bg-indigo-50' : '') + '"'
+          + '>'
+          + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap">' + fmtTime(item.published_at || item.created_at) + '</td>'
+          + '<td class="px-4 py-3">' + marketBadge(item.market) + '</td>'
+          + '<td class="px-4 py-3 text-gray-700 text-xs">' + symbols + '</td>'
+          + '<td class="px-4 py-3 text-gray-800 font-medium">' + escHtml(truncate(item.title, 60)) + '</td>'
+          + '<td class="px-4 py-3">' + aiStatusBadge(item.ai_processed) + '</td>'
+          + '<td class="px-4 py-3 text-gray-500 text-xs">' + escHtml(truncate(item.ai_summary, 50)) + '</td>'
+          + '</tr>';
+
+        var expandRow = isExpanded
+          ? '<tr class="bg-indigo-50 border-b border-indigo-100">'
+            + '<td colspan="6" class="px-6 py-4">'
+            + '<div class="text-xs font-semibold text-gray-500 mb-1">完整 AI 摘要</div>'
+            + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">'
+            + (item.ai_summary ? escHtml(item.ai_summary) : '<span class="text-gray-400 italic">暂无摘要</span>')
+            + '</p>'
+            + '<div class="mt-2 text-xs text-gray-400">来源：' + escHtml(item.source || '--') + ' &nbsp;|&nbsp; 入库时间：' + fmtTime(item.created_at) + '</div>'
+            + '</td>'
+            + '</tr>'
+          : '';
+
+        return mainRow + expandRow;
+      });
+
+      tbody.innerHTML = rows.join('');
+    }
+
+    /* ── Error display ── */
+    function renderError(msg) {
+      var tbody = document.getElementById('news-table-body');
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center">'
+        + '<div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">'
+        + '<span class="font-semibold">加载失败：</span>' + escHtml(msg)
+        + '</div>'
+        + '</td></tr>';
+    }
+
+    /* ── Main load function ── */
+    window.loadNewsPanel = async function () {
+      try {
+        var data = await window.dashboardFetch('/api/admin/dashboard/news?limit=50');
+        _newsAllData = Array.isArray(data) ? data : [];
+        renderStats(_newsAllData);
+        renderTable(_newsAllData);
+        var now = new Date();
+        document.getElementById('news-last-refresh').textContent = fmtTime(now.toISOString());
+      } catch (err) {
+        renderError(err && err.message ? err.message : '未知错误');
+      }
+    };
+
+    /* ── Auto-refresh (30s) ── */
+    function startAutoRefresh() {
+      if (_newsTimerId) clearInterval(_newsTimerId);
+      _newsTimerId = setInterval(function () {
+        window.loadNewsPanel();
+      }, 30000);
+    }
+
+    /* ── Init ── */
+    // Do NOT call loadNewsPanel() here — switchTab('overview') already sets display:none on this tab.
+    // The panel will load when the user first switches to the news tab.
+    startAutoRefresh();
+  })();
+  </script>
+
+  <!-- Signals panel script -->
+  <script>
+  (function () {
+    var _signalsData = [];
+    var _signalsFilter = 'all';
+    var _signalsTimer = null;
+    var _expandedIds = new Set();
+
+    function fmtDate(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      var mm  = String(d.getMonth() + 1).padStart(2, '0');
+      var dd  = String(d.getDate()).padStart(2, '0');
+      var hh  = String(d.getHours()).padStart(2, '0');
+      var min = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + hh + ':' + min;
+    }
+
+    function isExpired(expiresAt) {
+      if (!expiresAt) return false;
+      return new Date(expiresAt) < new Date();
+    }
+
+    function confidenceClass(confidence) {
+      if (confidence >= 70) return 'bg-green-100 text-green-700';
+      if (confidence >= 50) return 'bg-yellow-100 text-yellow-700';
+      return 'bg-red-100 text-red-700';
+    }
+
+    function directionBadge(direction) {
+      var isLong = direction === 'long';
+      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold '
+        + (isLong ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
+        + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>';
+    }
+
+    function marketBadge(market) {
+      var map = {
+        us:  'bg-blue-100 text-blue-700',
+        hk:  'bg-purple-100 text-purple-700',
+        a:   'bg-orange-100 text-orange-700',
+        btc: 'bg-yellow-100 text-yellow-700',
+      };
+      var cls = map[market] || 'bg-gray-100 text-gray-600';
+      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">'
+        + (market || '').toUpperCase() + '</span>';
+    }
+
+    function filterSignals(data) {
+      if (_signalsFilter === 'active')  return data.filter(function (s) { return !isExpired(s.expires_at); });
+      if (_signalsFilter === 'expired') return data.filter(function (s) { return isExpired(s.expires_at); });
+      return data;
+    }
+
+    function renderStats(data) {
+      var total = data.length;
+      var now = new Date();
+      var today = data.filter(function (s) {
+        var d = new Date(s.created_at);
+        return d.getFullYear() === now.getFullYear() &&
+               d.getMonth() === now.getMonth() &&
+               d.getDate() === now.getDate();
+      }).length;
+      var avgConf = total > 0
+        ? Math.round(data.reduce(function (acc, s) { return acc + (s.confidence || 0); }, 0) / total)
+        : 0;
+
+      document.getElementById('stat-total-signals').textContent  = total;
+      document.getElementById('stat-today-signals').textContent  = today;
+      document.getElementById('stat-avg-confidence').textContent = total > 0 ? avgConf + '%' : '--';
+    }
+
+    function renderCards(data) {
+      var list     = document.getElementById('signals-list');
+      var filtered = filterSignals(data);
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-12 text-sm">No signals found.</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(function (s) {
+        var expired       = isExpired(s.expires_at);
+        var expanded      = _expandedIds.has(s.id);
+        var borderColor   = s.direction === 'long' ? 'border-l-green-500' : 'border-l-red-500';
+        var dimClass      = expired ? 'opacity-50 grayscale' : '';
+        var confCls       = confidenceClass(s.confidence);
+        var confPct       = Math.max(0, Math.min(100, s.confidence || 0));
+        var confBarColor  = s.confidence >= 70 ? 'bg-green-500' : s.confidence >= 50 ? 'bg-yellow-400' : 'bg-red-500';
+
+        var expandedSection = expanded
+          ? '<div class="px-4 pb-4 border-t border-gray-100 pt-3">'
+            + '<p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Reasoning</p>'
+            + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">' + (s.reasoning || 'No reasoning provided.') + '</p>'
+            + '<div class="mt-2 text-xs text-gray-400">Expires: ' + fmtDate(s.expires_at) + '</div>'
+            + '</div>'
+          : '';
+
+        return '<div class="bg-white rounded-xl border border-gray-200 border-l-4 ' + borderColor + ' shadow-sm ' + dimClass + ' transition-all">'
+          + '<div class="p-4 cursor-pointer select-none" onclick="signalsToggleCard(\'' + s.id + '\')" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \')signalsToggleCard(\'' + s.id + '\')">'
+          + '<div class="flex items-start justify-between gap-3">'
+          + '<div class="flex items-center gap-2 flex-wrap min-w-0">'
+          + '<span class="text-base font-bold text-gray-800 truncate">' + (s.symbol || '--') + '</span>'
+          + marketBadge(s.market)
+          + directionBadge(s.direction)
+          + (expired ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400">Expired</span>' : '')
+          + '</div>'
+          + '<div class="flex items-center gap-2 shrink-0">'
+          + '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + confCls + '">' + (s.confidence !== undefined && s.confidence !== null ? s.confidence : '--') + '%</span>'
+          + '<svg class="w-4 h-4 text-gray-400 transition-transform ' + (expanded ? 'rotate-180' : '') + '" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>'
+          + '</div></div>'
+          + '<div class="mt-3 flex items-center gap-3">'
+          + '<div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full ' + confBarColor + ' transition-all" style="width:' + confPct + '%"></div></div>'
+          + '<span class="text-xs text-gray-500 shrink-0 w-8 text-right">' + confPct + '%</span>'
+          + '</div>'
+          + '<div class="mt-2 flex items-center gap-4 text-xs text-gray-400 flex-wrap">'
+          + '<span>Position: <span class="text-gray-600 font-medium">' + (s.suggested_position_pct !== undefined && s.suggested_position_pct !== null ? s.suggested_position_pct : '--') + '%</span></span>'
+          + '<span>Delivered: <span class="text-gray-600 font-medium">' + (s.delivery_count || 0) + '</span></span>'
+          + '<span>Completed: <span class="text-gray-600 font-medium">' + (s.completed_count || 0) + '</span></span>'
+          + '<span>Pending: <span class="text-gray-600 font-medium">' + (s.pending_count || 0) + '</span></span>'
+          + '<span class="ml-auto">' + fmtDate(s.created_at) + '</span>'
+          + '</div>'
+          + '</div>'
+          + expandedSection
+          + '</div>';
+      }).join('');
+    }
+
+    function signalsSetFilter(filter) {
+      _signalsFilter = filter;
+      var ids = ['all', 'active', 'expired'];
+      ids.forEach(function (id) {
+        var btn = document.getElementById('signals-filter-' + id);
+        if (!btn) return;
+        btn.className = id === filter
+          ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors'
+          : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderCards(_signalsData);
+    }
+
+    function signalsToggleCard(id) {
+      if (_expandedIds.has(id)) {
+        _expandedIds.delete(id);
+      } else {
+        _expandedIds.add(id);
+      }
+      renderCards(_signalsData);
+    }
+
+    async function loadSignalsPanel() {
+      var indicator = document.getElementById('signals-refresh-indicator');
+      var errorEl   = document.getElementById('signals-error');
+      if (indicator) indicator.classList.remove('hidden');
+      if (errorEl)   errorEl.classList.add('hidden');
+
+      try {
+        var data = await window.dashboardFetch('/api/admin/dashboard/signals?limit=50');
+        _signalsData = Array.isArray(data) ? data : [];
+        renderStats(_signalsData);
+        renderCards(_signalsData);
+      } catch (err) {
+        console.error('[signals panel]', err);
+        if (errorEl) {
+          errorEl.textContent = 'Failed to load signals: ' + (err.message || 'Unknown error');
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
+        if (indicator) indicator.classList.add('hidden');
+      }
+    }
+
+    function startSignalsAutoRefresh() {
+      if (_signalsTimer) clearInterval(_signalsTimer);
+      _signalsTimer = setInterval(function () {
+        window.loadSignalsPanel();
+      }, 30000);
+    }
+
+    window.loadSignalsPanel  = loadSignalsPanel;
+    window.signalsSetFilter  = signalsSetFilter;
+    window.signalsToggleCard = signalsToggleCard;
+
+    startSignalsAutoRefresh();
+  })();
+  </script>
+
+  <!-- Orders panel script -->
+  <script>
+  (function () {
+    var _ordersData = [];
+    var _ordersFilter = 'all';
+    var _ordersTimer = null;
+    var _expandedOrderIds = new Set();
+
+    function fmtDate(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      var mm  = String(d.getMonth() + 1).padStart(2, '0');
+      var dd  = String(d.getDate()).padStart(2, '0');
+      var hh  = String(d.getHours()).padStart(2, '0');
+      var min = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + hh + ':' + min;
+    }
+
+    function fmtPrice(val) {
+      if (val === null || val === undefined || val === '') return '-';
+      var num = parseFloat(val);
+      if (isNaN(num)) return '-';
+      return '$' + num.toFixed(2);
+    }
+
+    function statusBadge(status) {
+      var map = {
+        filled:         'bg-green-100 text-green-700',
+        submitted:      'bg-blue-100 text-blue-700',
+        failed:         'bg-red-100 text-red-700',
+        cancelled:      'bg-gray-100 text-gray-500',
+        partial_filled: 'bg-yellow-100 text-yellow-700',
+      };
+      var cls = map[status] || 'bg-gray-100 text-gray-500';
+      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">' + (status || '--') + '</span>';
+    }
+
+    function directionBadge(direction) {
+      var isBuy = direction === 'buy' || direction === 'long';
+      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold '
+        + (isBuy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
+        + '">' + (direction || '--').toUpperCase() + '</span>';
+    }
+
+    function marketBadge(market) {
+      var map = {
+        us:  'bg-blue-100 text-blue-700',
+        hk:  'bg-purple-100 text-purple-700',
+        a:   'bg-orange-100 text-orange-700',
+        btc: 'bg-yellow-100 text-yellow-700',
+      };
+      var cls = map[market] || 'bg-gray-100 text-gray-600';
+      return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold ' + cls + '">'
+        + (market || '').toUpperCase() + '</span>';
+    }
+
+    function retryBadge(count) {
+      if (!count || count === 0) return '<span class="text-gray-300">0</span>';
+      return '<span class="text-orange-500 font-semibold">' + count + '</span>';
+    }
+
+    function filterOrders(data) {
+      if (_ordersFilter === 'all') return data;
+      return data.filter(function (o) { return o.status === _ordersFilter; });
+    }
+
+    function renderStats(data) {
+      var total      = data.length;
+      var filled     = data.filter(function (o) { return o.status === 'filled'; }).length;
+      var failed     = data.filter(function (o) { return o.status === 'failed'; }).length;
+      var inProgress = data.filter(function (o) { return o.status === 'submitted' || o.status === 'partial_filled'; }).length;
+
+      document.getElementById('stat-orders-total').textContent   = total;
+      document.getElementById('stat-orders-filled').textContent  = filled;
+      document.getElementById('stat-orders-failed').textContent  = failed;
+      document.getElementById('stat-orders-pending').textContent = inProgress;
+    }
+
+    function renderTable(data) {
+      var tbody    = document.getElementById('orders-table-body');
+      var filtered = filterOrders(data);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-12 text-sm">No orders found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(function (o) {
+        var hasError      = !!(o.failure_message || o.failure_type);
+        var expanded      = _expandedOrderIds.has(o.id);
+        var rowHoverClass = hasError ? 'cursor-pointer hover:bg-red-50' : 'hover:bg-gray-50';
+        var expandAttr    = hasError
+          ? 'onclick="ordersToggleRow(\'' + o.id + '\')" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\')ordersToggleRow(\'' + o.id + '\')"'
+          : '';
+
+        var mainRow = '<tr class="border-b border-gray-100 transition-colors ' + rowHoverClass + '" ' + expandAttr + '>'
+          + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">' + fmtDate(o.created_at) + '</td>'
+          + '<td class="px-4 py-3 text-gray-700 whitespace-nowrap max-w-[120px] truncate" title="' + (o.discord_username || '') + '">' + (o.discord_username || '--') + '</td>'
+          + '<td class="px-4 py-3 whitespace-nowrap"><div class="flex items-center gap-1.5"><span class="font-semibold text-gray-800">' + (o.symbol || '--') + '</span>' + marketBadge(o.market) + '</div></td>'
+          + '<td class="px-4 py-3 whitespace-nowrap">' + directionBadge(o.direction) + '</td>'
+          + '<td class="px-4 py-3 text-right text-gray-700 whitespace-nowrap font-medium">' + (o.quantity !== undefined && o.quantity !== null ? o.quantity : '--') + '</td>'
+          + '<td class="px-4 py-3 text-right text-gray-500 whitespace-nowrap">' + fmtPrice(o.reference_price) + '</td>'
+          + '<td class="px-4 py-3 text-right whitespace-nowrap font-medium ' + (o.executed_price ? 'text-gray-800' : 'text-gray-300') + '">' + fmtPrice(o.executed_price) + '</td>'
+          + '<td class="px-4 py-3 whitespace-nowrap"><div class="flex items-center gap-1.5">'
+          + statusBadge(o.status)
+          + (hasError ? '<svg class="w-3 h-3 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>' : '')
+          + '</div></td>'
+          + '<td class="px-4 py-3 text-center whitespace-nowrap">' + retryBadge(o.retry_count) + '</td>'
+          + '</tr>';
+
+        var errorRow = (hasError && expanded)
+          ? '<tr class="bg-red-50 border-b border-red-100"><td colspan="9" class="px-4 py-3"><div class="text-xs">'
+            + (o.failure_type ? '<span class="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-600 font-semibold mr-2">' + o.failure_type + '</span>' : '')
+            + '<span class="text-red-700">' + (o.failure_message || 'No error details available.') + '</span>'
+            + '</div></td></tr>'
+          : '';
+
+        return mainRow + errorRow;
+      }).join('');
+    }
+
+    function ordersSetFilter(filter) {
+      _ordersFilter = filter;
+      var statuses = ['all', 'filled', 'submitted', 'failed', 'cancelled'];
+      statuses.forEach(function (s) {
+        var btn = document.getElementById('orders-filter-' + s);
+        if (!btn) return;
+        btn.className = s === filter
+          ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors'
+          : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderTable(_ordersData);
+    }
+
+    function ordersToggleRow(id) {
+      if (_expandedOrderIds.has(id)) {
+        _expandedOrderIds.delete(id);
+      } else {
+        _expandedOrderIds.add(id);
+      }
+      renderTable(_ordersData);
+    }
+
+    async function loadOrdersPanel() {
+      var indicator = document.getElementById('orders-refresh-indicator');
+      var errorEl   = document.getElementById('orders-error');
+      if (indicator) indicator.classList.remove('hidden');
+      if (errorEl)   errorEl.classList.add('hidden');
+
+      try {
+        var data = await window.dashboardFetch('/api/admin/orders?limit=100');
+        _ordersData = Array.isArray(data) ? data : [];
+        renderStats(_ordersData);
+        renderTable(_ordersData);
+      } catch (err) {
+        console.error('[orders panel]', err);
+        if (errorEl) {
+          errorEl.textContent = 'Failed to load orders: ' + (err.message || 'Unknown error');
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
+        if (indicator) indicator.classList.add('hidden');
+      }
+    }
+
+    function startOrdersAutoRefresh() {
+      if (_ordersTimer) clearInterval(_ordersTimer);
+      _ordersTimer = setInterval(function () {
+        window.loadOrdersPanel();
+      }, 30000);
+    }
+
+    window.loadOrdersPanel  = loadOrdersPanel;
+    window.ordersSetFilter  = ordersSetFilter;
+    window.ordersToggleRow  = ordersToggleRow;
+
+    startOrdersAutoRefresh();
+  })();
+  </script>
+
+  <!-- System panel script -->
+  <script>
+  (function () {
+    function fmtTime(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      var mm  = String(d.getMonth() + 1).padStart(2, '0');
+      var dd  = String(d.getDate()).padStart(2, '0');
+      var HH  = String(d.getHours()).padStart(2, '0');
+      var min = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + HH + ':' + min;
+    }
+
+    function fmtCost(val) {
+      var n = parseFloat(val) || 0;
+      return '$' + n.toFixed(4);
+    }
+
+    function escHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function todayCostClass(usd) {
+      var n = parseFloat(usd) || 0;
+      if (n >= 5) return { bg: 'bg-red-50',    border: 'border-red-200' };
+      if (n >= 1) return { bg: 'bg-yellow-50', border: 'border-yellow-200' };
+      return { bg: 'bg-green-50', border: 'border-green-200' };
+    }
+
+    function renderCosts(data) {
+      var today  = data.today      || {};
+      var month  = data.thisMonth  || {};
+      var byType = Array.isArray(data.byCallType) ? data.byCallType : [];
+
+      var todayCost  = today.total_cost_usd || '0';
+      var todayCalls = today.call_count      || 0;
+      var monthCost  = month.total_cost_usd || '0';
+      var monthCalls = month.call_count      || 0;
+
+      document.getElementById('sys-val-today-cost').textContent  = fmtCost(todayCost);
+      document.getElementById('sys-val-today-calls').textContent = todayCalls;
+      document.getElementById('sys-val-month-cost').textContent  = fmtCost(monthCost);
+      document.getElementById('sys-val-month-calls').textContent = monthCalls;
+
+      var cls  = todayCostClass(todayCost);
+      var card = document.getElementById('sys-kpi-today-cost');
+      card.className = 'rounded-xl border p-5 transition-colors ' + cls.bg + ' ' + cls.border;
+
+      var tbody = document.getElementById('sys-calltype-body');
+      if (!byType.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-gray-400 text-sm">今日暂无调用记录</td></tr>';
+        return;
+      }
+
+      var rows = byType.map(function (row) {
+        var typeLabel = { analysis: '资讯分析', signal: '信号生成' }[row.call_type] || escHtml(row.call_type);
+        return '<tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">'
+          + '<td class="px-5 py-3 text-gray-700 font-medium">' + typeLabel + '</td>'
+          + '<td class="px-5 py-3 text-right text-gray-600">' + (row.call_count || 0) + '</td>'
+          + '<td class="px-5 py-3 text-right font-mono text-gray-700">' + fmtCost(row.total_cost_usd) + '</td>'
+          + '</tr>';
+      });
+      tbody.innerHTML = rows.join('');
+    }
+
+    function renderHealth(ok, checkTime) {
+      var dot      = document.getElementById('sys-health-dot');
+      var label    = document.getElementById('sys-health-label');
+      var checkEl  = document.getElementById('sys-health-check-time');
+
+      if (ok) {
+        dot.className   = 'mt-0.5 w-3 h-3 rounded-full bg-green-500 flex-shrink-0';
+        label.className = 'text-xs text-green-600 mt-0.5 font-medium';
+        label.textContent = '在线';
+      } else {
+        dot.className   = 'mt-0.5 w-3 h-3 rounded-full bg-red-500 flex-shrink-0';
+        label.className = 'text-xs text-red-600 mt-0.5 font-medium';
+        label.textContent = '离线';
+      }
+      checkEl.textContent = checkTime ? fmtTime(checkTime) : fmtTime(new Date().toISOString());
+    }
+
+    function renderCostError(msg) {
+      var tbody = document.getElementById('sys-calltype-body');
+      tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-4 text-center">'
+        + '<div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">'
+        + '<span class="font-semibold">加载失败：</span>' + escHtml(msg)
+        + '</div>'
+        + '</td></tr>';
+      document.getElementById('sys-val-today-cost').textContent  = '--';
+      document.getElementById('sys-val-today-calls').textContent = '--';
+      document.getElementById('sys-val-month-cost').textContent  = '--';
+      document.getElementById('sys-val-month-calls').textContent = '--';
+    }
+
+    window.loadSystemPanel = async function () {
+      var results = await Promise.allSettled([
+        (async function () {
+          return await window.dashboardFetch('/api/admin/costs');
+        })(),
+        (async function () {
+          var resp = await fetch('/api/health');
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return await resp.json();
+        })(),
+      ]);
+
+      var costsResult  = results[0];
+      var healthResult = results[1];
+
+      if (costsResult.status === 'fulfilled') {
+        renderCosts(costsResult.value);
+      } else {
+        var errMsg = costsResult.reason && costsResult.reason.message
+          ? costsResult.reason.message : '未知错误';
+        renderCostError(errMsg);
+      }
+
+      if (healthResult.status === 'fulfilled') {
+        var h = healthResult.value;
+        renderHealth(h.status === 'ok', h.timestamp);
+      } else {
+        renderHealth(false, new Date().toISOString());
+      }
+
+      document.getElementById('sys-last-refresh').textContent = fmtTime(new Date().toISOString());
+    };
+
+    (function startAutoRefresh() {
+      setInterval(function () {
+        window.loadSystemPanel();
+      }, 60000);
+    })();
+
+    // Do NOT auto-init here; panel loads when tab is first activated.
+  })();
+  </script>
+
+</body>
+</html>

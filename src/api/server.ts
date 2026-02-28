@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import path from 'path';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import routes from './routes';
@@ -12,6 +13,9 @@ app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
+
+// Dashboard 静态文件服务（__dirname 编译后为 dist/api/，../../public 指向项目根目录）
+app.use('/dashboard', express.static(path.join(__dirname, '../../public')));
 
 // 路由
 app.use('/api', routes);

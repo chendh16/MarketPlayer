@@ -201,6 +201,123 @@ router.get('/admin/orders', requireAuth, requireAdmin, async (req: Request, res:
   }
 });
 
+// ─── Admin Dashboard 端点 ──────────────────────────────────────────────────────
+
+// 聚合统计数据
+router.get('/admin/dashboard/stats', requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const [news, signals, orders, deliveries] = await Promise.all([
+      queryOne(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS today,
+          COUNT(*) FILTER (WHERE ai_processed = true)::int AS ai_processed,
+          COUNT(*) FILTER (WHERE ai_processed = false)::int AS pending
+        FROM news_items
+      `),
+      queryOne(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS today,
+          ROUND(AVG(confidence)::numeric, 1) AS avg_confidence
+        FROM signals
+      `),
+      queryOne(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS today,
+          COUNT(*) FILTER (WHERE status = 'filled')::int AS filled,
+          COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+        FROM orders
+      `),
+      queryOne(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+          COUNT(*) FILTER (WHERE status = 'confirmed')::int AS confirmed,
+          COUNT(*) FILTER (WHERE status = 'completed')::int AS completed
+        FROM signal_deliveries
+      `),
+    ]);
+
+    res.json({
+      news: {
+        total: news?.total ?? 0,
+        today: news?.today ?? 0,
+        aiProcessed: news?.ai_processed ?? 0,
+        pending: news?.pending ?? 0,
+      },
+      signals: {
+        total: signals?.total ?? 0,
+        today: signals?.today ?? 0,
+        avgConfidence: signals?.avg_confidence ?? 0,
+      },
+      orders: {
+        total: orders?.total ?? 0,
+        today: orders?.today ?? 0,
+        filled: orders?.filled ?? 0,
+        failed: orders?.failed ?? 0,
+      },
+      deliveries: {
+        total: deliveries?.total ?? 0,
+        pending: deliveries?.pending ?? 0,
+        confirmed: deliveries?.confirmed ?? 0,
+        completed: deliveries?.completed ?? 0,
+      },
+    });
+  } catch (error) {
+    logger.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 资讯列表
+router.get('/admin/dashboard/news', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50')), 100);
+    const rows = await query(`
+      SELECT
+        id, title, source, market, symbols,
+        ai_summary, ai_processed, ai_processed_at,
+        published_at, created_at
+      FROM news_items
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    res.json(rows);
+  } catch (error) {
+    logger.error('Error fetching dashboard news:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 信号列表（含推送统计）
+router.get('/admin/dashboard/signals', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50')), 100);
+    const rows = await query(`
+      SELECT
+        s.id, s.symbol, s.market, s.direction,
+        s.confidence, s.suggested_position_pct, s.reasoning,
+        s.expires_at, s.created_at,
+        COUNT(sd.id)::int AS delivery_count,
+        COUNT(sd.id) FILTER (WHERE sd.status = 'pending')::int AS pending_count,
+        COUNT(sd.id) FILTER (WHERE sd.status = 'completed')::int AS completed_count
+      FROM signals s
+      LEFT JOIN signal_deliveries sd ON s.id = sd.signal_id
+      GROUP BY s.id
+      ORDER BY s.created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    res.json(rows);
+  } catch (error) {
+    logger.error('Error fetching dashboard signals:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 生成管理员 token（仅内部使用，需要在环境变量中配置 ADMIN_DISCORD_USER_ID）
 router.post('/admin/token', async (req: Request, res: Response): Promise<void> => {
   try {

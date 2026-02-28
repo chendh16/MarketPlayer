@@ -1,0 +1,237 @@
+<div id="news-panel-root" class="space-y-4">
+
+  <!-- Stats Bar -->
+  <div id="news-stats-bar" class="grid grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+      <div id="news-stat-today" class="text-2xl font-bold text-gray-800">--</div>
+      <div class="text-xs text-gray-500 mt-1">今日资讯</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+      <div id="news-stat-processed" class="text-2xl font-bold text-green-600">--</div>
+      <div class="text-xs text-gray-500 mt-1">已 AI 处理</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+      <div id="news-stat-pending" class="text-2xl font-bold text-yellow-500">--</div>
+      <div class="text-xs text-gray-500 mt-1">待处理</div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="flex items-center gap-3">
+    <span class="text-sm font-medium text-gray-600">过滤：</span>
+    <button
+      id="news-filter-all"
+      onclick="window._newsSetFilter('all')"
+      class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors"
+    >全部</button>
+    <button
+      id="news-filter-pending"
+      onclick="window._newsSetFilter('pending')"
+      class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+    >仅待处理</button>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">时间</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">市场</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">标的</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">标题</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">AI 状态</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">AI 摘要</th>
+          </tr>
+        </thead>
+        <tbody id="news-table-body">
+          <tr>
+            <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="flex items-center justify-between text-xs text-gray-500">
+    <span>最后刷新：<span id="news-last-refresh">--</span></span>
+    <button
+      onclick="window.loadNewsPanel()"
+      class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs font-medium"
+    >刷新</button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  /* ── 状态 ── */
+  let _newsAllData = [];
+  let _newsFilter = 'all';
+  let _newsExpandedId = null;
+  let _newsTimerId = null;
+
+  /* ── 工具函数 ── */
+  function fmtTime(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const HH = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return mm + '-' + dd + ' ' + HH + ':' + min;
+  }
+
+  function marketBadge(market) {
+    const map = {
+      us:  { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'US' },
+      hk:  { bg: 'bg-red-100',    text: 'text-red-700',    label: 'HK' },
+      a:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'A股' },
+      btc: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'BTC' },
+    };
+    const s = map[market] || { bg: 'bg-gray-100', text: 'text-gray-600', label: market || '--' };
+    return '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
+  }
+
+  function aiStatusBadge(processed) {
+    if (processed) {
+      return '<span class="inline-flex items-center gap-1 text-green-600 font-medium">&#10003; 已处理</span>';
+    }
+    return '<span class="inline-flex items-center gap-1 text-yellow-500 font-medium">&#9203; 待处理</span>';
+  }
+
+  function truncate(str, len) {
+    if (!str) return '<span class="text-gray-300">-</span>';
+    return str.length > len ? str.slice(0, len) + '…' : str;
+  }
+
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── 统计条 ── */
+  function renderStats(data) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayItems = data.filter(function (n) { return new Date(n.created_at) >= today; });
+    const processedItems = data.filter(function (n) { return n.ai_processed; });
+    const pendingItems = data.filter(function (n) { return !n.ai_processed; });
+
+    document.getElementById('news-stat-today').textContent = todayItems.length;
+    document.getElementById('news-stat-processed').textContent = processedItems.length;
+    document.getElementById('news-stat-pending').textContent = pendingItems.length;
+  }
+
+  /* ── 过滤切换 ── */
+  window._newsSetFilter = function (filter) {
+    _newsFilter = filter;
+    const btnAll = document.getElementById('news-filter-all');
+    const btnPending = document.getElementById('news-filter-pending');
+    if (filter === 'all') {
+      btnAll.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
+      btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+    } else {
+      btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
+      btnAll.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+    }
+    renderTable(_newsAllData);
+  };
+
+  /* ── 行展开切换 ── */
+  window._newsToggleRow = function (id) {
+    _newsExpandedId = _newsExpandedId === id ? null : id;
+    renderTable(_newsAllData);
+  };
+
+  /* ── 渲染表格 ── */
+  function renderTable(data) {
+    const filtered = _newsFilter === 'pending'
+      ? data.filter(function (n) { return !n.ai_processed; })
+      : data;
+
+    const tbody = document.getElementById('news-table-body');
+
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">暂无数据</td></tr>';
+      return;
+    }
+
+    const rows = filtered.map(function (item) {
+      const isExpanded = _newsExpandedId === item.id;
+      const symbols = Array.isArray(item.symbols) && item.symbols.length
+        ? item.symbols.slice(0, 3).map(escHtml).join(', ')
+        : '<span class="text-gray-300">-</span>';
+
+      const mainRow = '<tr'
+        + ' onclick="window._newsToggleRow(\'' + escHtml(item.id) + '\')"'
+        + ' class="border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition-colors' + (isExpanded ? ' bg-indigo-50' : '') + '"'
+        + '>'
+        + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap">' + fmtTime(item.published_at || item.created_at) + '</td>'
+        + '<td class="px-4 py-3">' + marketBadge(item.market) + '</td>'
+        + '<td class="px-4 py-3 text-gray-700 text-xs">' + symbols + '</td>'
+        + '<td class="px-4 py-3 text-gray-800 font-medium">' + escHtml(truncate(item.title, 60)) + '</td>'
+        + '<td class="px-4 py-3">' + aiStatusBadge(item.ai_processed) + '</td>'
+        + '<td class="px-4 py-3 text-gray-500 text-xs">' + escHtml(truncate(item.ai_summary, 50)) + '</td>'
+        + '</tr>';
+
+      const expandRow = isExpanded
+        ? '<tr class="bg-indigo-50 border-b border-indigo-100">'
+          + '<td colspan="6" class="px-6 py-4">'
+          + '<div class="text-xs font-semibold text-gray-500 mb-1">完整 AI 摘要</div>'
+          + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">'
+          + (item.ai_summary ? escHtml(item.ai_summary) : '<span class="text-gray-400 italic">暂无摘要</span>')
+          + '</p>'
+          + '<div class="mt-2 text-xs text-gray-400">来源：' + escHtml(item.source || '--') + ' &nbsp;|&nbsp; 入库时间：' + fmtTime(item.created_at) + '</div>'
+          + '</td>'
+          + '</tr>'
+        : '';
+
+      return mainRow + expandRow;
+    });
+
+    tbody.innerHTML = rows.join('');
+  }
+
+  /* ── 显示错误 ── */
+  function renderError(msg) {
+    const tbody = document.getElementById('news-table-body');
+    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center">'
+      + '<div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">'
+      + '<span class="font-semibold">加载失败：</span>' + escHtml(msg)
+      + '</div>'
+      + '</td></tr>';
+  }
+
+  /* ── 主加载函数 ── */
+  window.loadNewsPanel = async function () {
+    try {
+      const data = await window.dashboardFetch('/api/admin/dashboard/news?limit=50');
+      _newsAllData = Array.isArray(data) ? data : [];
+      renderStats(_newsAllData);
+      renderTable(_newsAllData);
+      const now = new Date();
+      document.getElementById('news-last-refresh').textContent = fmtTime(now.toISOString());
+    } catch (err) {
+      renderError(err && err.message ? err.message : '未知错误');
+    }
+  };
+
+  /* ── 自动刷新（30s）── */
+  function startAutoRefresh() {
+    if (_newsTimerId) clearInterval(_newsTimerId);
+    _newsTimerId = setInterval(function () {
+      window.loadNewsPanel();
+    }, 30000);
+  }
+
+  /* ── 初始化 ── */
+  window.loadNewsPanel();
+  startAutoRefresh();
+})();
+</script>

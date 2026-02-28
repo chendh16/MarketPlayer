@@ -1,0 +1,273 @@
+<div id="signals-panel-root" class="p-6">
+
+  <!-- Top stat bar -->
+  <div id="signals-stats-bar" class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Signals</span>
+      <span id="stat-total-signals" class="text-2xl font-bold text-gray-800">--</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Today</span>
+      <span id="stat-today-signals" class="text-2xl font-bold text-gray-800">--</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
+      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Avg Confidence</span>
+      <span id="stat-avg-confidence" class="text-2xl font-bold text-gray-800">--</span>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="flex items-center gap-2 mb-5">
+    <span class="text-sm text-gray-500 font-medium mr-1">Filter:</span>
+    <button
+      id="signals-filter-all"
+      onclick="signalsSetFilter('all')"
+      class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors"
+    >All</button>
+    <button
+      id="signals-filter-active"
+      onclick="signalsSetFilter('active')"
+      class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+    >Active Only</button>
+    <button
+      id="signals-filter-expired"
+      onclick="signalsSetFilter('expired')"
+      class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+    >Expired Only</button>
+    <div class="ml-auto flex items-center gap-2">
+      <span id="signals-refresh-indicator" class="text-xs text-gray-400 hidden">Refreshing...</span>
+      <button
+        onclick="window.loadSignalsPanel()"
+        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+      >Refresh</button>
+    </div>
+  </div>
+
+  <!-- Signal card list -->
+  <div id="signals-list" class="flex flex-col gap-3">
+    <div class="text-center text-gray-400 py-12 text-sm">Loading signals...</div>
+  </div>
+
+  <!-- Error message -->
+  <div id="signals-error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+
+</div>
+
+<script>
+(function () {
+  // ── State ──────────────────────────────────────────────────────────────────
+  let _signalsData = [];
+  let _signalsFilter = 'all';
+  let _signalsTimer = null;
+  const _expandedIds = new Set();
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function fmtDate(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}-${dd} ${hh}:${min}`;
+  }
+
+  function isExpired(expiresAt) {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  }
+
+  function confidenceClass(confidence) {
+    if (confidence >= 70) return 'bg-green-100 text-green-700';
+    if (confidence >= 50) return 'bg-yellow-100 text-yellow-700';
+    return 'bg-red-100 text-red-700';
+  }
+
+  function directionBadge(direction) {
+    const isLong = direction === 'long';
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+      isLong ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+    }">${isLong ? 'LONG' : 'SHORT'}</span>`;
+  }
+
+  function marketBadge(market) {
+    const map = {
+      us: 'bg-blue-100 text-blue-700',
+      hk: 'bg-purple-100 text-purple-700',
+      a: 'bg-orange-100 text-orange-700',
+      btc: 'bg-yellow-100 text-yellow-700',
+    };
+    const cls = map[market] || 'bg-gray-100 text-gray-600';
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${cls}">${(market || '').toUpperCase()}</span>`;
+  }
+
+  function filterSignals(data) {
+    if (_signalsFilter === 'active') return data.filter(s => !isExpired(s.expires_at));
+    if (_signalsFilter === 'expired') return data.filter(s => isExpired(s.expires_at));
+    return data;
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function renderStats(data) {
+    const total = data.length;
+    const today = data.filter(s => {
+      const d = new Date(s.created_at);
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() &&
+             d.getMonth() === now.getMonth() &&
+             d.getDate() === now.getDate();
+    }).length;
+    const avgConf = total > 0
+      ? Math.round(data.reduce((acc, s) => acc + (s.confidence || 0), 0) / total)
+      : 0;
+
+    document.getElementById('stat-total-signals').textContent = total;
+    document.getElementById('stat-today-signals').textContent = today;
+    document.getElementById('stat-avg-confidence').textContent = total > 0 ? `${avgConf}%` : '--';
+  }
+
+  function renderCards(data) {
+    const list = document.getElementById('signals-list');
+    const filtered = filterSignals(data);
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="text-center text-gray-400 py-12 text-sm">No signals found.</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(s => {
+      const expired = isExpired(s.expires_at);
+      const expanded = _expandedIds.has(s.id);
+      const borderColor = s.direction === 'long' ? 'border-l-green-500' : 'border-l-red-500';
+      const dimClass = expired ? 'opacity-50 grayscale' : '';
+      const confCls = confidenceClass(s.confidence);
+      const confPct = Math.max(0, Math.min(100, s.confidence || 0));
+      const confBarColor = s.confidence >= 70 ? 'bg-green-500' : s.confidence >= 50 ? 'bg-yellow-400' : 'bg-red-500';
+
+      return `
+        <div class="bg-white rounded-xl border border-gray-200 border-l-4 ${borderColor} shadow-sm ${dimClass} transition-all">
+          <!-- Card header (clickable) -->
+          <div
+            class="p-4 cursor-pointer select-none"
+            onclick="signalsToggleCard('${s.id}')"
+            role="button"
+            tabindex="0"
+            onkeydown="if(event.key==='Enter'||event.key===' ')signalsToggleCard('${s.id}')"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <!-- Left: symbol + market + direction -->
+              <div class="flex items-center gap-2 flex-wrap min-w-0">
+                <span class="text-base font-bold text-gray-800 truncate">${s.symbol || '--'}</span>
+                ${marketBadge(s.market)}
+                ${directionBadge(s.direction)}
+                ${expired ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400">Expired</span>' : ''}
+              </div>
+              <!-- Right: confidence badge + expand arrow -->
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${confCls}">${s.confidence ?? '--'}%</span>
+                <svg class="w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Confidence bar -->
+            <div class="mt-3 flex items-center gap-3">
+              <div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div class="h-1.5 rounded-full ${confBarColor} transition-all" style="width:${confPct}%"></div>
+              </div>
+              <span class="text-xs text-gray-500 shrink-0 w-8 text-right">${confPct}%</span>
+            </div>
+
+            <!-- Meta row -->
+            <div class="mt-2 flex items-center gap-4 text-xs text-gray-400 flex-wrap">
+              <span>Position: <span class="text-gray-600 font-medium">${s.suggested_position_pct ?? '--'}%</span></span>
+              <span>Delivered: <span class="text-gray-600 font-medium">${s.delivery_count ?? 0}</span></span>
+              <span>Completed: <span class="text-gray-600 font-medium">${s.completed_count ?? 0}</span></span>
+              <span>Pending: <span class="text-gray-600 font-medium">${s.pending_count ?? 0}</span></span>
+              <span class="ml-auto">${fmtDate(s.created_at)}</span>
+            </div>
+          </div>
+
+          <!-- Expanded reasoning -->
+          ${expanded ? `
+          <div class="px-4 pb-4 border-t border-gray-100 pt-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Reasoning</p>
+            <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${s.reasoning || 'No reasoning provided.'}</p>
+            <div class="mt-2 text-xs text-gray-400">
+              Expires: ${fmtDate(s.expires_at)}
+            </div>
+          </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Filter button states ───────────────────────────────────────────────────
+  function signalsSetFilter(filter) {
+    _signalsFilter = filter;
+    const ids = ['all', 'active', 'expired'];
+    ids.forEach(id => {
+      const btn = document.getElementById(`signals-filter-${id}`);
+      if (!btn) return;
+      if (id === filter) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      }
+    });
+    renderCards(_signalsData);
+  }
+
+  // ── Toggle card expand ─────────────────────────────────────────────────────
+  function signalsToggleCard(id) {
+    if (_expandedIds.has(id)) {
+      _expandedIds.delete(id);
+    } else {
+      _expandedIds.add(id);
+    }
+    renderCards(_signalsData);
+  }
+
+  // ── Main fetch ─────────────────────────────────────────────────────────────
+  async function loadSignalsPanel() {
+    const indicator = document.getElementById('signals-refresh-indicator');
+    const errorEl = document.getElementById('signals-error');
+    if (indicator) indicator.classList.remove('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    try {
+      const data = await window.dashboardFetch('/api/admin/dashboard/signals?limit=50');
+      _signalsData = Array.isArray(data) ? data : [];
+      renderStats(_signalsData);
+      renderCards(_signalsData);
+    } catch (err) {
+      console.error('[signals panel]', err);
+      if (errorEl) {
+        errorEl.textContent = `Failed to load signals: ${err.message || 'Unknown error'}`;
+        errorEl.classList.remove('hidden');
+      }
+    } finally {
+      if (indicator) indicator.classList.add('hidden');
+    }
+  }
+
+  // ── Auto-refresh ───────────────────────────────────────────────────────────
+  function startSignalsAutoRefresh() {
+    if (_signalsTimer) clearInterval(_signalsTimer);
+    _signalsTimer = setInterval(() => {
+      window.loadSignalsPanel();
+    }, 30000);
+  }
+
+  // ── Expose globals ─────────────────────────────────────────────────────────
+  window.loadSignalsPanel = loadSignalsPanel;
+  window.signalsSetFilter = signalsSetFilter;
+  window.signalsToggleCard = signalsToggleCard;
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadSignalsPanel();
+  startSignalsAutoRefresh();
+})();
+</script>
