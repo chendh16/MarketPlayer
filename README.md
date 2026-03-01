@@ -8,6 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Development-orange.svg)](PROJECT_STATUS.md)
+[![Market News](https://github.com/actions/workflows/market-news.yml/badge.svg)](../../actions/workflows/market-news.yml)
 
 </div>
 
@@ -179,6 +180,30 @@ pm2 start ecosystem.config.js --env production
 # 查看日志
 pm2 logs market-player
 ```
+
+### GitHub Actions 定时运行（每 2 小时）
+
+项目内置 `.github/workflows/market-news.yml`，在 GitHub Actions 上每 2 小时自动完成完整管道：
+
+```
+资讯抓取（4 市场）→ AI 分析 → Discord 推送
+```
+
+**首次配置**：在仓库 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
+
+| Secret | 说明 |
+|--------|------|
+| `DATABASE_URL` | PostgreSQL 连接串（需外网可访问，如 Supabase / Railway） |
+| `REDIS_URL` | Redis 连接串（如 Upstash） |
+| `DISCORD_BOT_TOKEN` | Discord Bot Token |
+| `DISCORD_CLIENT_ID` | Discord 应用 Client ID |
+| `AI_API_KEY` | Anthropic API Key |
+| `JWT_SECRET` | 任意随机字符串 |
+| `COINGECKO_API_KEY` | 可选，免费层不填也可运行 |
+
+配置完成后可在 **Actions → Market News → Run workflow** 手动触发验证。
+
+> Workflow 会在同一 job 内自动启动 US Skill 服务器（Yahoo Finance RSS）和 A 股 MCP 服务器（新浪财经），无需额外配置外部服务。
 
 ## 📁 项目结构
 
@@ -479,67 +504,44 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 
 ## 📊 项目状态
 
-- **当前版本**: V1.0 MVP
-- **开发状态**: 🟢 第一阶段完成（新闻获取 → Discord 推送）
+- **当前版本**: V1.0
+- **开发状态**: 🟢 核心流程全部完成并验证
 - **代码质量**: ✅ 无 TypeScript 错误
-- **文档完整度**: ✅ 100%
+- **文档完整度**: ✅ 齐全
 - **测试覆盖**: 🟡 基础测试 + 端到端测试
 
 ### 已完成功能
 
 ✅ **Phase 1: 核心流程**
-- [x] MCP 新闻服务器（测试）
-- [x] 资讯获取可插拔架构（API/Skill/MCP）
-- [x] AI 分析可插拔架构（Anthropic/OpenAI/Azure/自定义）
+- [x] 资讯获取可插拔架构（API / Skill / MCP 外部源）
+- [x] AI 分析可插拔架构（Anthropic / OpenAI / Azure / 自定义）
+- [x] Prompt 可配置（`prompts/*.md` 无需改代码即可调整 AI 行为）
 - [x] 规则预筛选
-- [x] AI 深度分析
-- [x] 风控引擎
-- [x] Discord Bot 推送
-- [x] 端到端测试
+- [x] AI 深度分析 + 信号生成
+- [x] 风控引擎（持仓上限 / 总仓位 / 可用资金）
+- [x] Discord Bot 推送 + 按钮交互（确认 / 调整仓位 / 忽略 / 提醒）
+- [x] 订单执行（富途方案A全自动 / 方案B深链接 / 方案C纯通知）
+- [x] 富途持仓 / 资金查询
 
-### 进行中
+✅ **Phase 2: 数据源（四市场全通）**
+- [x] 美股（Yahoo Finance RSS，无需 API key）
+- [x] 港股（Yahoo Finance RSS，无需 API key）
+- [x] A 股（新浪财经滚动新闻，无需 API key）
+- [x] BTC（CoinGecko + CoinDesk RSS 备用）
+- [x] 端到端 MCP 管道验证（四市场 fetch → AI 分析 → Discord ✅）
 
-🚧 **Phase 2: 完善交互**
-- [ ] Discord 按钮交互处理
-- [ ] 订单执行逻辑
-- [ ] 富途 API 对接
+✅ **Phase 3: Agent 兼容 + 自动化**
+- [x] MCP 工具服务器（`src/mcp/server.ts`，10 个工具，POST /tools/:name）
+- [x] US Skill 服务器 / A 股 MCP 服务器（独立外部适配器脚本）
+- [x] GitHub Actions 定时 workflow（每 2 小时，四市场全量管道）
+
+### 下一步方向 📋
+- [ ] 增加单元测试覆盖率
+- [ ] 性能优化 / 成本优化
+- [ ] Telegram 备用推送
+- [ ] Web 管理后台
 
 详细状态请查看 [PROJECT_STATUS.md](PROJECT_STATUS.md)
-
-## 🗺️ 开发路线图
-
-### Phase 1: MVP 基础功能 ✅
-- [x] 项目骨架搭建
-- [x] 数据库设计与迁移
-- [x] AI 分析集成
-- [x] 风控引擎
-- [x] Discord Bot 框架
-- [x] 订单执行框架
-
-### Phase 2: 数据源对接 🚧
-- [ ] 美股资讯抓取（Yahoo Finance）
-- [ ] 港股资讯抓取
-- [ ] A股资讯抓取（东方财富）
-- [ ] BTC 资讯抓取（CoinGecko）
-
-### Phase 3: 富途对接 📋
-- [ ] 持仓查询实现
-- [ ] 深链接下单（方案B）
-- [ ] 全自动下单（方案A，可选）
-
-### Phase 4: 完善与优化 📋
-- [ ] 完善 Discord 交互
-- [ ] 增加单元测试
-- [ ] 性能优化
-- [ ] 成本优化
-- [ ] 监控告警
-
-### Phase 5: 高级功能 💡
-- [ ] Telegram 备用推送
-- [ ] 长桥证券对接
-- [ ] 个性化推荐
-- [ ] 回测系统
-- [ ] Web 管理后台
 
 ## 📞 支持与反馈
 
