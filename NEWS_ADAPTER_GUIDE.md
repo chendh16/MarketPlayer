@@ -94,8 +94,17 @@ COINGECKO_API_KEY=your_key   # 可选，不填也能正常工作
 |------|--------|---------|------|
 | 港股 HK | ✅ 稳定 | ✅ 是 | Yahoo Finance RSS 无限制 |
 | BTC | ✅ 稳定 | ✅ 是 | CoinGecko 免费层 + CoinDesk 备份 |
-| 美股 US | ⚠️ 需配置 | ⚠️ 降级 | 无 Alpha Vantage key 时降级 Yahoo RSS |
-| A 股 | ⚠️ 不稳定 | ✅ 是 | 东方财富 API 偶发被屏蔽，建议配置外部源 |
+| 美股 US | ✅ 稳定 | ✅ 是 | 外部 Skill 服务器（`skill-us-server.ts`）→ Yahoo RSS，无需 key |
+| A 股 | ✅ 稳定 | ✅ 是 | 外部 MCP 服务器（`mcp-a-server.ts`）→ 新浪财经，无需 key |
+
+### 端到端管道验证结果（2026-03-01）
+
+| 市场 | fetch_news | AI 分析 → Discord | 数据源 |
+|------|:---:|:---:|------|
+| BTC | ✅ 10 条 | ✅ | CoinGecko + CoinDesk RSS |
+| HK 港股 | ✅ 30 条 | ✅ | Yahoo Finance RSS |
+| US 美股 | ✅ 5 条 | ✅ | Skill 外部服务器 → Yahoo Finance RSS |
+| A 股 | ✅ 5 条 | ✅ | MCP 外部服务器 → 新浪财经滚动新闻 |
 
 ---
 
