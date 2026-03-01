@@ -1,29 +1,24 @@
 import cron from 'node-cron';
-import { fetchUSStockNews } from '../news/sources/us-stock';
-import { fetchHKStockNews } from '../news/sources/hk-stock';
-import { fetchAStockNews } from '../news/sources/a-stock';
-import { fetchBTCNews } from '../news/sources/btc';
 import { preFilter, markAsProcessed } from '../news/filter';
 import { createNewsItem } from '../../db/queries';
 import { newsQueue } from '../../queues/news-queue';
+import { newsService } from '../news/adapters/service';
 import { logger } from '../../utils/logger';
 import { isMarketOpen } from '../../utils/market-hours';
+import { config } from '../../config';
 import { NewsItem } from '../../models/signal';
 
-// ─── 纯抓取函数（不写库、不入队）────────────────────────────────────────────
-// 供 OpenClaw agent 直接调用；返回经过预过滤的资讯列表
+// ─── 共用预过滤辅助 ──────────────────────────────────────────────────────────
 
-export async function fetchUSStockNewsRaw(): Promise<Partial<NewsItem>[]> {
-  if (!isMarketOpen('us')) {
-    logger.debug('US market closed, skipping fetch');
-    return [];
-  }
-  const items = await fetchUSStockNews();
+async function applyPreFilter(
+  items: Partial<NewsItem>[],
+  market: string,
+): Promise<Partial<NewsItem>[]> {
   const filtered: Partial<NewsItem>[] = [];
   for (const item of items) {
     const { pass, reason } = await preFilter({
       symbol: item.symbols?.[0] || '',
-      market: 'us',
+      market: market as 'us' | 'hk' | 'a' | 'btc',
       triggerType: item.triggerType,
       changePercent: 0,
     });
@@ -36,23 +31,32 @@ export async function fetchUSStockNewsRaw(): Promise<Partial<NewsItem>[]> {
   return filtered;
 }
 
+// ─── 纯抓取函数（不写库、不入队）────────────────────────────────────────────
+// 通过 newsService 调用适配器（内置 source 或外部 Skill/MCP），经预过滤后返回。
+// 外部 adapter 可通过 NEWS_ADAPTERS 环境变量注册，priority < 100 即可优先于内置。
+
+export async function fetchUSStockNewsRaw(): Promise<Partial<NewsItem>[]> {
+  if (!isMarketOpen('us')) {
+    logger.debug('US market closed, skipping fetch');
+    return [];
+  }
+  const result = await newsService.fetchNews({
+    market: 'us',
+    symbols: config.NEWS_SYMBOLS_US,
+  });
+  return applyPreFilter(result.items, 'us');
+}
+
 export async function fetchHKStockNewsRaw(): Promise<Partial<NewsItem>[]> {
   if (!isMarketOpen('hk')) {
     logger.debug('HK market closed, skipping fetch');
     return [];
   }
-  const items = await fetchHKStockNews();
-  const filtered: Partial<NewsItem>[] = [];
-  for (const item of items) {
-    const { pass } = await preFilter({
-      symbol: item.symbols?.[0] || '',
-      market: 'hk',
-      triggerType: item.triggerType,
-      changePercent: 0,
-    });
-    if (pass) filtered.push(item);
-  }
-  return filtered;
+  const result = await newsService.fetchNews({
+    market: 'hk',
+    symbols: config.NEWS_SYMBOLS_HK,
+  });
+  return applyPreFilter(result.items, 'hk');
 }
 
 export async function fetchAStockNewsRaw(): Promise<Partial<NewsItem>[]> {
@@ -60,36 +64,16 @@ export async function fetchAStockNewsRaw(): Promise<Partial<NewsItem>[]> {
     logger.debug('A stock market closed, skipping fetch');
     return [];
   }
-  const items = await fetchAStockNews();
-  const filtered: Partial<NewsItem>[] = [];
-  for (const item of items) {
-    const { pass } = await preFilter({
-      symbol: item.symbols?.[0] || '',
-      market: 'a',
-      triggerType: item.triggerType,
-      changePercent: 0,
-    });
-    if (pass) filtered.push(item);
-  }
-  return filtered;
+  const result = await newsService.fetchNews({ market: 'a' });
+  return applyPreFilter(result.items, 'a');
 }
 
 export async function fetchBTCNewsRaw(): Promise<Partial<NewsItem>[]> {
-  const items = await fetchBTCNews();
-  const filtered: Partial<NewsItem>[] = [];
-  for (const item of items) {
-    const { pass } = await preFilter({
-      symbol: 'BTC',
-      market: 'btc',
-      triggerType: item.triggerType,
-      changePercent: 0,
-    });
-    if (pass) filtered.push(item);
-  }
-  return filtered;
+  const result = await newsService.fetchNews({ market: 'btc' });
+  return applyPreFilter(result.items, 'btc');
 }
 
-// ─── 核心抓取逻辑（调用 raw 函数后写库 + 入队）──────────────────────────────
+// ─── 核心调度函数（写库 + 入队）──────────────────────────────────────────────
 
 async function persistAndQueue(
   items: Partial<NewsItem>[],
@@ -150,61 +134,36 @@ export async function runBTCFetch(): Promise<void> {
   }
 }
 
-// ─── Cron 注册（每个 fetcher 的 cron 回调直接调用对应的 run* 函数）────────────
+// ─── Cron 注册 ────────────────────────────────────────────────────────────────
 
-// 美股资讯抓取（每5分钟）
 export function startUSStockFetcher() {
   cron.schedule('*/5 * * * *', async () => {
-    try {
-      await runUSStockFetch();
-    } catch (error) {
-      logger.error('Error in US stock fetcher:', error);
-    }
+    try { await runUSStockFetch(); } catch (error) { logger.error('Error in US stock fetcher:', error); }
   });
-
   logger.info('US stock fetcher started');
 }
 
-// 港股资讯抓取（每5分钟）
 export function startHKStockFetcher() {
   cron.schedule('*/5 * * * *', async () => {
-    try {
-      await runHKStockFetch();
-    } catch (error) {
-      logger.error('Error in HK stock fetcher:', error);
-    }
+    try { await runHKStockFetch(); } catch (error) { logger.error('Error in HK stock fetcher:', error); }
   });
-
   logger.info('HK stock fetcher started');
 }
 
-// A股资讯抓取（每5分钟）
 export function startAStockFetcher() {
   cron.schedule('*/5 * * * *', async () => {
-    try {
-      await runAStockFetch();
-    } catch (error) {
-      logger.error('Error in A stock fetcher:', error);
-    }
+    try { await runAStockFetch(); } catch (error) { logger.error('Error in A stock fetcher:', error); }
   });
-
   logger.info('A stock fetcher started');
 }
 
-// BTC资讯抓取（每4小时）
 export function startBTCFetcher() {
   cron.schedule('0 */4 * * *', async () => {
-    try {
-      await runBTCFetch();
-    } catch (error) {
-      logger.error('Error in BTC fetcher:', error);
-    }
+    try { await runBTCFetch(); } catch (error) { logger.error('Error in BTC fetcher:', error); }
   });
-
   logger.info('BTC fetcher started');
 }
 
-// 启动所有资讯抓取器
 export function startAllFetchers() {
   startUSStockFetcher();
   startHKStockFetcher();

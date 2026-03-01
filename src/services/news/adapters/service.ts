@@ -35,7 +35,9 @@ export class NewsService {
    * 初始化适配器
    */
   private initializeAdapters(): void {
-    for (const adapterConfig of this.serviceConfig.adapters) {
+    // 按 priority 升序排列（越小优先级越高，外部 adapter 可设 1-10 覆盖内置 100）
+    const sorted = [...this.serviceConfig.adapters].sort((a, b) => a.priority - b.priority);
+    for (const adapterConfig of sorted) {
       if (!adapterConfig.enabled) {
         logger.info(`Adapter ${adapterConfig.name} is disabled, skipping`);
         continue;
@@ -132,74 +134,85 @@ export class NewsService {
 }
 
 /**
- * 从配置文件加载资讯服务
+ * 从环境变量加载资讯服务
+ * NEWS_ADAPTERS 为 JSON 数组时优先使用，否则合并内置默认 adapter
  */
 export function createNewsService(): NewsService {
-  // 从环境变量或配置文件加载
+  const externalAdapters = JSON.parse(process.env.NEWS_ADAPTERS || '[]') as NewsServiceConfig['adapters'];
+
+  // 外部 adapter + 内置 adapter 合并，外部优先（priority 较小）
   const serviceConfig: NewsServiceConfig = {
-    adapters: JSON.parse(process.env.NEWS_ADAPTERS || '[]'),
+    adapters: [...externalAdapters, ...getDefaultAdapters()],
   };
-  
-  // 如果没有配置，使用默认配置
-  if (serviceConfig.adapters.length === 0) {
-    serviceConfig.adapters = getDefaultAdapters();
-  }
-  
+
   return new NewsService(serviceConfig);
 }
 
 /**
- * 获取默认适配器配置
+ * 内置默认 adapter — 包装现有 source 函数，priority=100（最低），
+ * 可被 NEWS_ADAPTERS 中 priority ≤ 10 的外部 adapter 覆盖并自动降级。
  */
-function getDefaultAdapters() {
+function getDefaultAdapters(): NewsServiceConfig['adapters'] {
   return [
     {
-      name: 'us-stock-api',
-      type: 'api' as const,
+      name: 'us-stock-builtin',
+      type: 'custom' as const,
       config: {
-        name: 'US Stock API',
-        endpoint: process.env.US_STOCK_API_ENDPOINT || 'https://api.example.com/us-stock',
-        apiKey: process.env.US_STOCK_API_KEY || '',
+        name: 'us-stock-builtin',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchUSStockNews } = await import('../sources/us-stock');
+          const items = await fetchUSStockNews();
+          return { items, source: 'alpha_vantage', fetchedAt: new Date() };
+        },
       },
       markets: ['us'],
-      priority: 1,
-      enabled: !!process.env.US_STOCK_API_KEY,
+      priority: 100,
+      enabled: !!process.env.ALPHA_VANTAGE_API_KEY,
     },
     {
-      name: 'hk-stock-api',
-      type: 'api' as const,
+      name: 'hk-stock-builtin',
+      type: 'custom' as const,
       config: {
-        name: 'HK Stock API',
-        endpoint: process.env.HK_STOCK_API_ENDPOINT || 'https://api.example.com/hk-stock',
-        apiKey: process.env.HK_STOCK_API_KEY || '',
+        name: 'hk-stock-builtin',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchHKStockNews } = await import('../sources/hk-stock');
+          const items = await fetchHKStockNews();
+          return { items, source: 'yahoo_finance_hk', fetchedAt: new Date() };
+        },
       },
       markets: ['hk'],
-      priority: 1,
-      enabled: !!process.env.HK_STOCK_API_KEY,
+      priority: 100,
+      enabled: true,
     },
     {
-      name: 'a-stock-api',
-      type: 'api' as const,
+      name: 'a-stock-builtin',
+      type: 'custom' as const,
       config: {
-        name: 'A Stock API',
-        endpoint: process.env.A_STOCK_API_ENDPOINT || 'https://api.example.com/a-stock',
-        apiKey: process.env.A_STOCK_API_KEY || '',
+        name: 'a-stock-builtin',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchAStockNews } = await import('../sources/a-stock');
+          const items = await fetchAStockNews();
+          return { items, source: 'eastmoney', fetchedAt: new Date() };
+        },
       },
       markets: ['a'],
-      priority: 1,
-      enabled: !!process.env.A_STOCK_API_KEY,
+      priority: 100,
+      enabled: true,
     },
     {
-      name: 'btc-api',
-      type: 'api' as const,
+      name: 'btc-builtin',
+      type: 'custom' as const,
       config: {
-        name: 'BTC API',
-        endpoint: process.env.BTC_API_ENDPOINT || 'https://api.example.com/btc',
-        apiKey: process.env.BTC_API_KEY || '',
+        name: 'btc-builtin',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchBTCNews } = await import('../sources/btc');
+          const items = await fetchBTCNews();
+          return { items, source: 'coingecko', fetchedAt: new Date() };
+        },
       },
       markets: ['btc'],
-      priority: 1,
-      enabled: !!process.env.BTC_API_KEY,
+      priority: 100,
+      enabled: true,
     },
   ];
 }
