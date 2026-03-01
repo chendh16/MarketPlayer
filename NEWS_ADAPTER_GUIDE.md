@@ -1,341 +1,139 @@
-# 资讯获取架构改造指南
+# 资讯获取指南
 
-## 📋 改造概述
-
-MarketPlayer 的资讯获取系统已改造为**可插拔架构**，支持多种数据源：
-- ✅ **传统 API**：REST API 调用
-- ✅ **Skill**：技能调用框架
-- ✅ **MCP**：Model Context Protocol
-- ✅ **自定义**：任意自定义实现
-
----
-
-## 🏗️ 架构设计
-
-### 核心组件
+## 架构概览
 
 ```
-┌─────────────────────────────────────────┐
-│         NewsService (统一入口)           │
-│  - 管理多个适配器                        │
-│  - 按市场路由请求                        │
-│  - 失败自动切换                          │
-└─────────────────────────────────────────┘
-                    │
-        ┌───────────┼───────────┬───────────┐
-        │           │           │           │
-   ┌────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌───▼────┐
-   │   API   │ │ Skill  │ │  MCP   │ │ Custom │
-   │ Adapter │ │Adapter │ │Adapter │ │Adapter │
-   └─────────┘ └────────┘ └────────┘ └────────┘
-        │           │           │           │
-   ┌────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌───▼────┐
-   │ REST    │ │ Skill  │ │  MCP   │ │ 自定义  │
-   │ API     │ │ 框架   │ │ 服务器 │ │ 实现    │
-   └─────────┘ └────────┘ └────────┘ └────────┘
-```
-
-### 文件结构
-
-```
-src/services/news/
-├── adapters/
-│   ├── base.ts          # 适配器基础接口和工厂
-│   ├── service.ts       # 统一资讯服务
-│   ├── skill.ts         # Skill 适配器实现（待实现）
-│   └── mcp.ts           # MCP 适配器实现（待实现）
-├── sources/             # 原有实现（兼容）
-│   ├── us-stock.ts
-│   ├── hk-stock.ts
-│   ├── a-stock.ts
-│   └── btc.ts
-└── filter.ts            # 预筛选规则
+news-fetcher.ts (cron 触发 / MCP 工具调用)
+    ↓
+newsService.fetchNews({ market })
+    ├─ 外部 adapter（NEWS_ADAPTERS 环境变量，priority 1-10）← 优先
+    └─ 内置 adapter（sources/ 目录，priority 100）         ← 降级
+    ↓
+applyPreFilter() → 去重 / 市场时间过滤
+    ↓
+persistAndQueue() → 写库 → newsQueue → AI 分析 → Discord
 ```
 
 ---
 
-## 🔧 配置方式
+## 内置数据源
 
-### 方式 1: 环境变量配置
+### 美股（us）
 
-在 `.env` 文件中配置：
+| 项目 | 说明 |
+|------|------|
+| 主力来源 | Alpha Vantage NEWS_SENTIMENT API |
+| 文件 | `src/services/news/sources/us-stock.ts` |
+| 所需 Key | `ALPHA_VANTAGE_API_KEY`（必须，否则降级 Yahoo Finance RSS） |
+| 免费层限制 | 25 次/天，延迟 15 分钟 |
+| 无 Key 降级 | Yahoo Finance RSS（`feeds.finance.yahoo.com`，无限制，实时） |
+| 抓取频率 | 每 5 分钟（仅开盘时段） |
+| 监控标的 | `NEWS_SYMBOLS_US` 环境变量（默认 AAPL/GOOGL/MSFT/TSLA/NVDA...） |
+
+**Alpha Vantage 配置：**
+```bash
+ALPHA_VANTAGE_API_KEY=your_real_key   # 留空或占位符时自动降级 Yahoo RSS
+NEWS_SYMBOLS_US=AAPL,GOOGL,MSFT,TSLA,NVDA,AMZN,META,NFLX,SPY,QQQ
+```
+
+---
+
+### 港股（hk）
+
+| 项目 | 说明 |
+|------|------|
+| 来源 | Yahoo Finance RSS |
+| 文件 | `src/services/news/sources/hk-stock.ts` |
+| 所需 Key | 无（免费公开） |
+| 抓取频率 | 每 5 分钟（仅港股开盘时段） |
+| 监控标的 | `NEWS_SYMBOLS_HK` 环境变量 |
+| 并发策略 | 对每个标的并发抓取 RSS，去重后返回最多 30 条 |
+
+**配置：**
+```bash
+NEWS_SYMBOLS_HK=0700.HK,9988.HK,3690.HK,1299.HK,2318.HK,0941.HK,0388.HK,1810.HK
+```
+
+---
+
+### A 股（a）
+
+| 项目 | 说明 |
+|------|------|
+| 主力来源 | 东方财富快讯 API（`datacenter-web.eastmoney.com`） |
+| 文件 | `src/services/news/sources/a-stock.ts` |
+| 所需 Key | 无（公开接口） |
+| 备用来源 | `gblobapi.eastmoney.com`（主力失败时自动切换） |
+| 抓取频率 | 每 5 分钟（仅 A 股开盘时段） |
+| 标的提取 | 从新闻标题自动提取 6 位股票代码（正则匹配），无需配置 |
+| **已知问题** | 东方财富 API 有时屏蔽非浏览器请求，返回 HTML；遇到此情况建议配置外部 Skill/MCP 替代 |
+
+---
+
+### 加密货币（btc）
+
+| 项目 | 说明 |
+|------|------|
+| 主力来源 | CoinGecko News API |
+| 文件 | `src/services/news/sources/btc.ts` |
+| 所需 Key | `COINGECKO_API_KEY`（可选，免费层无需 key） |
+| 备用来源 | CoinDesk RSS（CoinGecko 失败时自动切换） |
+| 抓取频率 | 每 4 小时（24 小时运行，无市场时间限制） |
+| 标的 | 固定为 `BTC`，无需配置 |
+
+**配置：**
+```bash
+COINGECKO_API_KEY=your_key   # 可选，不填也能正常工作
+```
+
+---
+
+## 各市场状态汇总
+
+| 市场 | 当前状态 | 免费可用 | 备注 |
+|------|--------|---------|------|
+| 港股 HK | ✅ 稳定 | ✅ 是 | Yahoo Finance RSS 无限制 |
+| BTC | ✅ 稳定 | ✅ 是 | CoinGecko 免费层 + CoinDesk 备份 |
+| 美股 US | ⚠️ 需配置 | ⚠️ 降级 | 无 Alpha Vantage key 时降级 Yahoo RSS |
+| A 股 | ⚠️ 不稳定 | ✅ 是 | 东方财富 API 偶发被屏蔽，建议配置外部源 |
+
+---
+
+## 添加外部数据源（零代码）
+
+通过 `NEWS_ADAPTERS` 环境变量注入，外部 adapter 优先级默认高于内置（priority 1-10 < 内置 100）。
+
+### 方式 A：MCP 服务器
 
 ```bash
-# 资讯适配器配置（JSON 格式）
 NEWS_ADAPTERS='[
   {
-    "name": "us-stock-skill",
-    "type": "skill",
-    "config": {
-      "skillName": "market-data-fetcher",
-      "timeout": 30000
-    },
-    "markets": ["us"],
-    "priority": 1,
-    "enabled": true
-  },
-  {
-    "name": "btc-mcp",
+    "name": "a-stock-mcp",
     "type": "mcp",
     "config": {
-      "server": "crypto-data-server",
-      "tool": "fetch_crypto_news",
-      "timeout": 30000
-    },
-    "markets": ["btc"],
-    "priority": 1,
-    "enabled": true
-  }
-]'
-```
-
-### 方式 2: 代码配置
-
-在 `src/services/news/adapters/service.ts` 中修改 `getDefaultAdapters()` 函数。
-
----
-
-## 📝 使用示例
-
-### 示例 1: 使用传统 API
-
-```typescript
-import { newsService } from './adapters/service';
-
-// 获取美股资讯
-const result = await newsService.fetchNews({
-  market: 'us',
-  limit: 10,
-  since: new Date(Date.now() - 3600000), // 最近1小时
-});
-
-console.log(`获取到 ${result.items.length} 条资讯`);
-```
-
-### 示例 2: 使用 Skill
-
-```bash
-# .env 配置
-NEWS_ADAPTERS='[
-  {
-    "name": "us-stock-skill",
-    "type": "skill",
-    "config": {
-      "skillName": "yahoo-finance-skill",
-      "timeout": 30000
-    },
-    "markets": ["us"],
-    "priority": 1,
-    "enabled": true
-  }
-]'
-```
-
-### 示例 3: 使用 MCP
-
-```bash
-# .env 配置
-NEWS_ADAPTERS='[
-  {
-    "name": "crypto-mcp",
-    "type": "mcp",
-    "config": {
-      "server": "localhost:5000",
+      "server": "http://localhost:3001",
       "tool": "fetch_news",
       "timeout": 30000
     },
-    "markets": ["btc"],
+    "markets": ["a"],
     "priority": 1,
     "enabled": true
   }
 ]'
 ```
 
-### 示例 4: 自定义适配器
-
-```typescript
-import { NewsAdapterFactory } from './adapters/base';
-
-// 注册自定义适配器
-const customAdapter = NewsAdapterFactory.create('custom', {
-  name: 'My Custom Adapter',
-  fetchFunction: async (params) => {
-    // 你的自定义实现
-    const items = await myCustomFetch(params);
-    return {
-      items,
-      source: 'custom',
-      fetchedAt: new Date(),
-    };
-  },
-  healthCheckFunction: async () => true,
-});
-
-NewsAdapterFactory.register('my-custom', customAdapter);
-```
-
----
-
-## 🔄 迁移步骤
-
-### 步骤 1: 更新现有代码
-
-修改 `src/services/scheduler/news-fetcher.ts`：
-
-```typescript
-// 旧代码
-import { fetchUSStockNews } from '../news/sources/us-stock';
-const newsItems = await fetchUSStockNews();
-
-// 新代码
-import { newsService } from '../news/adapters/service';
-const result = await newsService.fetchNews({ market: 'us' });
-const newsItems = result.items;
-```
-
-### 步骤 2: 配置适配器
-
-在 `.env` 中添加配置或使用默认配置。
-
-### 步骤 3: 实现 Skill/MCP 适配器
-
-根据你的 Skill 或 MCP 框架实现具体的调用逻辑。
-
----
-
-## 🛠️ 实现 Skill 适配器
-
-### Skill 适配器接口
-
-```typescript
-// src/services/news/adapters/skill.ts
-
-import { SkillCallParams } from './base';
-
-export async function callSkill(params: SkillCallParams): Promise<any> {
-  // TODO: 根据你的 Skill 框架实现
-  
-  // 示例：HTTP 调用
-  const response = await fetch('http://skill-server/invoke', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      skill: params.skillName,
-      action: params.action,
-      params: params.parameters,
-    }),
-  });
-  
-  return await response.json();
-}
-```
-
-### 使用 Skill 适配器
-
-```typescript
-// 在 base.ts 的 SkillNewsAdapter 中引用
-import { callSkill } from './skill';
-
-private async callSkill(params: SkillCallParams): Promise<any> {
-  return await callSkill(params);
-}
-```
-
----
-
-## 🛠️ 实现 MCP 适配器
-
-### MCP 适配器接口
-
-```typescript
-// src/services/news/adapters/mcp.ts
-
-import { MCPCallParams } from './base';
-
-export async function callMCP(params: MCPCallParams): Promise<any> {
-  // TODO: 根据 MCP 协议实现
-  
-  // 示例：MCP 客户端调用
-  const client = new MCPClient(params.server);
-  const result = await client.callTool(params.tool, params.arguments);
-  
-  return result;
-}
-```
-
----
-
-## ✅ 兼容性
-
-### 向后兼容
-
-原有的 `fetchUSStockNews()` 等函数仍然可用，但建议迁移到新架构。
-
-### 渐进式迁移
-
-可以同时使用新旧两种方式：
-- 新功能使用 `newsService`
-- 旧代码保持不变
-- 逐步迁移
-
----
-
-## 🎯 优势
-
-### 1. 灵活性
-- 支持多种数据源
-- 轻松切换和扩展
-
-### 2. 可靠性
-- 自动失败切换
-- 健康检查机制
-
-### 3. 可维护性
-- 统一接口
-- 清晰的架构
-
-### 4. 可扩展性
-- 插件化设计
-- 易于添加新适配器
-
----
-
-## 📚 下一步
-
-1. **实现 Skill 适配器**
-   - 根据你的 Skill 框架实现 `callSkill()` 函数
-   - 在 `src/services/news/adapters/skill.ts` 中实现
-
-2. **实现 MCP 适配器**
-   - 根据 MCP 协议实现 `callMCP()` 函数
-   - 在 `src/services/news/adapters/mcp.ts` 中实现
-
-3. **配置适配器**
-   - 在 `.env` 中配置你的适配器
-   - 或在代码中注册自定义适配器
-
-4. **迁移现有代码**
-   - 更新 `news-fetcher.ts` 使用新的 `newsService`
-   - 测试验证
-
-5. **添加监控**
-   - 使用 `newsService.healthChec态
-   - 记录日志和指标
-
----
-
-## ❓ 常见问题
-
-### Q: 如何添加新的数据源？
-
-A: 创建新的适配器配置：
+### 方式 B：Skill 框架
 
 ```bash
 NEWS_ADAPTERS='[
   {
-    "name": "my-new-source",
-    "type": "api",  # 或 skill, mcp, custom
-    "config": { ... },
+    "name": "us-stock-skill",
+    "type": "skill",
+    "config": {
+      "skillName": "market-news-fetcher",
+      "skillEndpoint": "http://skill-server:3002",
+      "timeout": 30000
+    },
     "markets": ["us"],
     "priority": 1,
     "enabled": true
@@ -343,22 +141,59 @@ NEWS_ADAPTERS='[
 ]'
 ```
 
-### Q: 如何实现失败切换？
+### 方式 C：多市场混合
 
-A: `NewsService` 会自动按优先级尝试所有适配器，直到成功或全部失败。
+```bash
+NEWS_ADAPTERS='[
+  {"name":"us-ext","type":"mcp","config":{"server":"http://mcp:3001","tool":"fetch_news"},"markets":["us"],"priority":1,"enabled":true},
+  {"name":"a-ext","type":"skill","config":{"skillName":"a-stock-news","skillEndpoint":"http://skill:3002"},"markets":["a"],"priority":1,"enabled":true}
+]'
+```
 
-### Q: 如何监控适配器状态？
+**规则：** 未配置的市场自动使用内置 adapter；外部 adapter 失败自动降级到内置。
 
-A: 使用健康检查：
+---
 
-```typescript
-const health = await newsService.healthCheck();
-for (const [name, healthy] of health) {
-  console.log(`${name}: ${healthy ? '✅' : '❌'}`);
-}
+## 手动触发测试
+
+```bash
+# 抓取指定市场资讯并发送到 Discord
+npx ts-node scripts/send-market-news.ts btc   # BTC（最稳定）
+npx ts-node scripts/send-market-news.ts hk    # 港股
+npx ts-node scripts/send-market-news.ts us    # 美股
+npx ts-node scripts/send-market-news.ts a     # A 股
+
+# 仅抓取（不写库/不入队），通过 MCP 工具
+curl -X POST http://localhost:3001/tools/fetch_news \
+  -H 'Content-Type: application/json' \
+  -d '{"market":"btc","limit":5}'
 ```
 
 ---
 
-**需要帮助？** 查看 `src/services/news/adapters/base.ts` 了解详细接口定义。
+## 预过滤规则（filter.ts）
 
+资讯在写库前会经过 `preFilter()`，以下情况会被过滤掉：
+
+| 规则 | 说明 |
+|------|------|
+| 市场未开盘 | US/HK/A 股在非交易时段跳过（BTC 不受限） |
+| 黑名单标的 | 可在 filter.ts 中配置屏蔽某些 symbol |
+| 重复资讯 | 同一 `externalId` 已存在（DB UNIQUE 约束） |
+
+---
+
+## 关键文件
+
+| 文件 | 职责 |
+|------|------|
+| `src/services/news/adapters/service.ts` | 统一资讯服务，管理 adapter 注册/路由/降级 |
+| `src/services/news/adapters/base.ts` | NewsAdapter 接口 + 工厂（API/Skill/MCP/Custom） |
+| `src/services/news/adapters/mcp.ts` | MCP 调用客户端（`callMCP()`） |
+| `src/services/news/sources/us-stock.ts` | 美股：Alpha Vantage + Yahoo RSS fallback |
+| `src/services/news/sources/hk-stock.ts` | 港股：Yahoo Finance RSS |
+| `src/services/news/sources/a-stock.ts` | A 股：东方财富快讯 API |
+| `src/services/news/sources/btc.ts` | BTC：CoinGecko + CoinDesk fallback |
+| `src/services/news/filter.ts` | 预过滤逻辑 |
+| `src/services/scheduler/news-fetcher.ts` | Cron 调度 + 持久化入队 |
+| `scripts/send-market-news.ts` | 手动端到端测试脚本 |

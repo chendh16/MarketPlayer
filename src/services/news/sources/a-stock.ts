@@ -16,8 +16,9 @@ interface EastMoneyResponse {
   re?: EastMoneyNewsItem[];
 }
 
-const PRIMARY_URL = 'https://gblobapi.eastmoney.com/Information/NewFlash/GetInformationList?client=WAP&type=1&IsGlobalNews=0&count=30';
-const FALLBACK_URL = 'https://pushdata.eastmoney.com/api/Information/NewFlash?client=WAP&type=1&count=30';
+// DataCenter API：返回稳定 JSON，无需登录
+const PRIMARY_URL = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_KUAIBAO_NEWS&columns=ALL&filter=(MARK%3D%221%22)&pageNumber=1&pageSize=30&sortTypes=-1&sortColumns=ACTIVE_TIME&source=WEB&client=WEB';
+const FALLBACK_URL = 'https://gblobapi.eastmoney.com/Information/NewFlash/GetInformationList?client=WAP&type=1&IsGlobalNews=0&count=30';
 
 function extractAStockCodes(text: string): string[] {
   const matches = text.match(/\b[036]\d{5}\b/g);
@@ -26,11 +27,29 @@ function extractAStockCodes(text: string): string[] {
 
 async function fetchEastMoneyNews(url: string): Promise<EastMoneyNewsItem[]> {
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.eastmoney.com' },
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      'Referer': 'https://www.eastmoney.com/',
+      'Origin': 'https://www.eastmoney.com',
+    },
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json() as EastMoneyResponse;
+  const text = await res.text();
+  if (text.trimStart().startsWith('<')) throw new Error('Unexpected HTML response');
+  const data = JSON.parse(text) as EastMoneyResponse;
+  // DataCenter API 返回格式：{ result: { data: [...] } }
+  const dcData = (data as any)?.result?.data;
+  if (dcData) {
+    return dcData.map((item: any): EastMoneyNewsItem => ({
+      InfoCode: item.SECURITY_CODE ?? item.CODE,
+      Title: item.TITLE ?? item.NOTICE_TITLE,
+      Content: item.CONTENT ?? item.MEDIA_NAME,
+      ShowTime: item.ACTIVE_TIME ?? item.UPDATE_DATE,
+    }));
+  }
   return data?.data?.list ?? data?.re ?? [];
 }
 

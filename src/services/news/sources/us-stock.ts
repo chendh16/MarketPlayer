@@ -39,11 +39,63 @@ function buildTimeFrom(): string {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
 }
 
+// ─── Yahoo Finance RSS fallback（无需 API key）────────────────────────────────
+
+function extractTextRSS(xml: string, tag: string): string {
+  const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i');
+  const m = xml.match(re);
+  return m ? m[1].trim() : '';
+}
+
+async function fetchUSStockNewsViaYahoo(): Promise<Partial<NewsItem>[]> {
+  const symbols = config.NEWS_SYMBOLS_US;
+  const results: Partial<NewsItem>[] = [];
+  const seen = new Set<string>();
+
+  await Promise.allSettled(symbols.map(async (symbol) => {
+    const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`;
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) return;
+      const xml = await res.text();
+      const itemRe = /<item>([\s\S]*?)<\/item>/g;
+      let match: RegExpExecArray | null;
+      while ((match = itemRe.exec(xml)) !== null) {
+        const block = match[1];
+        const title = extractTextRSS(block, 'title');
+        const link = extractTextRSS(block, 'link') || extractTextRSS(block, 'guid');
+        const pubDate = extractTextRSS(block, 'pubDate');
+        const description = extractTextRSS(block, 'description');
+        if (!title || !link || seen.has(link)) continue;
+        seen.add(link);
+        results.push({
+          source: 'yahoo_finance_us',
+          externalId: link,
+          title,
+          content: description || undefined,
+          url: link,
+          market: 'us',
+          symbols: [symbol],
+          triggerType: 'news',
+          aiProcessed: false,
+          publishedAt: pubDate ? new Date(pubDate) : new Date(),
+        });
+      }
+    } catch { /* 单个 symbol 失败不影响其他 */ }
+  }));
+
+  logger.info(`Fetched ${results.length} US news items via Yahoo Finance RSS`);
+  return results.slice(0, 20);
+}
+
 export async function fetchUSStockNews(): Promise<Partial<NewsItem>[]> {
   const apiKey = config.ALPHA_VANTAGE_API_KEY;
   if (!apiKey) {
-    logger.warn('ALPHA_VANTAGE_API_KEY not set, skipping US stock news fetch');
-    return [];
+    logger.warn('ALPHA_VANTAGE_API_KEY not set, falling back to Yahoo Finance RSS');
+    return fetchUSStockNewsViaYahoo();
   }
 
   const tickers = config.NEWS_SYMBOLS_US.join(',');
