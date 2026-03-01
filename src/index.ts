@@ -56,8 +56,15 @@ async function bootstrap() {
     // 7. 启动 Express API
     logger.info('Starting API server...');
     await startAPIServer();
-    
-    logger.info('✅ MarketPlayer started successfully');
+
+    // 8. 启动 MCP 工具服务器（Agent 调用层，可选）
+    const mcpPort = process.env.MCP_SERVER_PORT ? parseInt(process.env.MCP_SERVER_PORT, 10) : null;
+    if (mcpPort) {
+      const { startMCPServer } = await import('./mcp/server');
+      startMCPServer(mcpPort);
+    }
+
+    logger.info('MarketPlayer started successfully');
     
     // 优雅关闭
     process.on('SIGTERM', async () => {

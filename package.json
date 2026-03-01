@@ -13,8 +13,10 @@
     "test": "jest",
     "lint": "eslint src --ext .ts",
     "mcp-server": "node scripts/mcp-news-server.js",
+    "mcp": "ts-node src/mcp/server.ts",
     "test-mcp": "ts-node scripts/test-mcp-news.ts",
-    "test-e2e": "ts-node scripts/test-news-to-discord.ts"
+    "test-e2e": "ts-node scripts/test-news-to-discord.ts",
+    "test-real": "ts-node scripts/test-real-news.ts"
   },
   "keywords": [
     "trading",

@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger';
 import { redisClient } from '../../db/redis';
 import { query } from '../../db/postgres';
 import { AIProviderFactory, AIProvider } from './base';
+import { renderPrompt } from './prompts';
 
 // 初始化 AI 提供商
 let aiProvider: AIProvider;
@@ -96,20 +97,12 @@ export async function analyzeNewsItem(newsItem: any): Promise<AnalysisResult> {
 
   const response = await provider.sendMessage([{
     role: 'user',
-    content: `你是一个专业的金融分析师。请分析以下资讯并以 JSON 格式返回结果。
-
-资讯标题：${newsItem.title}
-资讯内容：${newsItem.content ?? ''}
-市场：${newsItem.market}
-相关标的：${newsItem.symbols?.join(', ')}
-
-请返回以下 JSON（不要包含其他文字）：
-{
-  "summary": "50字以内的中文摘要",
-  "impact": "对市场和相关标的的潜在影响分析（100字以内）",
-  "sentiment": "positive | negative | neutral",
-  "importance": "high | medium | low"
-}`
+    content: renderPrompt('analyze_news', {
+      title: newsItem.title ?? '',
+      content: newsItem.content ?? '',
+      market: newsItem.market ?? '',
+      symbols: newsItem.symbols?.join(', ') ?? '',
+    }),
   }], {
     maxTokens: 800,
     temperature: 0.7,
@@ -141,27 +134,12 @@ export async function generateSignal(
 
   const response = await provider.sendMessage([{
     role: 'user',
-    content: `你是一个专业的股票交易信号分析师。基于以下分析，生成交易参考信号。
-
-资讯摘要：${analysis.summary}
-市场影响：${analysis.impact}
-情绪：${analysis.sentiment}
-标的：${newsItem.symbols?.join(', ')}
-
-请返回以下 JSON（不要包含其他文字）：
-{
-  "should_generate": true/false,
-  "direction": "long | short",
-  "confidence": 0-100的数字,
-  "suggested_position_pct": 建议仓位百分比(1-20之间),
-  "reasoning": "简短的决策依据（50字以内）",
-  "key_risk": "主要风险提示"
-}
-
-注意：
-- confidence < 40 时 should_generate 应为 false
-- 这是信号参考，不是投资建议
-- 要保守，宁可不推也不要推错误信号`
+    content: renderPrompt('generate_signal', {
+      summary: analysis.summary ?? '',
+      impact: analysis.impact ?? '',
+      sentiment: analysis.sentiment ?? '',
+      symbols: newsItem.symbols?.join(', ') ?? '',
+    }),
   }], {
     maxTokens: 500,
     temperature: 0.7,
