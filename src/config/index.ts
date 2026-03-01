@@ -67,6 +67,14 @@ const configSchema = z.object({
   EASTMONEY_API_KEY: z.string().optional(),
   COINGECKO_API_KEY: z.string().optional(),
 
+  // 监控标的（逗号分隔，支持通过环境变量覆盖）
+  NEWS_SYMBOLS_US: z.string()
+    .default('AAPL,GOOGL,MSFT,TSLA,NVDA,AMZN,META,NFLX,SPY,QQQ')
+    .transform(s => s.split(',').map(t => t.trim()).filter(Boolean)),
+  NEWS_SYMBOLS_HK: z.string()
+    .default('0700.HK,9988.HK,3690.HK,1299.HK,2318.HK,0941.HK,0388.HK,1810.HK')
+    .transform(s => s.split(',').map(t => t.trim()).filter(Boolean)),
+
   // 系统
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3000),

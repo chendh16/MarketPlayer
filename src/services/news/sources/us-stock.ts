@@ -46,7 +46,7 @@ export async function fetchUSStockNews(): Promise<Partial<NewsItem>[]> {
     return [];
   }
 
-  const tickers = 'AAPL,GOOGL,MSFT,TSLA,NVDA,AMZN,META,NFLX,SPY,QQQ';
+  const tickers = config.NEWS_SYMBOLS_US.join(',');
   const timeFrom = buildTimeFrom();
   const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${tickers}&time_from=${timeFrom}&limit=20&apikey=${apiKey}`;
 

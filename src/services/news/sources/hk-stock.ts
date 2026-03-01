@@ -1,7 +1,8 @@
 import { logger } from '../../../utils/logger';
 import { NewsItem } from '../../../models/signal';
+import { config } from '../../../config';
 
-const HK_SYMBOLS = ['0700.HK', '9988.HK', '3690.HK', '1299.HK', '2318.HK', '0941.HK', '0388.HK', '1810.HK'];
+const HK_SYMBOLS = config.NEWS_SYMBOLS_HK;
 
 function extractText(xml: string, tag: string): string {
   const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i');
