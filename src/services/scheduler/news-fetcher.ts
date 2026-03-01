@@ -8,137 +8,142 @@ import { createNewsItem } from '../../db/queries';
 import { newsQueue } from '../../queues/news-queue';
 import { logger } from '../../utils/logger';
 import { isMarketOpen } from '../../utils/market-hours';
+import { NewsItem } from '../../models/signal';
 
-// ─── 核心抓取逻辑（可独立调用）────────────────────────────────────────────────
+// ─── 纯抓取函数（不写库、不入队）────────────────────────────────────────────
+// 供 OpenClaw agent 直接调用；返回经过预过滤的资讯列表
 
-// 美股资讯抓取核心逻辑
+export async function fetchUSStockNewsRaw(): Promise<Partial<NewsItem>[]> {
+  if (!isMarketOpen('us')) {
+    logger.debug('US market closed, skipping fetch');
+    return [];
+  }
+  const items = await fetchUSStockNews();
+  const filtered: Partial<NewsItem>[] = [];
+  for (const item of items) {
+    const { pass, reason } = await preFilter({
+      symbol: item.symbols?.[0] || '',
+      market: 'us',
+      triggerType: item.triggerType,
+      changePercent: 0,
+    });
+    if (pass) {
+      filtered.push(item);
+    } else {
+      logger.debug(`Filtered out: ${item.title} (${reason})`);
+    }
+  }
+  return filtered;
+}
+
+export async function fetchHKStockNewsRaw(): Promise<Partial<NewsItem>[]> {
+  if (!isMarketOpen('hk')) {
+    logger.debug('HK market closed, skipping fetch');
+    return [];
+  }
+  const items = await fetchHKStockNews();
+  const filtered: Partial<NewsItem>[] = [];
+  for (const item of items) {
+    const { pass } = await preFilter({
+      symbol: item.symbols?.[0] || '',
+      market: 'hk',
+      triggerType: item.triggerType,
+      changePercent: 0,
+    });
+    if (pass) filtered.push(item);
+  }
+  return filtered;
+}
+
+export async function fetchAStockNewsRaw(): Promise<Partial<NewsItem>[]> {
+  if (!isMarketOpen('a')) {
+    logger.debug('A stock market closed, skipping fetch');
+    return [];
+  }
+  const items = await fetchAStockNews();
+  const filtered: Partial<NewsItem>[] = [];
+  for (const item of items) {
+    const { pass } = await preFilter({
+      symbol: item.symbols?.[0] || '',
+      market: 'a',
+      triggerType: item.triggerType,
+      changePercent: 0,
+    });
+    if (pass) filtered.push(item);
+  }
+  return filtered;
+}
+
+export async function fetchBTCNewsRaw(): Promise<Partial<NewsItem>[]> {
+  const items = await fetchBTCNews();
+  const filtered: Partial<NewsItem>[] = [];
+  for (const item of items) {
+    const { pass } = await preFilter({
+      symbol: 'BTC',
+      market: 'btc',
+      triggerType: item.triggerType,
+      changePercent: 0,
+    });
+    if (pass) filtered.push(item);
+  }
+  return filtered;
+}
+
+// ─── 核心抓取逻辑（调用 raw 函数后写库 + 入队）──────────────────────────────
+
+async function persistAndQueue(
+  items: Partial<NewsItem>[],
+  defaultSymbol: string,
+  market: string,
+): Promise<void> {
+  for (const item of items) {
+    const created = await createNewsItem(item);
+    if (created) {
+      await markAsProcessed(item.symbols?.[0] || defaultSymbol, market);
+      await newsQueue.add('process-news', { newsItemId: created.id });
+      logger.info(`Queued news item: ${created.id}`);
+    }
+  }
+}
+
 export async function runUSStockFetch(): Promise<void> {
   try {
-    if (!isMarketOpen('us')) {
-      logger.debug('US market closed, skipping fetch');
-      return;
-    }
-
     logger.info('Fetching US stock news...');
-    const newsItems = await fetchUSStockNews();
-
-    for (const item of newsItems) {
-      const filterResult = await preFilter({
-        symbol: item.symbols?.[0] || '',
-        market: 'us',
-        triggerType: item.triggerType,
-        changePercent: 0,
-      });
-
-      if (!filterResult.pass) {
-        logger.debug(`Filtered out: ${item.title} (${filterResult.reason})`);
-        continue;
-      }
-
-      const created = await createNewsItem(item);
-      if (created) {
-        await markAsProcessed(item.symbols?.[0] || '', 'us');
-        await newsQueue.add('process-news', { newsItemId: created.id });
-        logger.info(`Queued news item: ${created.id}`);
-      }
-    }
+    const items = await fetchUSStockNewsRaw();
+    await persistAndQueue(items, '', 'us');
   } catch (error) {
     logger.error('runUSStockFetch failed:', error);
     throw error;
   }
 }
 
-// 港股资讯抓取核心逻辑
 export async function runHKStockFetch(): Promise<void> {
   try {
-    if (!isMarketOpen('hk')) {
-      logger.debug('HK market closed, skipping fetch');
-      return;
-    }
-
     logger.info('Fetching HK stock news...');
-    const newsItems = await fetchHKStockNews();
-
-    for (const item of newsItems) {
-      const filterResult = await preFilter({
-        symbol: item.symbols?.[0] || '',
-        market: 'hk',
-        triggerType: item.triggerType,
-        changePercent: 0,
-      });
-
-      if (!filterResult.pass) continue;
-
-      const created = await createNewsItem(item);
-      if (created) {
-        await markAsProcessed(item.symbols?.[0] || '', 'hk');
-        await newsQueue.add('process-news', { newsItemId: created.id });
-        logger.info(`Queued news item: ${created.id}`);
-      }
-    }
+    const items = await fetchHKStockNewsRaw();
+    await persistAndQueue(items, '', 'hk');
   } catch (error) {
     logger.error('runHKStockFetch failed:', error);
     throw error;
   }
 }
 
-// A股资讯抓取核心逻辑
 export async function runAStockFetch(): Promise<void> {
   try {
-    if (!isMarketOpen('a')) {
-      logger.debug('A stock market closed, skipping fetch');
-      return;
-    }
-
     logger.info('Fetching A stock news...');
-    const newsItems = await fetchAStockNews();
-
-    for (const item of newsItems) {
-      const filterResult = await preFilter({
-        symbol: item.symbols?.[0] || '',
-        market: 'a',
-        triggerType: item.triggerType,
-        changePercent: 0,
-      });
-
-      if (!filterResult.pass) continue;
-
-      const created = await createNewsItem(item);
-      if (created) {
-        await markAsProcessed(item.symbols?.[0] || '', 'a');
-        await newsQueue.add('process-news', { newsItemId: created.id });
-        logger.info(`Queued news item: ${created.id}`);
-      }
-    }
+    const items = await fetchAStockNewsRaw();
+    await persistAndQueue(items, '', 'a');
   } catch (error) {
     logger.error('runAStockFetch failed:', error);
     throw error;
   }
 }
 
-// BTC资讯抓取核心逻辑
 export async function runBTCFetch(): Promise<void> {
   try {
     logger.info('Fetching BTC news...');
-    const newsItems = await fetchBTCNews();
-
-    for (const item of newsItems) {
-      const filterResult = await preFilter({
-        symbol: 'BTC',
-        market: 'btc',
-        triggerType: item.triggerType,
-        changePercent: 0,
-      });
-
-      if (!filterResult.pass) continue;
-
-      const created = await createNewsItem(item);
-      if (created) {
-        await markAsProcessed('BTC', 'btc');
-        await newsQueue.add('process-news', { newsItemId: created.id });
-        logger.info(`Queued news item: ${created.id}`);
-      }
-    }
+    const items = await fetchBTCNewsRaw();
+    await persistAndQueue(items, 'BTC', 'btc');
   } catch (error) {
     logger.error('runBTCFetch failed:', error);
     throw error;

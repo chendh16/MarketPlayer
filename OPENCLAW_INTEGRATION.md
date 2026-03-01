@@ -197,27 +197,37 @@ switch (result.kind) {
 
 ---
 
-### ⚡ 需少量改造后可接入
-
 #### 7. 资讯抓取调度
 **文件：** `src/services/scheduler/news-fetcher.ts`
 
+**纯抓取函数（不写库、不入队，供 agent 直接调用）：**
+
 | 函数 | 签名 | 说明 |
 |---|---|---|
-| `runUSStockFetch` | `() → Promise<void>` | 命令式触发美股抓取（已含市场开闭检查） |
+| `fetchUSStockNewsRaw` | `() → Promise<Partial<NewsItem>[]>` | 美股：含市场开闭检查 + preFilter |
+| `fetchHKStockNewsRaw` | `() → Promise<Partial<NewsItem>[]>` | 港股 |
+| `fetchAStockNewsRaw` | `() → Promise<Partial<NewsItem>[]>` | A股 |
+| `fetchBTCNewsRaw` | `() → Promise<Partial<NewsItem>[]>` | BTC（无时间限制） |
+
+**调度函数（调用 raw 后写库 + 入 BullMQ 队列）：**
+
+| 函数 | 签名 | 说明 |
+|---|---|---|
+| `runUSStockFetch` | `() → Promise<void>` | 命令式触发（已重构为调用 fetchUSStockNewsRaw） |
 | `runHKStockFetch` | `() → Promise<void>` | 港股 |
 | `runAStockFetch` | `() → Promise<void>` | A股 |
-| `runBTCFetch` | `() → Promise<void>` | BTC（无时间限制） |
+| `runBTCFetch` | `() → Promise<void>` | BTC |
 
-**当前状态：** 函数已导出，可直接调用。
-**改造点：** 函数目前将所有结果推入 BullMQ，如果 OpenClaw 需要拿到抓取的资讯列表（而非通过队列异步处理），需要提取一个返回 `NewsItem[]` 的版本：
-
+**接入方式（OpenClaw NewsAgent）：**
 ```typescript
-// 建议增加的纯抓取函数（不写库、不入队）
-export async function fetchUSStockNewsRaw(): Promise<NewsItem[]>
+// 获取资讯列表，由 agent 决定后续处理方式
+const items = await fetchUSStockNewsRaw();
+// → 可传给 analyzeNewsItem，或存库，或直接返回给 Orchestrator
 ```
 
 ---
+
+### ⚡ 需少量改造后可接入
 
 #### 8. 资讯适配器（MCP/Skill 接入口）
 **文件：** `src/services/news/adapters/base.ts`
@@ -299,13 +309,14 @@ Body: { "discordUserId": "<ADMIN_DISCORD_USER_ID>" }
 第一批（零改造，全部就绪）：
   checkRisk → executeFutuOrder → getAccountSnapshot
   analyzeNewsItem → generateSignal
+  processAnalysis → processSignal → processDelivery → processNewsOnly（news 流水线）
+  fetchUSStockNewsRaw / fetchHKStockNewsRaw / fetchAStockNewsRaw / fetchBTCNewsRaw（纯抓取）
   stepValidateDelivery → stepPreOrderRisk → stepExecuteOrder（order-queue steps）
   stepConfirmOrder → stepIgnoreDelivery → stepAbandonDelivery
   stepAdjustAndConfirm → stepGetCopyTradeInfo（order-interact）
 
 第二批（少量适配）：
-  processAnalysis → processSignal → processDelivery（流水线编排）
-  runUSStockFetch 等（需要 raw 版本返回 NewsItem[]，当前只入队）
+  runUSStockFetch 等（仍触发 BullMQ，如需同步返回已入库 NewsItem 需再包装）
 
 MCP server 接入口（已就绪）：
   MCPNewsAdapter → callMCP() → 配置 openclaw-mcp-server 地址即可
