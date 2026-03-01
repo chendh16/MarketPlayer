@@ -8,6 +8,7 @@ export async function runMigrations(): Promise<void> {
     '001_initial_schema.sql',
     '002_signals_orders.sql',
     '003_orders_logs.sql',
+    '004_widen_external_id.sql',
   ];
 
   logger.info('Starting database migrations...');
