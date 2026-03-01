@@ -9,6 +9,7 @@ import {
   stepGetCopyTradeInfo,
 } from '../../queues/steps/order-interact';
 import type { ConfirmOrderResult } from '../../queues/steps/order-interact';
+import { remindQueue } from '../../queues/remind-queue';
 
 export const discordClient = new Client({
   intents: [
@@ -18,8 +19,6 @@ export const discordClient = new Client({
   ],
 });
 
-// 提醒记录（内存中，重启会丢失，符合预期）
-const pendingReminders = new Map<string, ReturnType<typeof setTimeout>>();
 let startPromise: Promise<void> | null = null;
 let handlersRegistered = false;
 
@@ -247,33 +246,20 @@ async function handleRemind(
   _orderToken: string,
   interaction: any
 ): Promise<void> {
-  // 防止重复设置
-  if (pendingReminders.has(deliveryId)) {
+  const jobId = `remind:${deliveryId}`;
+  const existing = await remindQueue.getJob(jobId);
+  if (existing) {
     await interaction.reply({ content: '⏰ 提醒已设置，请等待', ephemeral: true });
     return;
   }
 
+  await remindQueue.add(
+    'send-remind',
+    { deliveryId, discordUserId: interaction.user.id },
+    { delay: 30 * 60 * 1000, jobId }
+  );
+
   await interaction.reply({ content: '⏰ 好的，将在 30 分钟后提醒您此信号', ephemeral: true });
-
-  const timer = setTimeout(async () => {
-    pendingReminders.delete(deliveryId);
-    try {
-      // 检查信号是否还有效
-      const { getDelivery } = await import('../../db/queries');
-      const delivery = await getDelivery(deliveryId);
-      if (!delivery || delivery.status !== 'pending') return;
-
-      const user = await discordClient.users.fetch(interaction.user.id);
-      const dm = await user.createDM();
-      await dm.send({
-        content: `⏰ **30分钟提醒**\n您之前设置了对信号的提醒，该信号仍待您处理。\n请点击原始消息中的按钮操作，或忽略。`,
-      });
-    } catch (err) {
-      logger.error('Remind callback error:', err);
-    }
-  }, 30 * 60 * 1000);
-
-  pendingReminders.set(deliveryId, timer);
 }
 
 // 推送信号给单个用户

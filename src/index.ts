@@ -4,6 +4,7 @@ import { runMigrations } from './db/migrations/runner';
 import { startDiscordBot } from './services/discord/bot';
 import { newsWorker } from './queues/news-queue';
 import { orderWorker } from './queues/order-queue';
+import { remindWorker } from './queues/remind-queue';
 import { startAPIServer } from './api/server';
 import { initAllFutuConnections } from './services/futu/connection';
 import { startAllFetchers } from './services/scheduler/news-fetcher';
@@ -41,7 +42,7 @@ async function bootstrap() {
     
     // 4. 启动 BullMQ Workers
     logger.info('Starting BullMQ workers...');
-    // newsWorker 和 orderWorker 已经在导入时自动启动
+    // newsWorker、orderWorker、remindWorker 已在导入时自动启动
 
     // 5. 启动定时任务
     logger.info('Starting scheduled tasks...');
@@ -80,6 +81,7 @@ async function shutdown() {
     logger.info('Closing workers...');
     await newsWorker.close();
     await orderWorker.close();
+    await remindWorker.close();
     
     logger.info('Closing database connections...');
     await closePostgres();
