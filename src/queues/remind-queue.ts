@@ -1,7 +1,13 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 
-const connection = { host: 'localhost', port: 6379 };
+function parseRedisConnection(url: string) {
+  const u = new URL(url);
+  return { host: u.hostname, port: parseInt(u.port || '6379', 10), password: u.password || undefined };
+}
+
+const connection = parseRedisConnection(config.REDIS_URL);
 
 interface RemindJobData {
   deliveryId: string;

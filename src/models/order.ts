@@ -2,7 +2,7 @@ export interface Order {
   id: string;
   deliveryId: string;
   userId: string;
-  broker: string;
+  broker: 'futu' | 'longbridge';
   symbol: string;
   market: 'us' | 'hk' | 'a' | 'btc';
   direction: 'buy' | 'sell';

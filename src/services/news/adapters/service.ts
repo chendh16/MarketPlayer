@@ -138,7 +138,15 @@ export class NewsService {
  * NEWS_ADAPTERS 为 JSON 数组时优先使用，否则合并内置默认 adapter
  */
 export function createNewsService(): NewsService {
-  const externalAdapters = JSON.parse(process.env.NEWS_ADAPTERS || '[]') as NewsServiceConfig['adapters'];
+  let externalAdapters: NewsServiceConfig['adapters'] = [];
+  const rawAdapters = process.env.NEWS_ADAPTERS;
+  if (rawAdapters?.trim()) {
+    try {
+      externalAdapters = JSON.parse(rawAdapters) as NewsServiceConfig['adapters'];
+    } catch (e) {
+      logger.warn(`Invalid NEWS_ADAPTERS JSON, ignoring external adapters: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   // 外部 adapter + 内置 adapter 合并，外部优先（priority 较小）
   const serviceConfig: NewsServiceConfig = {
@@ -149,11 +157,32 @@ export function createNewsService(): NewsService {
 }
 
 /**
- * 内置默认 adapter — 包装现有 source 函数，priority=100（最低），
- * 可被 NEWS_ADAPTERS 中 priority ≤ 10 的外部 adapter 覆盖并自动降级。
+ * 内置默认 adapter — 包装现有 source 函数，priority=100（最低）。
+ * 若设置 MCP_NEWS_SERVER，自动注册 priority=50 的 MCP adapter，覆盖内置 source。
+ * 可被 NEWS_ADAPTERS 中 priority ≤ 10 的外部 adapter 进一步覆盖。
+ *
+ * 优先级顺序：外部 adapter (1-10) > MCP_NEWS_SERVER (50) > 内置 source (100)
  */
 function getDefaultAdapters(): NewsServiceConfig['adapters'] {
-  return [
+  const mcpServer = process.env.MCP_NEWS_SERVER;
+  const mcpTool = process.env.MCP_NEWS_TOOL ?? 'fetch_news';
+
+  const mcpAdapter: NewsServiceConfig['adapters'] = mcpServer ? [
+    {
+      name: 'mcp-news-source',
+      type: 'mcp' as const,
+      config: {
+        server: mcpServer,
+        tool: mcpTool,
+        timeout: 30000,
+      },
+      markets: ['us', 'hk', 'a', 'btc'],
+      priority: 50,
+      enabled: true,
+    },
+  ] : [];
+
+  return [...mcpAdapter,
     {
       name: 'us-stock-builtin',
       type: 'custom' as const,
@@ -216,6 +245,8 @@ function getDefaultAdapters(): NewsServiceConfig['adapters'] {
     },
   ];
 }
+
+
 
 // 导出单例
 export const newsService = createNewsService();

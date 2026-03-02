@@ -56,9 +56,8 @@ const DEFAULTS: Record<string, string> = {
 
 ## 注意事项
 
-- \`confidence < 40\` 时 \`should_generate\` 应为 \`false\`
-- 这是信号参考，不是投资建议
-- 要保守，宁可不推也不要推错误信号`,
+- \`confidence < 25\` 时 \`should_generate\` 应为 \`false\`
+- 这是信号参考，不是投资建议`,
 };
 
 // 模板缓存（进程级，重启后重新加载）

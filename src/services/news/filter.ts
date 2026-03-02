@@ -69,7 +69,9 @@ export async function markAsProcessed(symbol: string, market: string): Promise<v
 // BTC 计数增加
 export async function incrementBTCCount(): Promise<void> {
   const btcKey = `btc:signal:count:${getCurrentHourBlock()}`;
-  await redisClient.incr(btcKey);
-  await redisClient.expire(btcKey, 14400); // 4小时过期
+  const result = await redisClient.incr(btcKey);
+  if (result === 1) {
+    await redisClient.expire(btcKey, 14400); // 4小时过期，仅首次创建 key 时设置
+  }
 }
 

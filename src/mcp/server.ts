@@ -18,8 +18,9 @@ import { logger } from '../utils/logger';
 import { fetch_news, process_pipeline } from './tools/news';
 import { analyze_news, generate_signal } from './tools/analysis';
 import { check_risk } from './tools/risk';
-import { get_positions, get_account } from './tools/position';
+import { get_positions, get_account, get_broker_balance } from './tools/position';
 import { get_deliveries, get_delivery, confirm_order } from './tools/order';
+import { execute_longbridge_order, cancel_longbridge_order } from './tools/execute-order';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -32,13 +33,17 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   generate_signal,
   // 风控
   check_risk,
-  // 持仓
+  // 持仓 / 账户
   get_positions,
   get_account,
+  get_broker_balance,
   // 订单
   get_deliveries,
   get_delivery,
   confirm_order,
+  // 长桥下单
+  execute_longbridge_order,
+  cancel_longbridge_order,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
@@ -85,8 +90,17 @@ export function startMCPServer(port: number): void {
   });
 }
 
-// 独立进程入口
+// 独立进程入口（初始化 DB/Redis 后再启动）
 if (require.main === module) {
   const port = parseInt(process.env.MCP_SERVER_PORT ?? '3001', 10);
-  startMCPServer(port);
+  (async () => {
+    const { initPostgres } = await import('../db/postgres');
+    const { initRedis } = await import('../db/redis');
+    await initPostgres();
+    await initRedis();
+    startMCPServer(port);
+  })().catch(err => {
+    logger.error('Failed to start MCP server:', err);
+    process.exit(1);
+  });
 }

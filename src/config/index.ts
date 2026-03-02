@@ -17,7 +17,7 @@ const configSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
 
   // AI 配置（可插拔）
-  AI_PROVIDER: z.enum(['anthropic', 'openai', 'azure', 'custom']).default('anthropic'),
+  AI_PROVIDER: z.enum(['anthropic', 'openai', 'azure', 'custom', 'zhipu']).default('anthropic'),
   AI_API_KEY: z.string().min(1),
   AI_API_BASE_URL: z.preprocess(
     (v) => (v === '' || v === null ? undefined : v),
@@ -30,6 +30,13 @@ const configSchema = z.object({
 
   // 兼容旧配置（可选）
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // 长桥 LongBridge
+  LONGPORT_APP_KEY: z.string().optional(),
+  LONGPORT_APP_SECRET: z.string().optional(),
+  LONGPORT_ACCESS_TOKEN: z.string().optional(),
+  LONGBRIDGE_ORDER_MODE: z.enum(['A', 'B', 'C']).default('B'),
+  LONGBRIDGE_PRICE_SLIPPAGE_PCT: z.coerce.number().default(0.01),
 
   // 富途
   FUTU_API_HOST: z.string().default('127.0.0.1'),
@@ -67,6 +74,13 @@ const configSchema = z.object({
   EASTMONEY_API_KEY: z.string().optional(),
   COINGECKO_API_KEY: z.string().optional(),
 
+  // 外部 MCP 资讯源（设置后自动注册为 priority=50 的 MCP adapter）
+  MCP_NEWS_SERVER: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.string().url().optional(),
+  ),
+  MCP_NEWS_TOOL: z.string().default('fetch_news'),
+
   // 监控标的（逗号分隔，支持通过环境变量覆盖）
   NEWS_SYMBOLS_US: z.string()
     .default('AAPL,GOOGL,MSFT,TSLA,NVDA,AMZN,META,NFLX,SPY,QQQ')
@@ -74,6 +88,9 @@ const configSchema = z.object({
   NEWS_SYMBOLS_HK: z.string()
     .default('0700.HK,9988.HK,3690.HK,1299.HK,2318.HK,0941.HK,0388.HK,1810.HK')
     .transform(s => s.split(',').map(t => t.trim()).filter(Boolean)),
+
+  // 默认券商
+  PREFERRED_BROKER: z.enum(['futu', 'longbridge']).default('longbridge'),
 
   // 系统
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

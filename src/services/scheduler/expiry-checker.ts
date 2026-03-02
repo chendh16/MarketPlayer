@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { query } from '../../db/postgres';
+import { redisClient } from '../../db/redis';
 import { editMessage } from '../discord/bot';
 import { logger } from '../../utils/logger';
 
@@ -42,7 +43,12 @@ export function startExpiryChecker() {
             buildExpiredMessage()
           );
         }
-        
+
+        // 清理 Redis orderToken key（防止 token 卡在 'processing' 或 24h TTL 滞留）
+        if (delivery.order_token) {
+          await redisClient.del(`order:token:${delivery.order_token}`);
+        }
+
         logger.info(`Delivery ${delivery.id} expired`);
       }
       

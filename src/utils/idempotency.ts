@@ -11,7 +11,7 @@ export async function markOrderTokenProcessing(orderToken: string): Promise<bool
   // NX: 只在键不存在时设置
   const result = await redisClient.set(key, 'processing', {
     NX: true,
-    EX: 180, // 3分钟过期，防止死锁
+    EX: 600, // 10分钟过期，覆盖 broker API 最长响应时间，防止重复下单
   });
   return result === 'OK';
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import path from 'path';
-import { query } from '../postgres';
+import { getPool } from '../postgres';
 import { logger } from '../../utils/logger';
 
 export async function runMigrations(): Promise<void> {
@@ -14,13 +14,14 @@ export async function runMigrations(): Promise<void> {
   logger.info('Starting database migrations...');
 
   for (const file of migrationFiles) {
+    const client = await getPool().connect();
     try {
       const sql = readFileSync(
         path.join(__dirname, file),
         'utf8'
       );
-      
-      await query(sql);
+
+      await client.query(sql);
       logger.info(`Migration ${file} applied successfully`);
     } catch (err: any) {
       if (err.code === '42P07') {
@@ -30,6 +31,8 @@ export async function runMigrations(): Promise<void> {
         logger.error(`Migration ${file} failed:`, err);
         throw err;
       }
+    } finally {
+      client.release();
     }
   }
 

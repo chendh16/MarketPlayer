@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
 import {
@@ -36,14 +36,18 @@ export async function startDiscordBot(): Promise<void> {
     handlersRegistered = true;
   }
 
-  const loginPromise = new Promise<void>((resolve, reject) => {
-    discordClient.once('ready', () => {
-      logger.info(`Discord Bot online: ${discordClient.user?.tag}`);
-      resolve();
-    });
-
-    discordClient.login(config.DISCORD_BOT_TOKEN).catch(reject);
-  }).finally(() => {
+  const loginPromise = Promise.race([
+    new Promise<void>((resolve, reject) => {
+      discordClient.once('ready', () => {
+        logger.info(`Discord Bot online: ${discordClient.user?.tag}`);
+        resolve();
+      });
+      discordClient.login(config.DISCORD_BOT_TOKEN).catch(reject);
+    }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Discord login timeout after 20s')), 20000)
+    ),
+  ]).finally(() => {
     if (!discordClient.isReady()) {
       startPromise = null;
     }
@@ -262,21 +266,52 @@ async function handleRemind(
   await interaction.reply({ content: '⏰ 好的，将在 30 分钟后提醒您此信号', ephemeral: true });
 }
 
-// 推送信号给单个用户
+// 推送信号给单个用户（gateway 可用时走 discord.js，否则降级 REST）
 export async function sendSignalToUser(
   userId: string,
   message: any
 ): Promise<{ messageId: string; channelId: string } | null> {
+  if (discordClient.isReady()) {
+    try {
+      const timeout = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('gateway send timeout')), 8000)
+      );
+      const send = (async () => {
+        const user = await discordClient.users.fetch(userId);
+        const dm = await user.createDM();
+        return dm.send(message);
+      })();
+      const sent = await Promise.race([send, timeout]);
+      return { messageId: sent.id, channelId: sent.channelId };
+    } catch (err: any) {
+      logger.warn(`Gateway DM failed for user ${userId}: ${err.message}, falling back to REST`);
+    }
+  }
+
+  // 降级：通过 REST API 直接创建 DM 并发消息
   try {
-    const user = await discordClient.users.fetch(userId);
-    const dm = await user.createDM();
-    const sent = await dm.send(message);
-    return {
-      messageId: sent.id,
-      channelId: sent.channelId,
-    };
+    logger.info(`Falling back to REST DM for user ${userId}`);
+    const rest = new REST({ version: '10' }).setToken(config.DISCORD_BOT_TOKEN);
+
+    // 创建 DM 频道
+    const dmChannel = await rest.post(Routes.userChannels(), {
+      body: { recipient_id: userId },
+    }) as any;
+
+    // 发送消息（仅支持 text content，不含按钮）
+    const body: Record<string, any> = {};
+    if (typeof message === 'string') {
+      body.content = message;
+    } else {
+      if (message.content) body.content = message.content;
+      if (message.embeds)  body.embeds  = message.embeds;
+      // REST 模式不支持按钮交互，components 略去
+    }
+
+    const sent = await rest.post(Routes.channelMessages(dmChannel.id), { body }) as any;
+    return { messageId: sent.id, channelId: dmChannel.id };
   } catch (err) {
-    logger.error(`Failed to send DM to user ${userId}:`, err);
+    logger.error(`Failed to send REST DM to user ${userId}:`, err);
     return null;
   }
 }

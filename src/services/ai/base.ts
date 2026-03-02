@@ -56,6 +56,8 @@ export class AIProviderFactory {
         return new AzureProvider(apiKey, baseUrl!, model);
       case 'custom':
         return new CustomProvider(apiKey, baseUrl!, model);
+      case 'zhipu':
+        return new ZhipuProvider(apiKey, model);
       default:
         throw new Error(`Unsupported AI provider: ${provider}`);
     }
@@ -213,6 +215,52 @@ class AzureProvider implements AIProvider {
   estimateCost(inputTokens: number, outputTokens: number): number {
     // Azure 定价与 OpenAI 类似
     return (inputTokens / 1_000_000) * 10 + (outputTokens / 1_000_000) * 30;
+  }
+}
+
+/**
+ * 智谱 AI GLM 提供商（兼容 OpenAI 格式）
+ */
+class ZhipuProvider implements AIProvider {
+  private apiKey: string;
+  private model: string;
+  private static readonly BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
+
+  constructor(apiKey: string, model?: string) {
+    this.apiKey = apiKey;
+    this.model = model || 'glm-4-flash';
+  }
+
+  async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
+    const response = await axios.post(`${ZhipuProvider.BASE_URL}/chat/completions`, {
+      model: this.model,
+      max_tokens: options?.maxTokens || 4096,
+      temperature: options?.temperature || 0.7,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return {
+      content: response.data.choices?.[0]?.message?.content || '',
+      usage: {
+        inputTokens: response.data.usage?.prompt_tokens || 0,
+        outputTokens: response.data.usage?.completion_tokens || 0,
+      },
+      model: this.model,
+    };
+  }
+
+  getProviderName(): string {
+    return 'Zhipu GLM';
+  }
+
+  estimateCost(inputTokens: number, outputTokens: number): number {
+    // glm-4-flash 免费；glm-4-plus 约 ¥0.05/1K tokens
+    return (inputTokens / 1_000_000) * 0.1 + (outputTokens / 1_000_000) * 0.1;
   }
 }
 

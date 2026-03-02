@@ -1,5 +1,11 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { logger } from '../utils/logger';
+import { config } from '../config';
+
+function parseRedisConnection(url: string) {
+  const u = new URL(url);
+  return { host: u.hostname, port: parseInt(u.port || '6379', 10), password: u.password || undefined };
+}
 import {
   markOrderTokenProcessing,
   markOrderTokenProcessed,
@@ -11,10 +17,7 @@ import { stepValidateDelivery } from './steps/order-validate';
 import { stepPreOrderRisk } from './steps/order-risk';
 import { stepExecuteOrder } from './steps/order-execute';
 
-const connection = {
-  host: 'localhost',
-  port: 6379,
-};
+const connection = parseRedisConnection(config.REDIS_URL);
 
 export const orderQueue = new Queue('order-placement', {
   connection,

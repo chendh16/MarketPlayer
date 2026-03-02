@@ -5,77 +5,107 @@
 ```
 src/services/news/
 ├── sources/          # 各市场直接 API 调用
-│   ├── us-stock.ts   # 美股：Alpha Vantage API
-│   ├── hk-stock.ts   # 港股：东方财富 API
-│   ├── a-stock.ts    # A股：东方财富 API
-│   └── btc.ts        # BTC：CoinGecko API + CoinDesk RSS 备用
-├── adapters/         # 可插拔适配器层（新架构）
-│   ├── base.ts       # 适配器接口和工厂
-│   ├── service.ts    # 统一资讯服务
+│   ├── config.ts     # 各市场抓取频率与交易时段配置
+│   ├── us-stock.ts   # 美股：Alpha Vantage NEWS_SENTIMENT API（降级：Yahoo Finance RSS）
+│   ├── hk-stock.ts   # 港股：Yahoo Finance RSS（并发抓取8个标的）
+│   ├── a-stock.ts    # A股：东方财富 DataCenter API（降级：东方财富 WAP API）
+│   └── btc.ts        # BTC：CoinGecko /api/v3/news（降级：CoinDesk RSS）
+├── adapters/         # 可插拔适配器层
+│   ├── base.ts       # 适配器接口、工厂函数、四种实现
+│   ├── service.ts    # NewsService 单例（按市场分组、按优先级调用）
 │   └── mcp.ts        # MCP 协议客户端
-└── filter.ts         # 规则预筛选
+└── filter.ts         # 规则预筛选（四层过滤）
 ```
+
+## 数据源详情
+
+| 市场 | 主数据源 | 获取方式 | 认证 | 备用方案 | 频率 |
+|------|---------|---------|------|---------|------|
+| 美股 (us) | Alpha Vantage NEWS_SENTIMENT | REST API + JSON | `ALPHA_VANTAGE_API_KEY` query param | Yahoo Finance RSS（无需 key） | 每5分钟 |
+| 港股 (hk) | Yahoo Finance RSS | RSS XML 解析 | User-Agent 伪造 | 无 | 每5分钟 |
+| A股 (a)   | 东方财富 DataCenter API | REST API + JSON | Referer 伪造 | 东方财富 WAP API | 每5分钟 |
+| BTC (btc) | CoinGecko /api/v3/news | REST API + JSON | `COINGECKO_API_KEY` header（可选） | CoinDesk RSS | 每4小时 |
+
+### 关键 URL
+
+```
+美股主: https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=...&apikey=xxx
+美股备: https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL&region=US&lang=en-US
+港股:   https://feeds.finance.yahoo.com/rss/2.0/headline?s=0700.HK&region=HK&lang=zh-Hant-HK
+A股主:  https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_KUAIBAO_NEWS&...
+A股备:  https://gblobapi.eastmoney.com/Information/NewFlash/GetInformationList?...
+BTC主:  https://api.coingecko.com/api/v3/news?page=1
+BTC备:  https://www.coindesk.com/arc/outboundfeeds/rss/
+```
+
+### 默认监控标的
+
+| 市场 | 默认标的 | 配置项 |
+|------|---------|--------|
+| 美股 | AAPL, GOOGL, MSFT, TSLA, NVDA, AMZN, META, NFLX, SPY, QQQ | `NEWS_SYMBOLS_US` |
+| 港股 | 0700.HK, 9988.HK, 3690.HK, 1299.HK, 2318.HK, 0941.HK, 0388.HK, 1810.HK | `NEWS_SYMBOLS_HK` |
+| A股 | 从新闻标题正则提取（`[036]\d{5}` 格式） | 无 |
+| BTC | bitcoin | 无 |
 
 ## 当前工作流程
 
 ```
 定时任务 (Cron)
     ↓
-fetchXxxNews()  ← 直接调用各市场 API
+newsService.fetchNews({market, symbols})
+    ├─ 遍历该市场已注册 adapter（按 priority 升序）
+    └─ 返回第一个成功 adapter 的结果
     ↓
-preFilter()     ← 规则预筛选（去重、关键词过滤）
+preFilter()     ← 规则预筛选（4层，不调用 AI）
     ↓
-createNewsItem() ← 入库（ON CONFLICT DO NOTHING 去重）
+createNewsItem() ← 入库（ON CONFLICT (externalId, market) DO NOTHING 去重）
     ↓
-newsQueue.add() ← 推入 BullMQ 队列
+markAsProcessed() ← 设置 Redis 去重标记（1小时）
+    ↓
+newsQueue.add('process-news', { newsItemId }) ← 推入 BullMQ 队列
     ↓
 AI 分析 → 信号生成 → Discord 推送
 ```
 
-## 数据源说明
+## 预筛选规则（filter.ts）
 
-| 市场 | API | 配置项 | 免费额度 |
-|------|-----|--------|---------|
-| BTC | CoinGecko | `COINGECKO_API_KEY`（可选） | 30次/分钟 |
-| BTC备用 | CoinDesk RSS | 无需配置 | 无限制 |
-| 美股 | Alpha Vantage | `ALPHA_VANTAGE_API_KEY` | 25次/天 |
-| 港股 | 东方财富 | 无需配置 | 有限制 |
-| A股 | 东方财富 | 无需配置 | 有限制 |
+在调用 AI 之前过滤，减少无效调用：
 
-## 可插拔适配器（新架构）
+| 规则 | 触发条件 | Redis Key | TTL |
+|------|---------|-----------|-----|
+| 涨跌幅过滤 | `triggerType='anomaly'` 且变化 < 3% | 无 | N/A |
+| 1小时去重 | 同标的同市场 1小时内已处理 | `news:recent:{symbol}:{market}` | 3600s |
+| BTC 频率限制 | BTC 每4小时区块已有 ≥1 条 | `btc:signal:count:{date}-{hourBlock}` | 14400s |
+| AI 日调用上限 | 当日调用次数 ≥ 上限（默认500） | `ai:daily:calls:{YYYY-MM-DD}` | — |
 
-通过 `.env` 中的 `NEWS_ADAPTERS` 配置，支持：
+## 可插拔适配器
+
+通过 `NEWS_ADAPTERS` 环境变量注入外部数据源（优先级 < 内置 adapter 的 100）：
 
 ```bash
-NEWS_ADAPTERS=[
+NEWS_ADAPTERS='[
   {
-    "name": "btc-mcp",
+    "name": "us-mcp",
     "type": "mcp",
     "config": { "server": "http://localhost:3001", "tool": "fetch_news" },
-    "markets": ["btc"],
-    "priority": 1,
+    "markets": ["us"],
+    "priority": 5,
     "enabled": true
   }
-]
+]'
 ```
 
-支持的类型：
-- `api` - 传统 REST API
-- `skill` - Skill 框架调用
-- `mcp` - Model Context Protocol
-- `custom` - 自定义实现
+支持的适配器类型：
+
+| 类型 | 说明 |
+|------|------|
+| `api` | 传统 REST API，POST 请求 + Bearer token |
+| `skill` | Skill 服务器调用（`/skill/...`） |
+| `mcp` | Model Context Protocol（`/tools/fetch_news`） |
+| `custom` | 直接传入 `fetchFunction` 函数引用 |
 
 ## 扩展新数据源
 
-1. 在 `sources/` 下创建新文件，实现 `fetchXxxNews()` 函数
-2. 返回 `Partial<NewsItem>[]` 格式
-3. 在 `scheduler/news-fetcher.ts` 中注册定时任务
-4. 或通过适配器配置接入（推荐）
-
-## 预筛选规则
-
-`filter.ts` 中的预筛选逻辑：
-- 去重检查（Redis 缓存，60分钟内同标的同类型只处理一次）
-- 关键词过滤（广告、无关内容）
-- 市场时间检查（非交易时间跳过）
-
+1. 在 `sources/` 下创建新文件，实现 `fetchXxxNews()` 并返回 `Partial<NewsItem>[]`
+2. 在 `adapters/service.ts` 中注册为 `CustomNewsAdapter`（推荐），或
+3. 在 `scheduler/news-fetcher.ts` 中注册 Cron 定时任务

@@ -12,25 +12,18 @@ export function buildNormalSignalMessage(
 ) {
   const directionEmoji = signal.direction === 'long' ? '📈' : '📉';
   const directionText = signal.direction === 'long' ? '看多' : '看空';
-  const estimatedValue = account.totalAssets * (signal.suggestedPositionPct / 100);
-  
+
   const embed = new EmbedBuilder()
     .setColor(0x00AA44)
     .setTitle(`📊 AI信号参考｜置信度 ${signal.confidence}%`)
     .setDescription([
       `**标的：** ${signal.symbol}`,
       `**信号方向：** ${directionEmoji} ${directionText}`,
-      `**参考仓位：** 账户 ${signal.suggestedPositionPct}%（约 $${estimatedValue.toFixed(0)}）`,
+      `**参考仓位：** 账户 ${signal.suggestedPositionPct}%`,
       `**参考依据：** ${signal.reasoning}`,
       '',
       '─────────────────',
-      `🛡️ **风控检查（仅富途账户）**`,
-      `${signal.symbol} 当前持仓：${Number(riskCheck.currentSinglePositionPct).toFixed(1)}%  ✅`,
-      `当前总仓位：${Number(riskCheck.currentTotalPositionPct).toFixed(1)}%  ✅`,
-      `可用资金：$${Number(riskCheck.availableCash).toFixed(0)}  ✅`,
-      `确认后预计总仓位：${Number(riskCheck.projectedTotalPositionPct).toFixed(1)}%  ✅`,
-      '',
-      `⚠️ *${riskCheck.coverageNote}*`,
+      `🛡️ **风控检查：** ${riskCheck.status === 'pass' ? '✅ 通过' : '⚠️ 注意'}`,
     ].join('\n'))
     .setFooter({ text: '免责声明：本内容仅供信息参考，不构成投资建议，盈亏自负' })
     .setTimestamp();
@@ -78,18 +71,13 @@ export function buildWarningSignalMessage(
   delivery: SignalDelivery,
   riskCheck: RiskCheckResult
 ) {
-  const warningLines = riskCheck.warningMessages.map(m => `⚠️ ${m}`).join('\n');
-  
   const embed = new EmbedBuilder()
     .setColor(0xFFAA00)
     .setTitle(`⚠️ AI信号参考（含风险提示）｜置信度 ${signal.confidence}%`)
     .setDescription([
       `**标的：** ${signal.symbol}  **方向：** ${signal.direction === 'long' ? '看多' : '看空'}`,
       '',
-      '🛡️ **风控检查（仅富途账户）**',
-      warningLines,
-      '',
-      `⚠️ *${riskCheck.coverageNote}*`,
+      '🛡️ **风控检查：** ⚠️ 存在风险提示，请谨慎评估后操作',
     ].join('\n'))
     .setFooter({ text: '免责声明：本内容仅供信息参考，不构成投资建议，盈亏自负' });
   

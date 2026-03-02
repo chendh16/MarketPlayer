@@ -3,6 +3,7 @@ import { User } from '../../models/user';
 import { AccountSnapshot } from '../../models/position';
 import { getManualPositions, updateDeliveryStatus } from '../../db/queries';
 import { getAccountSnapshotForOrder } from '../../services/futu/position';
+import { config } from '../../config';
 import { checkRisk } from '../../services/risk/engine';
 import { editMessage } from '../../services/discord/bot';
 import { logger } from '../../utils/logger';
@@ -18,7 +19,7 @@ export async function stepPreOrderRisk(
   delivery: SignalDelivery
 ): Promise<RiskStepResult> {
   // Step 4: 下单前二次实时拉取持仓（强制不用缓存）
-  const liveSnapshot = await getAccountSnapshotForOrder(user.id, 'futu');
+  const liveSnapshot = await getAccountSnapshotForOrder(user.id, config.PREFERRED_BROKER);
 
   // Step 5: 获取手动持仓，执行二次风控验证
   const manualPositions = await getManualPositions(user.id);

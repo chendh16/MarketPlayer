@@ -318,6 +318,64 @@ router.get('/admin/dashboard/signals', requireAuth, requireAdmin, async (req: Re
   }
 });
 
+// 推送记录列表（管理员视图）
+router.get('/admin/deliveries', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '100')), 500);
+    const status = req.query.status as string | undefined;
+
+    const conditions = status ? 'WHERE sd.status = $2' : '';
+    const params: (number | string)[] = status ? [limit, status] : [limit];
+
+    const rows = await query(`
+      SELECT
+        sd.id, sd.sent_at, sd.status,
+        sd.adjusted_position_pct, sd.override_risk_warning,
+        sd.risk_check_result, sd.confirmed_at, sd.ignored_at,
+        u.discord_username,
+        s.symbol, s.market, s.direction, s.confidence
+      FROM signal_deliveries sd
+      JOIN signals s ON sd.signal_id = s.id
+      JOIN users u ON sd.user_id = u.id
+      ${conditions}
+      ORDER BY sd.sent_at DESC
+      LIMIT $1
+    `, params);
+
+    res.json(rows);
+  } catch (error) {
+    logger.error('Error fetching admin deliveries:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 用户列表（管理员视图，含信号数和订单数统计）
+router.get('/admin/users', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '100')), 500);
+
+    const rows = await query(`
+      SELECT
+        u.id, u.discord_username, u.risk_preference,
+        u.custom_single_position_limit, u.custom_total_position_limit,
+        u.daily_signal_limit, u.is_active, u.created_at,
+        COUNT(DISTINCT sd.id)::int AS signal_count,
+        COUNT(DISTINCT o.id)::int  AS order_count
+      FROM users u
+      LEFT JOIN signal_deliveries sd ON sd.user_id = u.id
+      LEFT JOIN orders o ON o.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    res.json(rows);
+  } catch (error) {
+    logger.error('Error fetching admin users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 生成管理员 token（仅内部使用，需要在环境变量中配置 ADMIN_DISCORD_USER_ID）
 router.post('/admin/token', async (req: Request, res: Response): Promise<void> => {
   try {

@@ -22,11 +22,14 @@ import { checkRisk } from '../services/risk/engine';
 import { getAccountSnapshot } from '../services/futu/position';
 import { Signal, NewsItem } from '../models/signal';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 
-const connection = {
-  host: 'localhost',
-  port: 6379,
-};
+function parseRedisConnection(url: string) {
+  const u = new URL(url);
+  return { host: u.hostname, port: parseInt(u.port || '6379', 10), password: u.password || undefined };
+}
+
+const connection = parseRedisConnection(config.REDIS_URL);
 
 export const newsQueue = new Queue('news-processing', {
   connection,
@@ -192,7 +195,7 @@ async function pushSignalToUsers(signal: Signal): Promise<void> {
       const fullUser = await getUserById(user.id);
       if (!fullUser) continue;
 
-      const accountSnapshot = await getAccountSnapshot(user.id, 'futu');
+      const accountSnapshot = await getAccountSnapshot(user.id, config.PREFERRED_BROKER);
       const manualPositions = await getManualPositions(user.id);
 
       const riskCheck = await checkRisk({

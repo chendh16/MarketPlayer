@@ -156,7 +156,7 @@ export async function generateSignal(
     newsItemId: newsItem.id,
   });
 
-  if (!result.should_generate || result.confidence < 40) {
+  if (!result.should_generate || result.confidence < 25) {
     return null;
   }
 

@@ -1,21 +1,27 @@
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+# ── Production stage ──────────────────────────────────────────────────────────
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
-# Copy source code
-COPY . .
+COPY --from=builder /app/dist ./dist
 
-# Build TypeScript
-RUN npm run build
-
-# Create logs directory
 RUN mkdir -p logs
 
 EXPOSE 3000
+EXPOSE 3001
 
 CMD ["node", "dist/index.js"]
-

@@ -1,5 +1,7 @@
 # 10 — 环境变量 & 部署配置
 
+> 最后更新：2026-03-02，对应 `.env.example` 当前版本
+
 ---
 
 ## .env.example（完整）
@@ -16,30 +18,57 @@ REDIS_URL=redis://localhost:6379
 # ── Discord ──
 DISCORD_BOT_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_discord_client_id
-# 用于推送的 Discord 频道（每个用户单独 DM，此为管理频道）
 DISCORD_ADMIN_CHANNEL_ID=your_channel_id
+TEST_DISCORD_USER_ID=your_test_user_discord_id
 
 # ── Telegram（备用渠道）──
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_BOT_TOKEN=
 
-# ── Anthropic AI ──
-ANTHROPIC_API_KEY=your_anthropic_api_key
-# 每日 AI 调用上限（超出后降级为规则引擎）
+# ── AI 配置（可插拔，支持多种提供商）──
+# AI 提供商：anthropic | openai | azure | custom
+AI_PROVIDER=anthropic
+AI_API_KEY=your_api_key
+# 自定义 API 地址（OpenAI 兼容），anthropic 时留空
+AI_API_BASE_URL=
+# 模型名：claude-sonnet-4-20250514 / gpt-4-turbo-preview / 你的部署名
+AI_MODEL=claude-sonnet-4-20250514
 AI_DAILY_CALL_LIMIT=500
-# 小时成本告警阈值（美元）
 AI_HOURLY_COST_ALERT_USD=5.0
-# 小时成本熔断阈值（美元）
 AI_HOURLY_COST_BRAKE_USD=10.0
+# 兼容旧配置（设置了 AI_API_KEY 则忽略）
+ANTHROPIC_API_KEY=
 
-# ── 富途 API（方案A：全自动下单）──
-# 注意：富途 API 需要单独申请交易权限
+# ── Prompt 配置 ──
+# 自定义 prompt 模板目录（默认 ./prompts）
+# PROMPT_DIR=/path/to/custom/prompts
+
+# ── 长桥 LongBridge API ──
+# 从长桥开发者中心获取：https://open.longbridge.com
+LONGPORT_APP_KEY=your_longbridge_app_key
+LONGPORT_APP_SECRET=your_longbridge_app_secret
+LONGPORT_ACCESS_TOKEN=your_longbridge_access_token
+# 下单模式：A=全自动 B=深链接(默认) C=纯通知
+LONGBRIDGE_ORDER_MODE=B
+LONGBRIDGE_PRICE_SLIPPAGE_PCT=0.01
+
+# ── 富途 API ──
 FUTU_API_HOST=127.0.0.1
 FUTU_API_PORT=11111
-# 方案 A / B / C（A=全自动，B=深链接，C=纯推送）
 FUTU_ORDER_MODE=B
+FUTU_TRD_ENV=SIMULATE
+# futu-api JS SDK 使用 WebSocket 连接 OpenD（非 TCP 端口）
+FUTU_WEBSOCKET_PORT=33333
+FUTU_WEBSOCKET_KEY=your_opend_websocket_key
+FUTU_TRADE_ACC_ID=
+FUTU_TRADE_ACC_INDEX=0
+FUTU_TRADE_PASSWORD=
+FUTU_TRADE_PASSWORD_MD5=
+FUTU_AUTO_UNLOCK=true
+FUTU_FALLBACK_TO_PLAN_B=true
+FUTU_ORDER_PRICE_SLIPPAGE_PCT=0.01
 
-# ── 加密密钥（用于加密存储券商 API 凭证）──
-# 必须是32字节的随机字符串，生成：openssl rand -hex 32
+# ── 加密密钥 ──
+# 生成：openssl rand -hex 32
 ENCRYPTION_KEY=your_32_byte_hex_encryption_key
 ENCRYPTION_IV=your_16_byte_hex_iv
 
@@ -48,25 +77,84 @@ JWT_SECRET=your_jwt_secret_min_32_chars
 JWT_EXPIRES_IN=7d
 
 # ── 资讯数据源 ──
-# 美股
-YAHOO_FINANCE_API_KEY=optional_if_using_free_tier
-ALPHA_VANTAGE_API_KEY=your_key
-# 港股 / A股（待定）
-EASTMONEY_API_KEY=optional
-# BTC
-COINGECKO_API_KEY=optional_free_tier_available
+NEWS_ADAPTERS=
+YAHOO_FINANCE_API_KEY=
+ALPHA_VANTAGE_API_KEY=
+EASTMONEY_API_KEY=
+COINGECKO_API_KEY=
+
+# 监控标的（逗号分隔）
+NEWS_SYMBOLS_US=AAPL,GOOGL,MSFT,TSLA,NVDA,AMZN,META,NFLX,SPY,QQQ
+NEWS_SYMBOLS_HK=0700.HK,9988.HK,3690.HK,1299.HK,2318.HK,0941.HK,0388.HK,1810.HK
+
+# ── MCP 工具服务器（Agent 调用层）──
+# 设置端口后随主服务同时启动，不设置则不启动
+MCP_SERVER_PORT=3001
 
 # ── 告警 ──
-SENTRY_DSN=your_sentry_dsn
-# 成本告警通知（发到管理员 Discord DM）
-ADMIN_DISCORD_USER_ID=your_discord_user_id
+SENTRY_DSN=
+ADMIN_DISCORD_USER_ID=
 
 # ── 系统配置 ──
-NODE_ENV=production
+NODE_ENV=development
 PORT=3000
 LOG_LEVEL=info
-# 冷启动模式（true=内测期，不对外推送下单按钮）
 COLD_START_MODE=true
+```
+
+---
+
+## 变量分类说明
+
+### 必需变量（缺少则启动失败）
+
+| 变量 | 说明 |
+|------|------|
+| `DATABASE_URL` | PostgreSQL 连接串 |
+| `REDIS_URL` | Redis 连接串 |
+| `DISCORD_BOT_TOKEN` | Discord Bot Token |
+| `DISCORD_CLIENT_ID` | Discord 应用 Client ID |
+| `AI_API_KEY` | AI 服务 API Key |
+| `ENCRYPTION_KEY` | AES-256 加密密钥（32 bytes hex） |
+| `ENCRYPTION_IV` | 加密 IV（16 bytes hex） |
+| `JWT_SECRET` | JWT 签名密钥（≥32字符） |
+
+### 券商配置（按需填写其中一项）
+
+| 变量 | 适用券商 | 说明 |
+|------|----------|------|
+| `LONGPORT_APP_KEY` | 长桥 | 从 open.longbridge.com 获取 |
+| `LONGPORT_APP_SECRET` | 长桥 | 同上 |
+| `LONGPORT_ACCESS_TOKEN` | 长桥 | 同上 |
+| `LONGBRIDGE_ORDER_MODE` | 长桥 | A/B/C，默认 B |
+| `FUTU_WEBSOCKET_PORT` | 富途 | OpenD WebSocket 端口，默认 33333 |
+| `FUTU_WEBSOCKET_KEY` | 富途 | OpenD 中配置的 websocket_key |
+| `FUTU_TRADE_PASSWORD` | 富途 | 交易密码（UnlockTrade 用） |
+| `FUTU_TRD_ENV` | 富途 | SIMULATE / REAL |
+| `FUTU_ORDER_MODE` | 富途 | A/B/C，默认 B |
+
+### MCP 工具服务器
+
+| 变量 | 说明 | 默认 |
+|------|------|------|
+| `MCP_SERVER_PORT` | 启动 MCP server 的端口 | 不设置则不启动 |
+
+MCP server 启动后暴露 11 个工具，供 AI Agent 调用：
+
+```
+GET  /tools                   → 列出所有工具
+POST /tools/fetch_news        → 抓取资讯
+POST /tools/process_pipeline  → 完整管道
+POST /tools/analyze_news      → AI 分析
+POST /tools/generate_signal   → 生成信号
+POST /tools/check_risk        → 风控检查
+POST /tools/get_positions     → 查持仓（broker=futu|longbridge）
+POST /tools/get_account       → 查账户（broker=futu|longbridge）
+POST /tools/get_broker_balance → 直接查余额（broker=futu|longbridge）
+POST /tools/get_deliveries    → 查推送记录
+POST /tools/get_delivery      → 查单条推送
+POST /tools/confirm_order     → 确认下单
+GET  /health                  → 健康检查
 ```
 
 ---

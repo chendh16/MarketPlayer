@@ -5,6 +5,9 @@ import { AccountSnapshot } from '../../models/position';
 import { createOrder, updateDeliveryStatus, updateOrderStatus, updateOrderRetryCount } from '../../db/queries';
 import { invalidatePositionCache } from '../../services/futu/position';
 import { executeFutuOrder } from '../../services/futu/order';
+import { executeLongbridgeOrder } from '../../services/longbridge/order';
+import { invalidateLongbridgeCache } from '../../services/longbridge/position';
+import { config } from '../../config';
 import { editMessage } from '../../services/discord/bot';
 import { getUSStockPrice } from '../../services/news/sources/us-stock';
 import { getHKStockPrice } from '../../services/news/sources/hk-stock';
@@ -38,7 +41,7 @@ export async function stepExecuteOrder(
   const order = await createOrder({
     deliveryId: delivery.id,
     userId: user.id,
-    broker: 'futu',
+    broker: config.PREFERRED_BROKER,
     symbol: signal.symbol,
     market: signal.market,
     direction: signal.direction === 'long' ? 'buy' : 'sell',
@@ -49,8 +52,13 @@ export async function stepExecuteOrder(
 
   logger.info(`Order created: ${order.id}`);
 
-  // Step 8: 执行下单（按 FUTU_ORDER_MODE 路由），可重试错误自动重试
-  let result = await executeFutuOrder(user, order);
+  // Step 8: 执行下单（按 PREFERRED_BROKER 路由），可重试错误自动重试
+  const executeBrokerOrder = (o: typeof order) =>
+    config.PREFERRED_BROKER === 'longbridge'
+      ? executeLongbridgeOrder(user, o)
+      : executeFutuOrder(user, o);
+
+  let result = await executeBrokerOrder(order);
   let retryCount = 0;
 
   while (
@@ -64,7 +72,7 @@ export async function stepExecuteOrder(
 
     const delayMs = Math.pow(2, retryCount) * 1000;
     await sleep(delayMs);
-    result = await executeFutuOrder(user, order);
+    result = await executeBrokerOrder(order);
   }
 
   // Step 9: 失败处理
@@ -95,7 +103,11 @@ export async function stepExecuteOrder(
 
   // Step 11: 自动下单成交后清除缓存；手动模式无需刷新仓位缓存
   if (result.mode === 'A' && (status === 'filled' || status === 'partial_filled')) {
-    await invalidatePositionCache(user.id, 'futu');
+    if (config.PREFERRED_BROKER === 'longbridge') {
+      await invalidateLongbridgeCache(user.id);
+    } else {
+      await invalidatePositionCache(user.id, 'futu');
+    }
   }
 
   await notifyOrderSucceeded(delivery, order.id, status, result.executedPrice, result.deepLink);

@@ -12,15 +12,16 @@ export async function check_risk(params: {
   market: 'us' | 'hk' | 'a' | 'btc';
   direction: 'long' | 'short';
   positionPct: number;
+  broker?: 'futu' | 'longbridge';
 }) {
-  const { userId, symbol, market, direction, positionPct } = params;
-  logger.info(`[MCP] check_risk userId=${userId} symbol=${symbol} positionPct=${positionPct}`);
+  const { userId, symbol, market, direction, positionPct, broker = 'longbridge' } = params;
+  logger.info(`[MCP] check_risk userId=${userId} symbol=${symbol} positionPct=${positionPct} broker=${broker}`);
 
   const user = await getUserById(userId);
   if (!user) throw new Error(`User not found: ${userId}`);
 
   const [snapshot, manualPositions] = await Promise.all([
-    getAccountSnapshot(userId, 'futu'),
+    getAccountSnapshot(userId, broker),
     getManualPositions(userId),
   ]);
 

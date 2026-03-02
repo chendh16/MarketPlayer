@@ -39,9 +39,43 @@
           class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors whitespace-nowrap"
         >保存</button>
         <span id="token-saved-hint" class="text-xs text-green-600 font-medium hidden">已保存</span>
+        <button
+          onclick="openTokenModal()"
+          class="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors whitespace-nowrap"
+        >获取 Token</button>
       </div>
     </div>
   </header>
+
+  <!-- Token Generation Modal -->
+  <div id="token-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold text-gray-800">获取 Admin Token</h3>
+        <button onclick="closeTokenModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">输入你的 Discord User ID，系统将为其生成 7 天有效的管理员 Token。</p>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Discord User ID</label>
+      <input
+        type="text"
+        id="token-modal-user-id"
+        placeholder="例如：123456789012345678"
+        class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+      />
+      <div id="token-modal-error" class="hidden text-xs text-red-600 mb-3 p-2 bg-red-50 rounded"></div>
+      <div class="flex gap-2">
+        <button
+          onclick="closeTokenModal()"
+          class="flex-1 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+        >取消</button>
+        <button
+          id="token-modal-submit"
+          onclick="submitTokenModal()"
+          class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+        >获取</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Tab navigation -->
   <div class="bg-white border-b border-gray-200">
@@ -51,7 +85,9 @@
         <button id="tabnav-news"     onclick="switchTab('news')"     class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📰 资讯</button>
         <button id="tabnav-signals"  onclick="switchTab('signals')"  class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">🎯 信号</button>
         <button id="tabnav-orders"   onclick="switchTab('orders')"   class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📋 订单</button>
-        <button id="tabnav-system"   onclick="switchTab('system')"   class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">⚙️ 系统</button>
+        <button id="tabnav-system"      onclick="switchTab('system')"      class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">⚙️ 系统</button>
+        <button id="tabnav-deliveries" onclick="switchTab('deliveries')" class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📨 推送</button>
+        <button id="tabnav-users"      onclick="switchTab('users')"      class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">👥 用户</button>
       </nav>
     </div>
   </div>
@@ -148,8 +184,8 @@
         </div>
 
         <!-- Filter Bar -->
-        <div class="flex items-center gap-3">
-          <span class="text-sm font-medium text-gray-600">过滤：</span>
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-sm font-medium text-gray-600">AI状态：</span>
           <button
             id="news-filter-all"
             onclick="window._newsSetFilter('all')"
@@ -160,6 +196,15 @@
             onclick="window._newsSetFilter('pending')"
             class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
           >仅待处理</button>
+        </div>
+        <!-- Market Filter Bar -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-gray-600">市场：</span>
+          <button id="news-market-all" onclick="window._newsSetMarket('all')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-700 text-white transition-colors">全部</button>
+          <button id="news-market-us"  onclick="window._newsSetMarket('us')"  class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇺🇸 美股</button>
+          <button id="news-market-hk"  onclick="window._newsSetMarket('hk')"  class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇭🇰 港股</button>
+          <button id="news-market-a"   onclick="window._newsSetMarket('a')"   class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇨🇳 A股</button>
+          <button id="news-market-btc" onclick="window._newsSetMarket('btc')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">₿ BTC</button>
         </div>
 
         <!-- Table -->
@@ -218,30 +263,39 @@
         </div>
 
         <!-- Filter bar -->
-        <div class="flex items-center gap-2 mb-5">
-          <span class="text-sm text-gray-500 font-medium mr-1">Filter:</span>
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+          <span class="text-sm text-gray-500 font-medium mr-1">状态：</span>
           <button
             id="signals-filter-all"
             onclick="signalsSetFilter('all')"
             class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors"
-          >All</button>
+          >全部</button>
           <button
             id="signals-filter-active"
             onclick="signalsSetFilter('active')"
             class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-          >Active Only</button>
+          >有效</button>
           <button
             id="signals-filter-expired"
             onclick="signalsSetFilter('expired')"
             class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-          >Expired Only</button>
+          >已过期</button>
           <div class="ml-auto flex items-center gap-2">
             <span id="signals-refresh-indicator" class="text-xs text-gray-400 hidden">Refreshing...</span>
             <button
               onclick="window.loadSignalsPanel()"
               class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-            >Refresh</button>
+            >刷新</button>
           </div>
+        </div>
+        <!-- Market filter bar -->
+        <div class="flex items-center gap-2 mb-5 flex-wrap">
+          <span class="text-sm text-gray-500 font-medium mr-1">市场：</span>
+          <button id="signals-market-all" onclick="signalsSetMarket('all')" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-700 text-white transition-colors">全部</button>
+          <button id="signals-market-us"  onclick="signalsSetMarket('us')"  class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇺🇸 美股</button>
+          <button id="signals-market-hk"  onclick="signalsSetMarket('hk')"  class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇭🇰 港股</button>
+          <button id="signals-market-a"   onclick="signalsSetMarket('a')"   class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇨🇳 A股</button>
+          <button id="signals-market-btc" onclick="signalsSetMarket('btc')" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">₿ BTC</button>
         </div>
 
         <!-- Signal card list -->
@@ -411,6 +465,142 @@
       </div>
     </div>
 
+    <!-- ═══════════════ TAB: Deliveries ═══════════════ -->
+    <div id="tab-deliveries" style="display:none">
+      <div id="deliveries-panel-root" class="space-y-4">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-5 gap-3">
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="dlv-stat-total" class="text-2xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">总推送</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="dlv-stat-pending" class="text-2xl font-bold text-blue-500">--</div>
+            <div class="text-xs text-gray-500 mt-1">待确认</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="dlv-stat-confirmed" class="text-2xl font-bold text-green-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">已确认</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="dlv-stat-ignored" class="text-2xl font-bold text-gray-400">--</div>
+            <div class="text-xs text-gray-500 mt-1">已忽略</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="dlv-stat-expired" class="text-2xl font-bold text-gray-400">--</div>
+            <div class="text-xs text-gray-500 mt-1">已过期</div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-gray-600">过滤：</span>
+          <button id="dlv-filter-all"          onclick="dlvSetFilter('all')"          class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors">全部</button>
+          <button id="dlv-filter-pending"      onclick="dlvSetFilter('pending')"      class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">待确认</button>
+          <button id="dlv-filter-confirmed"    onclick="dlvSetFilter('confirmed')"    class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">已确认</button>
+          <button id="dlv-filter-ignored"      onclick="dlvSetFilter('ignored')"      class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">已忽略</button>
+          <button id="dlv-filter-expired"      onclick="dlvSetFilter('expired')"      class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">已过期</button>
+          <button id="dlv-filter-order_placed" onclick="dlvSetFilter('order_placed')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">已下单</button>
+          <button id="dlv-filter-order_failed" onclick="dlvSetFilter('order_failed')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">下单失败</button>
+          <div class="ml-auto flex items-center gap-2">
+            <span id="dlv-refresh-indicator" class="text-xs text-gray-400 hidden">刷新中...</span>
+            <button onclick="window.loadDeliveriesPanel()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors">刷新</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">时间</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">用户</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">标的</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">方向</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">置信度</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">仓位</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">风控</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">状态</th>
+                </tr>
+              </thead>
+              <tbody id="dlv-table-body">
+                <tr><td colspan="8" class="px-4 py-8 text-center text-gray-400 text-sm">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center text-xs text-gray-500">
+          <span>最后刷新：<span id="dlv-last-refresh">--</span></span>
+        </div>
+        <div id="dlv-error" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ TAB: Users ═══════════════ -->
+    <div id="tab-users" style="display:none">
+      <div id="users-panel-root" class="space-y-4">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="usr-stat-total" class="text-2xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">总用户</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="usr-stat-active" class="text-2xl font-bold text-green-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">活跃用户</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div id="usr-stat-balanced" class="text-2xl font-bold text-indigo-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">均衡风险偏好</div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-gray-600">过滤：</span>
+          <button id="usr-filter-all"    onclick="usrSetFilter('all')"    class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors">全部</button>
+          <button id="usr-filter-active" onclick="usrSetFilter('active')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">仅活跃</button>
+          <div class="ml-auto">
+            <button onclick="window.loadUsersPanel()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors">刷新</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">用户名</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">风险偏好</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">信号数</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">订单数</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">注册时间</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">状态</th>
+                </tr>
+              </thead>
+              <tbody id="usr-table-body">
+                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center text-xs text-gray-500">
+          <span>最后刷新：<span id="usr-last-refresh">--</span></span>
+        </div>
+        <div id="usr-error" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+
+      </div>
+    </div>
+
   </main>
 
   <script>
@@ -432,6 +622,73 @@
     // Fill input from sessionStorage on page load
     document.getElementById('admin-token-input').value = getAdminToken();
 
+    // Token generation modal
+    function openTokenModal() {
+      document.getElementById('token-modal').classList.remove('hidden');
+      document.getElementById('token-modal-user-id').value = '';
+      document.getElementById('token-modal-error').classList.add('hidden');
+      var btn = document.getElementById('token-modal-submit');
+      btn.disabled = false;
+      btn.textContent = '获取';
+      setTimeout(function () { document.getElementById('token-modal-user-id').focus(); }, 50);
+    }
+
+    function closeTokenModal() {
+      document.getElementById('token-modal').classList.add('hidden');
+    }
+
+    async function submitTokenModal() {
+      var userId = document.getElementById('token-modal-user-id').value.trim();
+      var errorEl = document.getElementById('token-modal-error');
+      var submitBtn = document.getElementById('token-modal-submit');
+
+      if (!userId) {
+        errorEl.textContent = '请输入 Discord User ID';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      errorEl.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '获取中...';
+
+      try {
+        var res = await fetch('/api/admin/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ discordUserId: userId })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || ('HTTP ' + res.status);
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        document.getElementById('admin-token-input').value = data.token;
+        sessionStorage.setItem('mp_admin_token', data.token);
+        closeTokenModal();
+        var hint = document.getElementById('token-saved-hint');
+        hint.textContent = '已获取并保存';
+        hint.classList.remove('hidden');
+        setTimeout(function () { hint.textContent = '已保存'; hint.classList.add('hidden'); }, 2000);
+      } catch (err) {
+        errorEl.textContent = '请求失败：' + (err.message || '未知错误');
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '获取';
+      }
+    }
+
+    document.getElementById('token-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeTokenModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !document.getElementById('token-modal').classList.contains('hidden')) {
+        closeTokenModal();
+      }
+    });
+
     // ══════════════════════════════════════════════════════════════════
     // 2. window.dashboardFetch — used by all panels
     // ══════════════════════════════════════════════════════════════════
@@ -447,7 +704,7 @@
     // ══════════════════════════════════════════════════════════════════
     // 3. Tab switching
     // ══════════════════════════════════════════════════════════════════
-    var TABS = ['overview', 'news', 'signals', 'orders', 'system'];
+    var TABS = ['overview', 'news', 'signals', 'orders', 'system', 'deliveries', 'users'];
 
     function switchTab(tabId) {
       TABS.forEach(function (t) {
@@ -462,11 +719,13 @@
 
       // Trigger an immediate refresh for the activated tab's panel
       var loaders = {
-        news:     window.loadNewsPanel,
-        signals:  window.loadSignalsPanel,
-        orders:   window.loadOrdersPanel,
-        system:   window.loadSystemPanel,
-        overview: loadOverview,
+        news:       window.loadNewsPanel,
+        signals:    window.loadSignalsPanel,
+        orders:     window.loadOrdersPanel,
+        system:     window.loadSystemPanel,
+        deliveries: window.loadDeliveriesPanel,
+        users:      window.loadUsersPanel,
+        overview:   loadOverview,
       };
       if (loaders[tabId]) loaders[tabId]();
     }
@@ -547,6 +806,7 @@
     /* ── State ── */
     var _newsAllData = [];
     var _newsFilter = 'all';
+    var _newsMarket = 'all';
     var _newsExpandedId = null;
     var _newsTimerId = null;
 
@@ -605,7 +865,7 @@
       document.getElementById('news-stat-pending').textContent   = pendingItems.length;
     }
 
-    /* ── Filter toggle ── */
+    /* ── Filter toggles ── */
     window._newsSetFilter = function (filter) {
       _newsFilter = filter;
       var btnAll     = document.getElementById('news-filter-all');
@@ -620,6 +880,19 @@
       renderTable(_newsAllData);
     };
 
+    window._newsSetMarket = function (market) {
+      _newsMarket = market;
+      var markets = ['all', 'us', 'hk', 'a', 'btc'];
+      markets.forEach(function (m) {
+        var btn = document.getElementById('news-market-' + m);
+        if (!btn) return;
+        btn.className = m === market
+          ? 'px-3 py-1 rounded-full text-sm font-medium bg-gray-700 text-white transition-colors'
+          : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderTable(_newsAllData);
+    };
+
     /* ── Row expand toggle ── */
     window._newsToggleRow = function (id) {
       _newsExpandedId = _newsExpandedId === id ? null : id;
@@ -628,9 +901,9 @@
 
     /* ── Render table ── */
     function renderTable(data) {
-      var filtered = _newsFilter === 'pending'
-        ? data.filter(function (n) { return !n.ai_processed; })
-        : data;
+      var filtered = data;
+      if (_newsMarket !== 'all') filtered = filtered.filter(function (n) { return n.market === _newsMarket; });
+      if (_newsFilter === 'pending') filtered = filtered.filter(function (n) { return !n.ai_processed; });
 
       var tbody = document.getElementById('news-table-body');
 
@@ -659,12 +932,22 @@
 
         var expandRow = isExpanded
           ? '<tr class="bg-indigo-50 border-b border-indigo-100">'
-            + '<td colspan="6" class="px-6 py-4">'
-            + '<div class="text-xs font-semibold text-gray-500 mb-1">完整 AI 摘要</div>'
+            + '<td colspan="6" class="px-6 py-4 space-y-3">'
+            + '<div>'
+            + '<div class="text-xs font-semibold text-gray-500 mb-1">AI 摘要</div>'
             + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">'
             + (item.ai_summary ? escHtml(item.ai_summary) : '<span class="text-gray-400 italic">暂无摘要</span>')
             + '</p>'
-            + '<div class="mt-2 text-xs text-gray-400">来源：' + escHtml(item.source || '--') + ' &nbsp;|&nbsp; 入库时间：' + fmtTime(item.created_at) + '</div>'
+            + '</div>'
+            + (item.ai_impact_analysis
+                ? '<div><div class="text-xs font-semibold text-gray-500 mb-1">影响分析</div>'
+                  + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">' + escHtml(item.ai_impact_analysis) + '</p></div>'
+                : '')
+            + '<div class="text-xs text-gray-400 flex items-center gap-3 flex-wrap">'
+            + '<span>来源：' + escHtml(item.source || '--') + '</span>'
+            + '<span>入库：' + fmtTime(item.created_at) + '</span>'
+            + (item.url ? '<a href="' + escHtml(item.url) + '" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:underline" onclick="event.stopPropagation()">查看原文 ↗</a>' : '')
+            + '</div>'
             + '</td>'
             + '</tr>'
           : '';
@@ -719,6 +1002,7 @@
   (function () {
     var _signalsData = [];
     var _signalsFilter = 'all';
+    var _signalsMarket = 'all';
     var _signalsTimer = null;
     var _expandedIds = new Set();
 
@@ -763,9 +1047,24 @@
     }
 
     function filterSignals(data) {
-      if (_signalsFilter === 'active')  return data.filter(function (s) { return !isExpired(s.expires_at); });
-      if (_signalsFilter === 'expired') return data.filter(function (s) { return isExpired(s.expires_at); });
-      return data;
+      var result = data;
+      if (_signalsMarket !== 'all') result = result.filter(function (s) { return s.market === _signalsMarket; });
+      if (_signalsFilter === 'active')  result = result.filter(function (s) { return !isExpired(s.expires_at); });
+      if (_signalsFilter === 'expired') result = result.filter(function (s) { return isExpired(s.expires_at); });
+      return result;
+    }
+
+    function signalsSetMarket(market) {
+      _signalsMarket = market;
+      var markets = ['all', 'us', 'hk', 'a', 'btc'];
+      markets.forEach(function (m) {
+        var btn = document.getElementById('signals-market-' + m);
+        if (!btn) return;
+        btn.className = m === market
+          ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-700 text-white transition-colors'
+          : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderCards(_signalsData);
     }
 
     function renderStats(data) {
@@ -895,6 +1194,7 @@
 
     window.loadSignalsPanel  = loadSignalsPanel;
     window.signalsSetFilter  = signalsSetFilter;
+    window.signalsSetMarket  = signalsSetMarket;
     window.signalsToggleCard = signalsToggleCard;
 
     startSignalsAutoRefresh();
@@ -1220,6 +1520,271 @@
     })();
 
     // Do NOT auto-init here; panel loads when tab is first activated.
+  })();
+  </script>
+
+  <!-- Deliveries panel script -->
+  <script>
+  (function () {
+    var _dlvData = [];
+    var _dlvFilter = 'all';
+    var _dlvExpandedId = null;
+    var _dlvTimer = null;
+
+    function fmtTime(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      return String(d.getMonth() + 1).padStart(2, '0') + '-'
+        + String(d.getDate()).padStart(2, '0') + ' '
+        + String(d.getHours()).padStart(2, '0') + ':'
+        + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function marketBadge(market) {
+      var map = { us:'bg-blue-100 text-blue-700', hk:'bg-red-100 text-red-700', a:'bg-green-100 text-green-700', btc:'bg-orange-100 text-orange-700' };
+      var cls = map[market] || 'bg-gray-100 text-gray-600';
+      return '<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-semibold ' + cls + '">' + (market || '--').toUpperCase() + '</span>';
+    }
+
+    function directionBadge(direction) {
+      var isLong = direction === 'long';
+      return '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold '
+        + (isLong ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
+        + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>';
+    }
+
+    function riskBadge(riskResult) {
+      if (!riskResult) return '<span class="text-gray-300">--</span>';
+      var status = (typeof riskResult === 'object') ? riskResult.status : riskResult;
+      var map = { pass: 'bg-green-100 text-green-700', warning: 'bg-yellow-100 text-yellow-700', blocked: 'bg-red-100 text-red-700' };
+      var cls = map[status] || 'bg-gray-100 text-gray-600';
+      var label = { pass: '通过', warning: '警告', blocked: '拦截' }[status] || (status || '--');
+      return '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">' + label + '</span>';
+    }
+
+    function statusBadge(status) {
+      var map = {
+        pending:      'bg-blue-100 text-blue-700',
+        sent:         'bg-blue-50 text-blue-600',
+        confirmed:    'bg-indigo-100 text-indigo-700',
+        ignored:      'bg-gray-100 text-gray-500',
+        expired:      'bg-gray-100 text-gray-400',
+        order_placed: 'bg-green-100 text-green-700',
+        order_failed: 'bg-red-100 text-red-700',
+        completed:    'bg-green-200 text-green-800',
+      };
+      var labelMap = {
+        pending:'待确认', sent:'已推送', confirmed:'已确认', ignored:'已忽略',
+        expired:'已过期', order_placed:'已下单', order_failed:'下单失败', completed:'已完成'
+      };
+      var cls = map[status] || 'bg-gray-100 text-gray-500';
+      return '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">' + (labelMap[status] || status || '--') + '</span>';
+    }
+
+    function renderStats(data) {
+      document.getElementById('dlv-stat-total').textContent     = data.length;
+      document.getElementById('dlv-stat-pending').textContent   = data.filter(function(d){ return d.status === 'pending' || d.status === 'sent'; }).length;
+      document.getElementById('dlv-stat-confirmed').textContent = data.filter(function(d){ return d.status === 'confirmed' || d.status === 'order_placed' || d.status === 'completed'; }).length;
+      document.getElementById('dlv-stat-ignored').textContent   = data.filter(function(d){ return d.status === 'ignored'; }).length;
+      document.getElementById('dlv-stat-expired').textContent   = data.filter(function(d){ return d.status === 'expired'; }).length;
+    }
+
+    window.dlvSetFilter = function (filter) {
+      _dlvFilter = filter;
+      ['all','pending','confirmed','ignored','expired','order_placed','order_failed'].forEach(function(f) {
+        var btn = document.getElementById('dlv-filter-' + f);
+        if (!btn) return;
+        btn.className = f === filter
+          ? 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors'
+          : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderTable(_dlvData);
+    };
+
+    window.dlvToggleRow = function (id) {
+      _dlvExpandedId = _dlvExpandedId === id ? null : id;
+      renderTable(_dlvData);
+    };
+
+    function renderTable(data) {
+      var tbody = document.getElementById('dlv-table-body');
+      var filtered = _dlvFilter === 'all' ? data : data.filter(function(d){ return d.status === _dlvFilter; });
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400 text-sm">暂无数据</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(function(item) {
+        var expanded = _dlvExpandedId === item.id;
+        var riskResult = item.risk_check_result;
+
+        var mainRow = '<tr'
+          + ' onclick="dlvToggleRow(\'' + escHtml(item.id) + '\')"'
+          + ' class="border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition-colors' + (expanded ? ' bg-indigo-50' : '') + '">'
+          + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">' + fmtTime(item.sent_at) + '</td>'
+          + '<td class="px-4 py-3 text-gray-700 whitespace-nowrap text-xs">' + escHtml(item.discord_username || '--') + '</td>'
+          + '<td class="px-4 py-3 whitespace-nowrap"><div class="flex items-center gap-1.5"><span class="font-semibold text-gray-800">' + escHtml(item.symbol || '--') + '</span>' + marketBadge(item.market) + '</div></td>'
+          + '<td class="px-4 py-3 whitespace-nowrap">' + directionBadge(item.direction) + '</td>'
+          + '<td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-medium text-gray-700">' + (item.confidence !== null && item.confidence !== undefined ? item.confidence + '%' : '--') + '</span></td>'
+          + '<td class="px-4 py-3 text-right whitespace-nowrap text-gray-700">' + (item.adjusted_position_pct !== null && item.adjusted_position_pct !== undefined ? item.adjusted_position_pct + '%' : '--') + '</td>'
+          + '<td class="px-4 py-3 whitespace-nowrap">' + riskBadge(riskResult) + '</td>'
+          + '<td class="px-4 py-3 whitespace-nowrap">' + statusBadge(item.status) + '</td>'
+          + '</tr>';
+
+        var expandRow = '';
+        if (expanded) {
+          var riskLines = [];
+          if (riskResult && typeof riskResult === 'object') {
+            if (riskResult.currentSinglePositionPct !== undefined)
+              riskLines.push('单标的：当前 ' + riskResult.currentSinglePositionPct + '% → 预计 ' + riskResult.projectedSinglePositionPct + '%（上限 ' + riskResult.singlePositionLimit + '%）');
+            if (riskResult.currentTotalPositionPct !== undefined)
+              riskLines.push('总仓位：当前 ' + riskResult.currentTotalPositionPct + '% → 预计 ' + riskResult.projectedTotalPositionPct + '%（上限 ' + riskResult.totalPositionLimit + '%）');
+            if (riskResult.warningMessages && riskResult.warningMessages.length)
+              riskLines.push('警告：' + riskResult.warningMessages.join('；'));
+            if (riskResult.blockReasons && riskResult.blockReasons.length)
+              riskLines.push('拦截原因：' + riskResult.blockReasons.join('；'));
+          }
+          expandRow = '<tr class="bg-indigo-50 border-b border-indigo-100">'
+            + '<td colspan="8" class="px-6 py-3">'
+            + '<div class="text-xs font-semibold text-gray-500 mb-1">风控详情</div>'
+            + (riskLines.length
+                ? '<div class="text-xs text-gray-700 space-y-0.5">' + riskLines.map(function(l){ return '<div>' + escHtml(l) + '</div>'; }).join('') + '</div>'
+                : '<div class="text-xs text-gray-400 italic">暂无风控数据</div>')
+            + (riskResult && riskResult.dataSource ? '<div class="text-xs text-gray-400 mt-1">数据源：' + escHtml(riskResult.dataSource) + '</div>' : '')
+            + '</td></tr>';
+        }
+
+        return mainRow + expandRow;
+      }).join('');
+    }
+
+    window.loadDeliveriesPanel = async function () {
+      var indicator = document.getElementById('dlv-refresh-indicator');
+      var errorEl   = document.getElementById('dlv-error');
+      if (indicator) indicator.classList.remove('hidden');
+      if (errorEl)   errorEl.classList.add('hidden');
+
+      try {
+        var data = await window.dashboardFetch('/api/admin/deliveries?limit=100');
+        _dlvData = Array.isArray(data) ? data : [];
+        renderStats(_dlvData);
+        renderTable(_dlvData);
+        document.getElementById('dlv-last-refresh').textContent = fmtTime(new Date().toISOString());
+      } catch (err) {
+        if (errorEl) {
+          errorEl.textContent = '加载失败：' + (err.message || '未知错误');
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
+        if (indicator) indicator.classList.add('hidden');
+      }
+    };
+
+    if (_dlvTimer) clearInterval(_dlvTimer);
+    _dlvTimer = setInterval(function () { window.loadDeliveriesPanel(); }, 30000);
+  })();
+  </script>
+
+  <!-- Users panel script -->
+  <script>
+  (function () {
+    var _usrData = [];
+    var _usrFilter = 'all';
+    var _usrTimer = null;
+
+    function fmtTime(iso) {
+      if (!iso) return '--';
+      var d = new Date(iso);
+      return String(d.getMonth() + 1).padStart(2, '0') + '-'
+        + String(d.getDate()).padStart(2, '0') + ' '
+        + String(d.getHours()).padStart(2, '0') + ':'
+        + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function riskPrefBadge(pref) {
+      var map = {
+        conservative: { cls: 'bg-blue-100 text-blue-700',  label: '保守' },
+        balanced:     { cls: 'bg-green-100 text-green-700', label: '均衡' },
+        aggressive:   { cls: 'bg-red-100 text-red-700',     label: '激进' },
+      };
+      var m = map[pref] || { cls: 'bg-gray-100 text-gray-600', label: pref || '--' };
+      return '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold ' + m.cls + '">' + m.label + '</span>';
+    }
+
+    function activeBadge(isActive) {
+      return isActive
+        ? '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">活跃</span>'
+        : '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400">停用</span>';
+    }
+
+    function renderStats(data) {
+      document.getElementById('usr-stat-total').textContent   = data.length;
+      document.getElementById('usr-stat-active').textContent  = data.filter(function(u){ return u.is_active; }).length;
+      document.getElementById('usr-stat-balanced').textContent = data.filter(function(u){ return u.risk_preference === 'balanced'; }).length;
+    }
+
+    window.usrSetFilter = function (filter) {
+      _usrFilter = filter;
+      ['all', 'active'].forEach(function(f) {
+        var btn = document.getElementById('usr-filter-' + f);
+        if (!btn) return;
+        btn.className = f === filter
+          ? 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors'
+          : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+      });
+      renderTable(_usrData);
+    };
+
+    function renderTable(data) {
+      var tbody    = document.getElementById('usr-table-body');
+      var filtered = _usrFilter === 'active' ? data.filter(function(u){ return u.is_active; }) : data;
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">暂无数据</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(function(u) {
+        return '<tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">'
+          + '<td class="px-4 py-3 text-gray-800 font-medium">' + escHtml(u.discord_username || '--') + '</td>'
+          + '<td class="px-4 py-3">' + riskPrefBadge(u.risk_preference) + '</td>'
+          + '<td class="px-4 py-3 text-right text-gray-700 font-medium">' + (u.signal_count || 0) + '</td>'
+          + '<td class="px-4 py-3 text-right text-gray-700 font-medium">' + (u.order_count || 0) + '</td>'
+          + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">' + fmtTime(u.created_at) + '</td>'
+          + '<td class="px-4 py-3">' + activeBadge(u.is_active) + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+
+    window.loadUsersPanel = async function () {
+      var errorEl = document.getElementById('usr-error');
+      if (errorEl) errorEl.classList.add('hidden');
+
+      try {
+        var data = await window.dashboardFetch('/api/admin/users?limit=100');
+        _usrData = Array.isArray(data) ? data : [];
+        renderStats(_usrData);
+        renderTable(_usrData);
+        document.getElementById('usr-last-refresh').textContent = fmtTime(new Date().toISOString());
+      } catch (err) {
+        if (errorEl) {
+          errorEl.textContent = '加载失败：' + (err.message || '未知错误');
+          errorEl.classList.remove('hidden');
+        }
+      }
+    };
+
+    if (_usrTimer) clearInterval(_usrTimer);
+    _usrTimer = setInterval(function () { window.loadUsersPanel(); }, 60000);
   })();
   </script>
 

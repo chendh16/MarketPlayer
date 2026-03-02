@@ -63,8 +63,9 @@ graph LR
 ### AI & 外部服务
 - **AI 模型**: 可插拔架构，支持 Anthropic Claude、OpenAI、Azure、自定义 API
 - **推送渠道**: Discord.js v14 (主渠道) + Telegram (备用)
-- **券商对接**: 富途 API (futu-api)
+- **券商对接**: 富途 (futu-api + OpenD) · 长桥 LongBridge (longport SDK)
 - **资讯获取**: 可插拔架构，支持 API、Skill、MCP 等多种方式
+- **Agent 调用**: MCP 工具服务器，支持 AI Agent（如 Claude Code）按需编排任意模块
 
 ### 基础设施
 - **容器化**: Docker + Docker Compose
@@ -223,21 +224,36 @@ MarketPlayer/
 │   │   ├── signal.ts              # 信号模型
 │   │   ├── order.ts               # 订单模型
 │   │   └── position.ts            # 持仓模型
+│   ├── mcp/                        # MCP 工具服务器（Agent 调用层）
+│   │   ├── server.ts              # HTTP 工具服务器（11 个工具）
+│   │   └── tools/                 # 各工具实现
+│   │       ├── news.ts            # fetch_news / process_pipeline
+│   │       ├── analysis.ts        # analyze_news / generate_signal
+│   │       ├── risk.ts            # check_risk
+│   │       ├── position.ts        # get_positions / get_account / get_broker_balance
+│   │       └── order.ts           # get_deliveries / get_delivery / confirm_order
 │   ├── services/                   # 业务服务
 │   │   ├── news/                  # 资讯抓取
 │   │   │   ├── sources/          # 各市场数据源
+│   │   │   ├── adapters/         # 外部适配器（MCP/Skill/API）
 │   │   │   └── filter.ts         # 预筛选规则
 │   │   ├── ai/                    # AI 分析
-│   │   │   └── analyzer.ts       # Claude 集成
+│   │   │   ├── analyzer.ts       # AI 分析引擎（可插拔）
+│   │   │   ├── base.ts           # AI Provider 基类
+│   │   │   └── prompts.ts        # Prompt 模板加载器
 │   │   ├── risk/                  # 风控引擎
 │   │   │   └── engine.ts         # 风控规则
 │   │   ├── discord/               # Discord Bot
 │   │   │   ├── bot.ts            # Bot 主逻辑
 │   │   │   └── formatter.ts      # 消息格式化
 │   │   ├── futu/                  # 富途对接
-│   │   │   ├── connection.ts     # 连接管理
-│   │   │   ├── position.ts       # 持仓查询
-│   │   │   └── order.ts          # 下单执行
+│   │   │   ├── connection.ts     # 连接管理（OpenD WebSocket）
+│   │   │   ├── position.ts       # 持仓/余额查询
+│   │   │   └── order.ts          # 下单执行（A/B/C 三模式）
+│   │   ├── longbridge/            # 长桥 LongBridge 对接
+│   │   │   ├── connection.ts     # TradeContext 连接管理
+│   │   │   ├── position.ts       # 持仓/余额查询
+│   │   │   └── order.ts          # 下单执行（A/B/C 三模式）
 │   │   └── scheduler/             # 定时任务
 │   │       ├── news-fetcher.ts   # 资讯抓取定时器
 │   │       └── expiry-checker.ts # 过期检查定时器
@@ -252,9 +268,15 @@ MarketPlayer/
 │       ├── encryption.ts          # 加密工具
 │       ├── idempotency.ts         # 幂等性工具
 │       └── market-hours.ts        # 市场时间工具
+├── prompts/                        # AI Prompt 模板（可自定义，无需改代码）
+│   ├── analyze_news.md            # 资讯分析 prompt
+│   └── generate_signal.md         # 信号生成 prompt
 ├── tests/                          # 测试文件
 ├── dev-docs/                       # 开发文档
 ├── scripts/                        # 工具脚本
+│   ├── query-futu-balance.ts      # 富途余额查询
+│   ├── query-longbridge-balance.ts # 长桥余额查询
+│   └── ...                        # 其他调试脚本
 ├── docker-compose.yml              # Docker 配置
 ├── ecosystem.config.js             # PM2 配置
 └── package.json                    # 项目配置
@@ -296,10 +318,40 @@ MarketPlayer/
 - **二次风控**：下单前实时拉取持仓再次验证
 - **自动重试**：`retryable` 错误自动指数退避重试（2s/4s/8s，最多3次）
 - **状态回写**：订单重试中/成功/失败会回写到原 Discord 消息
-- **多种模式**：
-  - 方案A：全自动下单（需富途 API 权限）
-  - 方案B：深链接跳转（MVP 默认）
-  - 方案C：纯推送通知
+- **多券商支持**：
+  - 🔶 **富途 (Futu)**：方案A全自动 / 方案B深链接 / 方案C纯通知
+  - 🔷 **长桥 (LongBridge)**：方案A全自动 / 方案B深链接 / 方案C纯通知
+
+### 5. 🤖 MCP 工具服务器（Agent 调用层）
+
+供 AI Agent（Claude Code / 自定义 Agent）按需调用任意模块：
+
+| 工具 | 说明 |
+|------|------|
+| `fetch_news` | 按市场抓取资讯 |
+| `process_pipeline` | 完整管道（抓取→AI→Discord） |
+| `analyze_news` | 对单条资讯做 AI 分析 |
+| `generate_signal` | 基于分析生成交易信号 |
+| `check_risk` | 风控检查 |
+| `get_positions` | 查用户持仓（支持 broker 参数） |
+| `get_account` | 查账户资金概况（支持 broker 参数） |
+| `get_broker_balance` | 直接查询券商余额（futu / longbridge） |
+| `get_deliveries` | 查信号推送记录 |
+| `get_delivery` | 查单条推送详情 |
+| `confirm_order` | 将推送加入下单队列 |
+
+```bash
+# 启动 MCP 服务器
+MCP_SERVER_PORT=3001 npx ts-node src/mcp/server.ts
+
+# 查询所有工具
+curl http://localhost:3001/tools
+
+# Agent 调用示例：查长桥账户余额
+curl -X POST http://localhost:3001/tools/get_broker_balance \
+  -H 'Content-Type: application/json' \
+  -d '{"broker":"longbridge"}'
+```
 
 ## ⚙️ 环境变量说明
 
@@ -319,23 +371,25 @@ MarketPlayer/
 | `JWT_SECRET` | JWT 密钥 | - | ✅ |
 | `COLD_START_MODE` | 测试模式（禁用实际下单） | `true` | ⚠️ |
 | `AI_DAILY_CALL_LIMIT` | AI 每日调用上限 | `500` | - |
-| `FUTU_ORDER_MODE` | 富途下单模式 | `B` | - |
+| `FUTU_ORDER_MODE` | 富途下单模式（A/B/C） | `B` | - |
 | `FUTU_TRD_ENV` | 富途交易环境（SIMULATE/REAL） | `SIMULATE` | - |
-| `FUTU_TRADE_ACC_ID` | 富途交易账号 ID | - | - |
-| `FUTU_TRADE_ACC_INDEX` | 富途账号索引 | `0` | - |
-| `FUTU_TRADE_PASSWORD` | 富途交易密码（明文） | - | - |
-| `FUTU_TRADE_PASSWORD_MD5` | 富途交易密码（MD5） | - | - |
+| `FUTU_WEBSOCKET_PORT` | 富途 OpenD WebSocket 端口 | `33333` | - |
+| `FUTU_WEBSOCKET_KEY` | 富途 OpenD WebSocket Key | - | - |
+| `FUTU_TRADE_PASSWORD` | 富途交易密码 | - | - |
 | `FUTU_AUTO_UNLOCK` | 是否自动解锁交易 | `true` | - |
-| `FUTU_FALLBACK_TO_PLAN_B` | 方案A失败时降级到方案B | `true` | - |
-| `FUTU_ORDER_PRICE_SLIPPAGE_PCT` | 方案A下单价格滑点比例 | `0.01` | - |
+| `LONGPORT_APP_KEY` | 长桥 App Key | - | ⚠️长桥 |
+| `LONGPORT_APP_SECRET` | 长桥 App Secret | - | ⚠️长桥 |
+| `LONGPORT_ACCESS_TOKEN` | 长桥 Access Token | - | ⚠️长桥 |
+| `LONGBRIDGE_ORDER_MODE` | 长桥下单模式（A/B/C） | `B` | - |
+| `MCP_SERVER_PORT` | MCP 工具服务器端口 | 不启动 | - |
+| `PROMPT_DIR` | 自定义 Prompt 目录 | `./prompts` | - |
 | `PORT` | API 服务端口 | `3000` | - |
 | `LOG_LEVEL` | 日志级别 | `info` | - |
 
-**下单模式说明**：
-- `A` = 全自动下单（需富途交易级 API 权限）
-- `B` = 深链接跳转（MVP 默认，无需特殊权限）
+**下单模式说明（富途 / 长桥通用）**：
+- `A` = 全自动下单（需交易级 API 权限）
+- `B` = 深链接跳转（默认，无需特殊权限）
 - `C` = 纯推送通知（仅提示，不执行）
-- `A` 模式需安装 `futu-api` 并配置交易参数（见 `.env.example`）
 
 ## 📝 常用命令
 
@@ -531,13 +585,23 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 - [x] 端到端 MCP 管道验证（四市场 fetch → AI 分析 → Discord ✅）
 
 ✅ **Phase 3: Agent 兼容 + 自动化**
-- [x] MCP 工具服务器（`src/mcp/server.ts`，10 个工具，POST /tools/:name）
+- [x] MCP 工具服务器（`src/mcp/server.ts`，11 个工具，POST /tools/:name）
+- [x] `get_broker_balance` 工具：Agent 可直接查询 futu / longbridge 余额
+- [x] `get_positions` / `get_account` 支持 `broker` 参数（futu / longbridge）
 - [x] US Skill 服务器 / A 股 MCP 服务器（独立外部适配器脚本）
 - [x] GitHub Actions 定时 workflow（每 2 小时，四市场全量管道）
 
+✅ **Phase 4: 多券商支持**
+- [x] 长桥 LongBridge SDK 集成（`longport` npm 包）
+- [x] 长桥持仓/余额查询（`src/services/longbridge/position.ts`）
+- [x] 长桥下单/撤单（`src/services/longbridge/order.ts`，A/B/C 三模式）
+- [x] `scripts/query-longbridge-balance.ts` — 余额查询脚本
+- [x] `scripts/query-futu-balance.ts` — 富途余额查询脚本（含 UnlockTrade）
+
 ### 下一步方向 📋
+- [ ] 长桥 API 凭证接入（申请 App Key/Secret/Token）
+- [ ] 富途真实账户 API 权限申请（accStatus 0 才能查余额）
 - [ ] 增加单元测试覆盖率
-- [ ] 性能优化 / 成本优化
 - [ ] Telegram 备用推送
 - [ ] Web 管理后台
 
