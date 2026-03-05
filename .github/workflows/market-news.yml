@@ -2,8 +2,10 @@ name: Market News → AI Analysis → Discord
 
 on:
   schedule:
-    # 每 2 小时运行一次（UTC），对应北京时间 2/4/6/8/10/12/14/16/18/20/22/0 点
-    - cron: '0 */2 * * *'
+    # 每天 4 次，覆盖主要交易时段（UTC 时间）
+    # 对应北京时间：02:00, 08:00, 14:00, 22:00
+    # 覆盖：A股开盘前、港股午盘、美股开盘前、美股收盘后
+    - cron: '0 18,0,6,14 * * *'
   workflow_dispatch:   # 支持手动触发
 
 jobs:
@@ -21,25 +23,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # cache: 'npm' — 移除缓存，因为 package-lock.json 未提交
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      # ── 3. 启动外部 adapter 服务器（US Skill + A MCP）─────────────────────────
-      - name: Start external adapter servers
+      # ── 3. 启动所有 Skill 服务器（US/A/HK/BTC）────────────────────────────────
+      - name: Start all Skill servers
         run: |
-          npx ts-node scripts/skill-us-server.ts > /tmp/skill-us.log 2>&1 &
-          npx ts-node scripts/mcp-a-server.ts    > /tmp/mcp-a.log    2>&1 &
+          npx ts-node scripts/skill-us-server.ts  > /tmp/skill-us.log  2>&1 &
+          npx ts-node scripts/skill-a-server.ts   > /tmp/skill-a.log   2>&1 &
+          npx ts-node scripts/skill-hk-server.ts  > /tmp/skill-hk.log  2>&1 &
+          npx ts-node scripts/skill-btc-server.ts > /tmp/skill-btc.log 2>&1 &
           echo "等待服务器启动..."
-          sleep 12
+          sleep 15
           curl -sf http://localhost:3101/health && echo "✅ skill-us-server ready" \
             || (echo "❌ skill-us-server failed"; cat /tmp/skill-us.log; exit 1)
-          curl -sf http://localhost:3102/health && echo "✅ mcp-a-server ready" \
-            || (echo "❌ mcp-a-server failed"; cat /tmp/mcp-a.log; exit 1)
+          curl -sf http://localhost:3102/health && echo "✅ skill-a-server ready" \
+            || (echo "❌ skill-a-server failed"; cat /tmp/skill-a.log; exit 1)
+          curl -sf http://localhost:3103/health && echo "✅ skill-hk-server ready" \
+            || (echo "❌ skill-hk-server failed"; cat /tmp/skill-hk.log; exit 1)
+          curl -sf http://localhost:3104/health && echo "✅ skill-btc-server ready" \
+            || (echo "❌ skill-btc-server failed"; cat /tmp/skill-btc.log; exit 1)
         env:
           SKILL_US_PORT: '3101'
-          MCP_A_PORT: '3102'
+          SKILL_A_PORT: '3102'
+          SKILL_HK_PORT: '3103'
+          SKILL_BTC_PORT: '3104'
 
       # ── 4. 四市场全量管道：fetch → AI 分析 → Discord ─────────────────────────
       - name: Run pipeline — all markets
@@ -57,11 +67,13 @@ jobs:
           # ── 可选 API Key（留空自动降级免费源）──────────────────────────────────
           ALPHA_VANTAGE_API_KEY: ''
           COINGECKO_API_KEY:   ${{ secrets.COINGECKO_API_KEY }}
-          # ── 外部 adapter 路由（指向当前 job 内启动的服务器）────────────────────
+          # ── 外部 Skill adapter 路由（指向当前 job 内启动的服务器）──────────────
           NEWS_ADAPTERS: >-
             [
               {"name":"us-skill","type":"skill","config":{"skillName":"us-stock-news","skillEndpoint":"http://localhost:3101","timeout":30000},"markets":["us"],"priority":5,"enabled":true},
-              {"name":"a-mcp","type":"mcp","config":{"server":"http://localhost:3102","tool":"fetch_news","timeout":30000},"markets":["a"],"priority":5,"enabled":true}
+              {"name":"a-skill","type":"skill","config":{"skillName":"a-stock-news","skillEndpoint":"http://localhost:3102","timeout":30000},"markets":["a"],"priority":5,"enabled":true},
+              {"name":"hk-skill","type":"skill","config":{"skillName":"hk-stock-news","skillEndpoint":"http://localhost:3103","timeout":30000},"markets":["hk"],"priority":5,"enabled":true},
+              {"name":"btc-skill","type":"skill","config":{"skillName":"btc-news","skillEndpoint":"http://localhost:3104","timeout":30000},"markets":["btc"],"priority":5,"enabled":true}
             ]
           # ── 其他 ─────────────────────────────────────────────────────────────
           JWT_SECRET:          ${{ secrets.JWT_SECRET }}
@@ -75,5 +87,7 @@ jobs:
           name: adapter-logs-${{ github.run_id }}
           path: |
             /tmp/skill-us.log
-            /tmp/mcp-a.log
+            /tmp/skill-a.log
+            /tmp/skill-hk.log
+            /tmp/skill-btc.log
           retention-days: 3

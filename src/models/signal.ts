@@ -18,6 +18,7 @@ export interface SignalDelivery {
   userId: string;
   discordMessageId?: string;
   discordChannelId?: string;
+  feishuMessageId?: string;
   orderToken: string;
   riskCheckResult: RiskCheckResult;
   status: DeliveryStatus;

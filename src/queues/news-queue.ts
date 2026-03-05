@@ -12,12 +12,7 @@ import {
   updateSignalDelivery,
 } from '../db/queries';
 import { analyzeNewsItem, generateSignal, AnalysisResult } from '../services/ai/analyzer';
-import { sendSignalToUser } from '../services/discord/bot';
-import {
-  buildNormalSignalMessage,
-  buildWarningSignalMessage,
-  buildNewsOnlyMessage,
-} from '../services/discord/formatter';
+import { pushSignalToUser, pushNewsOnlyToUser } from '../services/notification/pusher';
 import { checkRisk } from '../services/risk/engine';
 import { getAccountSnapshot } from '../services/futu/position';
 import { Signal, NewsItem } from '../models/signal';
@@ -230,26 +225,24 @@ async function pushSignalToUsers(signal: Signal): Promise<void> {
         continue;
       }
 
-      // 根据风控结果选择消息模板
-      let message: ReturnType<typeof buildNormalSignalMessage> | ReturnType<typeof buildWarningSignalMessage>;
-      if (riskCheck.status === 'warning') {
-        message = buildWarningSignalMessage(signal, delivery, riskCheck);
-      } else {
-        // pass
-        message = buildNormalSignalMessage(signal, delivery, riskCheck, accountSnapshot);
+      // 使用统一推送服务（支持多渠道）
+      const pushResult = await pushSignalToUser(fullUser, signal, delivery, riskCheck, accountSnapshot);
+
+      // 更新推送记录
+      const updateData: any = { status: 'pending' };
+      if (pushResult.discord) {
+        updateData.discordMessageId = pushResult.discord.messageId;
+        updateData.discordChannelId = pushResult.discord.channelId;
+      }
+      if (pushResult.feishu) {
+        updateData.feishuMessageId = pushResult.feishu.messageId;
       }
 
-      const sent = await sendSignalToUser(user.discordUserId, message);
-
-      if (sent) {
-        await updateSignalDelivery(delivery.id, {
-          discordMessageId: sent.messageId,
-          discordChannelId: sent.channelId,
-          status: 'pending',
-        });
-        logger.info(`Signal ${signal.id} sent to user ${user.id}`);
+      if (pushResult.discord || pushResult.feishu) {
+        await updateSignalDelivery(delivery.id, updateData);
+        logger.info(`Signal ${signal.id} sent to user ${user.id} via ${Object.keys(pushResult).join(', ')}`);
       } else {
-        logger.error(`Failed to send signal ${signal.id} to user ${user.id}`);
+        logger.error(`Failed to send signal ${signal.id} to user ${user.id} on any channel`);
       }
     } catch (error) {
       logger.error(`Error pushing signal to user ${user.id}:`, error);
@@ -266,11 +259,12 @@ async function pushNewsOnlyToUsers(newsItem: NewsItem, analysis: AnalysisResult)
     return;
   }
 
-  const message = buildNewsOnlyMessage(newsItem, analysis);
-
   for (const user of users) {
     try {
-      await sendSignalToUser(user.discordUserId, message);
+      const fullUser = await getUserById(user.id);
+      if (!fullUser) continue;
+
+      await pushNewsOnlyToUser(fullUser, newsItem, analysis);
     } catch (error) {
       logger.error(`Error sending news-only to user ${user.id}:`, error);
     }

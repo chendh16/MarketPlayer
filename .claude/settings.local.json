@@ -35,7 +35,11 @@
       "Bash(redis-cli KEYS:*)",
       "Bash(redis-cli:*)",
       "Bash(pgrep:*)",
-      "Bash(wait 65828:*)"
+      "Bash(wait 65828:*)",
+      "WebFetch(domain:www.thestreet.com)",
+      "Bash(gh run:*)",
+      "Bash(npm run:*)",
+      "Bash(openclaw:*)"
     ]
   }
 }

@@ -4,6 +4,7 @@ import { query, queryOne } from '../../db/postgres';
 import { getUserByDiscordId, createUser, getManualPositions } from '../../db/queries';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
+import { handleFeishuEvent } from '../../services/feishu/handler';
 
 const router = express.Router();
 
@@ -39,6 +40,26 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 // 健康检查
 router.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 飞书事件回调
+router.post('/feishu/webhook', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // 验证 token（可选，根据飞书配置）
+    if (config.FEISHU_VERIFICATION_TOKEN) {
+      const token = req.body?.header?.token;
+      if (token !== config.FEISHU_VERIFICATION_TOKEN) {
+        res.status(401).json({ error: 'Invalid verification token' });
+        return;
+      }
+    }
+
+    const result = await handleFeishuEvent(req.body);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error handling Feishu webhook:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // 注册用户（Discord Bot 内部调用，需 admin token）

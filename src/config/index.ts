@@ -16,6 +16,12 @@ const configSchema = z.object({
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string().optional(),
 
+  // 飞书 Feishu/Lark
+  FEISHU_APP_ID: z.string().optional(),
+  FEISHU_APP_SECRET: z.string().optional(),
+  FEISHU_ENCRYPT_KEY: z.string().optional(),
+  FEISHU_VERIFICATION_TOKEN: z.string().optional(),
+
   // AI 配置（可插拔）
   AI_PROVIDER: z.enum(['anthropic', 'openai', 'azure', 'custom', 'zhipu']).default('anthropic'),
   AI_API_KEY: z.string().min(1),

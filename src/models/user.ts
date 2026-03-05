@@ -2,6 +2,10 @@ export interface User {
   id: string;
   discordUserId: string;
   discordUsername: string;
+  feishuOpenId?: string;
+  feishuUserId?: string;
+  feishuUsername?: string;
+  notificationChannels: ('discord' | 'feishu')[];
   riskPreference: 'conservative' | 'balanced' | 'aggressive';
   customSinglePositionLimit?: number;
   customTotalPositionLimit?: number;

@@ -62,9 +62,11 @@ graph LR
 
 ### AI & 外部服务
 - **AI 模型**: 可插拔架构，支持 Anthropic Claude、OpenAI、Azure、自定义 API
-- **推送渠道**: Discord.js v14 (主渠道) + Telegram (备用)
+- **推送渠道**: Discord.js v14 (主渠道) + 飞书 Feishu/Lark + Telegram (备用)
 - **券商对接**: 富途 (futu-api + OpenD) · 长桥 LongBridge (longport SDK)
 - **资讯获取**: 可插拔架构，支持 API、Skill、MCP 等多种方式
+  - **Skill 服务器**: 统一协议的独立资讯服务（US/A/HK/BTC 四市场全覆盖）
+  - **内置源**: Yahoo Finance、新浪财经、东方财富、CoinGecko 等
 - **Agent 调用**: MCP 工具服务器，支持 AI Agent（如 Claude Code）按需编排任意模块
 
 ### 基础设施
@@ -204,7 +206,7 @@ pm2 logs market-player
 
 配置完成后可在 **Actions → Market News → Run workflow** 手动触发验证。
 
-> Workflow 会在同一 job 内自动启动 US Skill 服务器（Yahoo Finance RSS）和 A 股 MCP 服务器（新浪财经），无需额外配置外部服务。
+> Workflow 会在同一 job 内自动启动所有 Skill 服务器（US/A/HK/BTC），使用统一的 Skill 协议获取各市场资讯，无需额外配置外部服务。
 
 ## 📁 项目结构
 
@@ -288,6 +290,9 @@ MarketPlayer/
 
 - **多市场监控**：美股、港股、A股、BTC 全覆盖
 - **可插拔数据源**：支持 API、Skill、MCP 等多种方式获取资讯
+  - 统一的 Skill 服务器架构（US/A/HK/BTC 四市场）
+  - 优先级配置：外部 Skill > 内置源
+  - 自动降级和容错机制
 - **定时抓取**：每5分钟自动抓取最新资讯
 - **智能预筛选**：规则过滤减少 30-40% 无效 AI 调用
 - **AI 深度分析**：支持多种 AI 提供商（Anthropic、OpenAI、Azure、自定义）
@@ -322,7 +327,29 @@ MarketPlayer/
   - 🔶 **富途 (Futu)**：方案A全自动 / 方案B深链接 / 方案C纯通知
   - 🔷 **长桥 (LongBridge)**：方案A全自动 / 方案B深链接 / 方案C纯通知
 
-### 5. 🤖 MCP 工具服务器（Agent 调用层）
+### 5. 🎯 Skill 服务器（资讯获取层）
+
+MarketPlayer 使用统一的 Skill 协议获取各市场资讯，支持独立部署和扩展。
+
+```bash
+# 启动所有 Skill 服务器（推荐）
+npx ts-node scripts/start-all-skills.ts
+
+# 或单独启动
+npx ts-node scripts/skill-us-server.ts   # 美股 :3101
+npx ts-node scripts/skill-a-server.ts    # A股 :3102
+npx ts-node scripts/skill-hk-server.ts   # 港股 :3103
+npx ts-node scripts/skill-btc-server.ts  # BTC :3104
+
+# 测试 Skill 服务器
+npx ts-node scripts/test-skills.ts
+```
+
+详细配置请参考：
+- [SKILL_SERVERS_GUIDE.md](SKILL_SERVERS_GUIDE.md) - Skill 服务器部署指南
+- [SKILL_CONFIG_EXAMPLES.md](SKILL_CONFIG_EXAMPLES.md) - 配置示例（Docker/K8s/PM2）
+
+### 6. 🤖 MCP 工具服务器（Agent 调用层）
 
 供 AI Agent（Claude Code / 自定义 Agent）按需调用任意模块：
 
@@ -404,6 +431,7 @@ npm run lint             # 代码检查
 # 工具
 npm run generate-keys    # 生成加密密钥
 npm run cost-report      # 查看 AI 成本报告
+npm run test:openclaw    # 测试 OpenClaw 集成
 
 # 部署
 docker-compose up -d     # 启动所有服务（Docker）
@@ -423,6 +451,9 @@ pm2 stop market-player   # 停止服务
 | [INSTALLATION.md](INSTALLATION.md) | 完整安装指南 |
 | [AI_PROVIDER_GUIDE.md](AI_PROVIDER_GUIDE.md) | AI 提供商配置指南 |
 | [NEWS_ADAPTER_GUIDE.md](NEWS_ADAPTER_GUIDE.md) | 资讯获取架构指南 |
+| [OPENCLAW_GUIDE.md](OPENCLAW_GUIDE.md) | OpenClaw/AI Agent 集成指南 |
+| [OPENCLAW_QUICK_REFERENCE.md](OPENCLAW_QUICK_REFERENCE.md) | OpenClaw 快速参考卡 |
+| [OPENCLAW_CHECKLIST.md](OPENCLAW_CHECKLIST.md) | OpenClaw 兼容性检查清单 |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | 项目状态报告 |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | 开发指南 |
 | [dev-docs/00-INDEX.md](dev-docs/00-INDEX.md) | 文档索引 |
@@ -433,6 +464,7 @@ pm2 stop market-player   # 停止服务
 | [dev-docs/05-DISCORD-BOT.md](dev-docs/05-DISCORD-BOT.md) | Discord Bot |
 | [dev-docs/06-ORDER-EXECUTION.md](dev-docs/06-ORDER-EXECUTION.md) | 订单执行 |
 | [dev-docs/10-ENV-CONFIG.md](dev-docs/10-ENV-CONFIG.md) | 环境配置 |
+| [dev-docs/11-OPENCLAW-SETUP.md](dev-docs/11-OPENCLAW-SETUP.md) | OpenClaw 开发者设置 |
 
 ## 🔒 安全注意事项
 
@@ -568,6 +600,8 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 
 ✅ **Phase 1: 核心流程**
 - [x] 资讯获取可插拔架构（API / Skill / MCP 外部源）
+- [x] 统一 Skill 服务器架构（US/A/HK/BTC 四市场全覆盖）
+- [x] Skill 服务器统一启动脚本和测试工具
 - [x] AI 分析可插拔架构（Anthropic / OpenAI / Azure / 自定义）
 - [x] Prompt 可配置（`prompts/*.md` 无需改代码即可调整 AI 行为）
 - [x] 规则预筛选
@@ -582,13 +616,13 @@ docker exec -it marketplayer-redis-1 redis-cli ping
 - [x] 港股（Yahoo Finance RSS，无需 API key）
 - [x] A 股（新浪财经滚动新闻，无需 API key）
 - [x] BTC（CoinGecko + CoinDesk RSS 备用）
-- [x] 端到端 MCP 管道验证（四市场 fetch → AI 分析 → Discord ✅）
+- [x] 端到端 Skill 管道验证（四市场 fetch → AI 分析 → Discord ✅）
 
 ✅ **Phase 3: Agent 兼容 + 自动化**
 - [x] MCP 工具服务器（`src/mcp/server.ts`，11 个工具，POST /tools/:name）
 - [x] `get_broker_balance` 工具：Agent 可直接查询 futu / longbridge 余额
 - [x] `get_positions` / `get_account` 支持 `broker` 参数（futu / longbridge）
-- [x] US Skill 服务器 / A 股 MCP 服务器（独立外部适配器脚本）
+- [x] Skill 服务器（`scripts/skill-*-server.ts`，统一协议，四市场独立部署）
 - [x] GitHub Actions 定时 workflow（每 2 小时，四市场全量管道）
 
 ✅ **Phase 4: 多券商支持**
