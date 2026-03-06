@@ -79,6 +79,8 @@ const configSchema = z.object({
   ALPHA_VANTAGE_API_KEY: z.string().optional(),
   EASTMONEY_API_KEY: z.string().optional(),
   COINGECKO_API_KEY: z.string().optional(),
+  FINNHUB_API_KEY: z.string().optional(),
+  FRED_API_KEY: z.string().optional(),
 
   // 外部 MCP 资讯源（设置后自动注册为 priority=50 的 MCP adapter）
   MCP_NEWS_SERVER: z.preprocess(

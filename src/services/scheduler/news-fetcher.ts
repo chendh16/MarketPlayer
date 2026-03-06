@@ -73,6 +73,11 @@ export async function fetchBTCNewsRaw(): Promise<Partial<NewsItem>[]> {
   return applyPreFilter(result.items, 'btc');
 }
 
+export async function fetchMacroNewsRaw(): Promise<Partial<NewsItem>[]> {
+  const result = await newsService.fetchNews({ market: 'macro' });
+  return applyPreFilter(result.items, 'macro' as any);
+}
+
 // ─── 核心调度函数（写库 + 入队）──────────────────────────────────────────────
 
 async function persistAndQueue(
@@ -134,6 +139,17 @@ export async function runBTCFetch(): Promise<void> {
   }
 }
 
+export async function runMacroFetch(): Promise<void> {
+  try {
+    logger.info('Fetching macro news...');
+    const items = await fetchMacroNewsRaw();
+    await persistAndQueue(items, '', 'macro');
+  } catch (error) {
+    logger.error('runMacroFetch failed:', error);
+    throw error;
+  }
+}
+
 // ─── Cron 注册 ────────────────────────────────────────────────────────────────
 
 export function startUSStockFetcher() {
@@ -164,10 +180,18 @@ export function startBTCFetcher() {
   logger.info('BTC fetcher started');
 }
 
+export function startMacroFetcher() {
+  cron.schedule('*/30 * * * *', async () => {
+    try { await runMacroFetch(); } catch (error) { logger.error('Error in macro fetcher:', error); }
+  });
+  logger.info('Macro news fetcher started');
+}
+
 export function startAllFetchers() {
   startUSStockFetcher();
   startHKStockFetcher();
   startAStockFetcher();
   startBTCFetcher();
+  startMacroFetcher();
   logger.info('All news fetchers started');
 }

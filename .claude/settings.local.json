@@ -39,7 +39,14 @@
       "WebFetch(domain:www.thestreet.com)",
       "Bash(gh run:*)",
       "Bash(npm run:*)",
-      "Bash(openclaw:*)"
+      "Bash(openclaw:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ls node_modules/.bin/tsc 2>/dev/null && node_modules/.bin/tsc --noEmit 2>&1 || echo \"tsc not found in node_modules\")",
+      "Bash(bun install 2>&1 | tail -5)",
+      "Bash(docker compose up -d postgres redis 2>&1)",
+      "Bash(which psql && psql --version; which redis-cli && redis-cli --version; brew services list 2>/dev/null | grep -E \"postgresql|redis\")",
+      "Bash(brew install postgresql@15 redis 2>&1)"
     ]
   }
 }

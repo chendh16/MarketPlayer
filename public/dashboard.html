@@ -88,6 +88,7 @@
         <button id="tabnav-system"      onclick="switchTab('system')"      class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">⚙️ 系统</button>
         <button id="tabnav-deliveries" onclick="switchTab('deliveries')" class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">📨 推送</button>
         <button id="tabnav-users"      onclick="switchTab('users')"      class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">👥 用户</button>
+        <button id="tabnav-macro"      onclick="switchTab('macro')"      class="tab-inactive px-4 py-2 font-medium text-sm cursor-pointer whitespace-nowrap">🌐 宏观</button>
       </nav>
     </div>
   </div>
@@ -204,7 +205,8 @@
           <button id="news-market-us"  onclick="window._newsSetMarket('us')"  class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇺🇸 美股</button>
           <button id="news-market-hk"  onclick="window._newsSetMarket('hk')"  class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇭🇰 港股</button>
           <button id="news-market-a"   onclick="window._newsSetMarket('a')"   class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🇨🇳 A股</button>
-          <button id="news-market-btc" onclick="window._newsSetMarket('btc')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">₿ BTC</button>
+          <button id="news-market-btc"   onclick="window._newsSetMarket('btc')"   class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">₿ BTC</button>
+          <button id="news-market-macro" onclick="window._newsSetMarket('macro')" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">🌐 宏观</button>
         </div>
 
         <!-- Table -->
@@ -601,11 +603,163 @@
       </div>
     </div>
 
+    <!-- ═══════════════ TAB: Macro ═══════════════ -->
+    <div id="tab-macro" style="display:none">
+      <div id="macro-panel-root" class="space-y-4">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-4 gap-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <div id="macro-stat-total" class="text-2xl font-bold text-gray-800">--</div>
+            <div class="text-xs text-gray-500 mt-1">宏观资讯</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <div id="macro-stat-fed" class="text-2xl font-bold text-blue-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">美联储</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <div id="macro-stat-ecb" class="text-2xl font-bold text-indigo-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">ECB</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <div id="macro-stat-google" class="text-2xl font-bold text-green-600">--</div>
+            <div class="text-xs text-gray-500 mt-1">宏观聚合</div>
+          </div>
+        </div>
+
+        <!-- Source Filter -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-gray-600">来源：</span>
+          <button id="macro-src-all"     onclick="macroSetSource('all')"            class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-white transition-colors">全部</button>
+          <button id="macro-src-fed"     onclick="macroSetSource('federal_reserve')" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">美联储</button>
+          <button id="macro-src-ecb"     onclick="macroSetSource('ecb')"            class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">ECB</button>
+          <button id="macro-src-imf"     onclick="macroSetSource('imf')"            class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">IMF</button>
+          <button id="macro-src-google"  onclick="macroSetSource('google_news_macro')" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">宏观聚合</button>
+          <div class="ml-auto flex items-center gap-2">
+            <span id="macro-last-refresh" class="text-xs text-gray-400">--</span>
+            <button onclick="window.loadMacroPanel()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors">刷新</button>
+          </div>
+        </div>
+
+        <!-- News list -->
+        <div id="macro-list" class="flex flex-col gap-2">
+          <div class="text-center text-gray-400 py-10 text-sm">加载中...</div>
+        </div>
+
+        <div id="macro-error" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+      </div>
+    </div>
+
   </main>
 
   <script>
     // ══════════════════════════════════════════════════════════════════
-    // 1. Admin token management
+    // Macro panel
+    // ══════════════════════════════════════════════════════════════════
+    (function () {
+      var _macroData = [];
+      var _macroSource = 'all';
+
+      var SOURCE_LABELS = {
+        federal_reserve: { label: 'FED', bg: 'bg-blue-100', text: 'text-blue-700' },
+        ecb:             { label: 'ECB', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+        imf:             { label: 'IMF', bg: 'bg-purple-100', text: 'text-purple-700' },
+        google_news_macro:    { label: 'Macro', bg: 'bg-green-100', text: 'text-green-700' },
+        google_news_economic: { label: 'Econ',  bg: 'bg-teal-100',  text: 'text-teal-700' },
+      };
+
+      function sourceBadge(src) {
+        var s = SOURCE_LABELS[src] || { label: src || '?', bg: 'bg-gray-100', text: 'text-gray-600' };
+        return '<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
+      }
+
+      function fmtTime(iso) {
+        if (!iso) return '--';
+        var d = new Date(iso);
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var dd = String(d.getDate()).padStart(2, '0');
+        var hh = String(d.getHours()).padStart(2, '0');
+        var min = String(d.getMinutes()).padStart(2, '0');
+        return mm + '-' + dd + ' ' + hh + ':' + min;
+      }
+
+      function escHtml(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function renderStats(data) {
+        document.getElementById('macro-stat-total').textContent = data.length;
+        document.getElementById('macro-stat-fed').textContent   = data.filter(function(d){ return d.source === 'federal_reserve'; }).length;
+        document.getElementById('macro-stat-ecb').textContent   = data.filter(function(d){ return d.source === 'ecb'; }).length;
+        document.getElementById('macro-stat-google').textContent = data.filter(function(d){ return (d.source||'').startsWith('google_news'); }).length;
+      }
+
+      function renderList(data) {
+        var filtered = _macroSource === 'all' ? data : data.filter(function(d){ return d.source === _macroSource; });
+        var list = document.getElementById('macro-list');
+        if (!filtered.length) {
+          list.innerHTML = '<div class="text-center text-gray-400 py-10 text-sm">暂无宏观资讯</div>';
+          return;
+        }
+        list.innerHTML = filtered.slice(0, 60).map(function(item) {
+          var url = item.url ? ' href="' + escHtml(item.url) + '" target="_blank" rel="noopener"' : '';
+          var titleEl = item.url
+            ? '<a' + url + ' class="text-sm font-medium text-gray-800 hover:text-indigo-600 hover:underline leading-snug">' + escHtml(item.title) + '</a>'
+            : '<span class="text-sm font-medium text-gray-800 leading-snug">' + escHtml(item.title) + '</span>';
+          var symbols = Array.isArray(item.symbols) && item.symbols.length
+            ? item.symbols.map(function(s){ return '<span class="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded font-mono">' + escHtml(s) + '</span>'; }).join(' ')
+            : '';
+          return '<div class="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">'
+            + '<div class="flex items-start gap-2">'
+            + '<div class="flex-1 min-w-0">'
+            + '<div class="flex items-center gap-2 mb-1 flex-wrap">'
+            + sourceBadge(item.source)
+            + (symbols ? symbols : '')
+            + '<span class="text-xs text-gray-400 ml-auto">' + fmtTime(item.published_at || item.created_at) + '</span>'
+            + '</div>'
+            + titleEl
+            + (item.content ? '<p class="text-xs text-gray-500 mt-1 line-clamp-2">' + escHtml(item.content.slice(0, 200)) + '</p>' : '')
+            + '</div>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+
+      window.macroSetSource = function(src) {
+        _macroSource = src;
+        var btns = ['all','fed','ecb','imf','google'];
+        btns.forEach(function(b) {
+          var el = document.getElementById('macro-src-' + b);
+          if (!el) return;
+          var isSrc = (b === 'all' ? src === 'all' : src === {'fed':'federal_reserve','ecb':'ecb','imf':'imf','google':'google_news_macro'}[b]);
+          el.className = 'px-3 py-1 rounded-full text-xs font-semibold transition-colors '
+            + (isSrc ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200');
+        });
+        renderList(_macroData);
+      };
+
+      window.loadMacroPanel = async function() {
+        var errorEl = document.getElementById('macro-error');
+        if (errorEl) errorEl.classList.add('hidden');
+        try {
+          var data = await window.dashboardFetch('/api/admin/dashboard/news?limit=100');
+          _macroData = (Array.isArray(data) ? data : []).filter(function(d){ return d.market === 'macro'; });
+          renderStats(_macroData);
+          renderList(_macroData);
+          var ts = new Date();
+          var mm = String(ts.getMonth()+1).padStart(2,'0');
+          var dd = String(ts.getDate()).padStart(2,'0');
+          var hh = String(ts.getHours()).padStart(2,'0');
+          var min = String(ts.getMinutes()).padStart(2,'0');
+          document.getElementById('macro-last-refresh').textContent = '刷新于 ' + mm + '-' + dd + ' ' + hh + ':' + min;
+        } catch(err) {
+          if (errorEl) { errorEl.textContent = '加载失败：' + (err.message || '未知错误'); errorEl.classList.remove('hidden'); }
+        }
+      };
+
+      setInterval(function(){ if (document.getElementById('tab-macro').style.display !== 'none') window.loadMacroPanel(); }, 60000);
+    })();
+  </script>
     // ══════════════════════════════════════════════════════════════════
     function getAdminToken() {
       return sessionStorage.getItem('mp_admin_token') || '';
@@ -704,7 +858,7 @@
     // ══════════════════════════════════════════════════════════════════
     // 3. Tab switching
     // ══════════════════════════════════════════════════════════════════
-    var TABS = ['overview', 'news', 'signals', 'orders', 'system', 'deliveries', 'users'];
+    var TABS = ['overview', 'news', 'signals', 'orders', 'system', 'deliveries', 'users', 'macro'];
 
     function switchTab(tabId) {
       TABS.forEach(function (t) {
@@ -726,6 +880,7 @@
         deliveries: window.loadDeliveriesPanel,
         users:      window.loadUsersPanel,
         overview:   loadOverview,
+        macro:      function() { if (window.loadMacroPanel) window.loadMacroPanel(); },
       };
       if (loaders[tabId]) loaders[tabId]();
     }
@@ -882,7 +1037,7 @@
 
     window._newsSetMarket = function (market) {
       _newsMarket = market;
-      var markets = ['all', 'us', 'hk', 'a', 'btc'];
+      var markets = ['all', 'us', 'hk', 'a', 'btc', 'macro'];
       markets.forEach(function (m) {
         var btn = document.getElementById('news-market-' + m);
         if (!btn) return;
@@ -898,6 +1053,34 @@
       _newsExpandedId = _newsExpandedId === id ? null : id;
       renderTable(_newsAllData);
     };
+
+    /* ── Source credibility tier badge ── */
+    var SOURCE_TIERS = {
+      // T1 — Primary wires (green)
+      reuters: 1, ap: 1, bloomberg: 1, federal_reserve: 1, ecb: 1, imf: 1,
+      // T2 — Major financial media (blue)
+      cnbc: 2, bbc: 2, ft: 2, wsj: 2, nyt: 2, finnhub: 2, alpha_vantage: 2,
+      // T3 — Specialist/aggregator (yellow)
+      eastmoney: 3, yahoo_finance_hk: 3, coingecko: 3, cointelegraph: 3,
+      theblock: 3, macro: 3,
+      // T4 — Google News & general aggregation (gray)
+      google_news_us: 4, google_news_hk: 4, google_news_a: 4, google_news_macro: 4,
+      google_news_economic: 4, crypto_extra: 4,
+    };
+    var TIER_STYLE = [
+      '',
+      'bg-emerald-100 text-emerald-700',   // T1
+      'bg-blue-100 text-blue-700',          // T2
+      'bg-amber-100 text-amber-700',        // T3
+      'bg-gray-100 text-gray-500',          // T4
+    ];
+    function sourceTierBadge(source) {
+      if (!source) return '';
+      var key = source.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      var tier = SOURCE_TIERS[key] || 4;
+      var style = TIER_STYLE[tier] || TIER_STYLE[4];
+      return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ' + style + '">T' + tier + '</span>';
+    }
 
     /* ── Render table ── */
     function renderTable(data) {
@@ -927,7 +1110,7 @@
           + '<td class="px-4 py-3 text-gray-700 text-xs">' + symbols + '</td>'
           + '<td class="px-4 py-3 text-gray-800 font-medium">' + escHtml(truncate(item.title, 60)) + '</td>'
           + '<td class="px-4 py-3">' + aiStatusBadge(item.ai_processed) + '</td>'
-          + '<td class="px-4 py-3 text-gray-500 text-xs">' + escHtml(truncate(item.ai_summary, 50)) + '</td>'
+          + '<td class="px-4 py-3 text-gray-500 text-xs">' + sourceTierBadge(item.source) + ' ' + escHtml(truncate(item.ai_summary, 50)) + '</td>'
           + '</tr>';
 
         var expandRow = isExpanded
@@ -971,7 +1154,7 @@
     /* ── Main load function ── */
     window.loadNewsPanel = async function () {
       try {
-        var data = await window.dashboardFetch('/api/admin/dashboard/news?limit=50');
+        var data = await window.dashboardFetch('/api/admin/dashboard/news?limit=100');
         _newsAllData = Array.isArray(data) ? data : [];
         renderStats(_newsAllData);
         renderTable(_newsAllData);

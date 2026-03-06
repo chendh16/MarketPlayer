@@ -77,24 +77,38 @@ export class NewsService {
       };
     }
     
-    // 按优先级排序并尝试获取
-    for (const adapter of adapters) {
-      try {
+    // 并发从所有 adapter 获取，失败的跳过（聚合模式）
+    const results = await Promise.allSettled(
+      adapters.map(adapter => {
         logger.debug(`Fetching news from ${adapter.getName()} for market ${params.market}`);
-        const result = await adapter.fetchNews(params);
-        logger.info(`Fetched ${result.items.length} news items from ${adapter.getName()}`);
-        return result;
-      } catch (error) {
-        logger.error(`Failed to fetch from ${adapter.getName()}:`, error);
-        // 继续尝试下一个适配器
+        return adapter.fetchNews(params);
+      }),
+    );
+
+    // 合并并按 externalId/url/title 去重
+    const seen = new Set<string>();
+    const allItems: any[] = [];
+    const sources: string[] = [];
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.items.length > 0) {
+        sources.push(result.value.source);
+        for (const item of result.value.items) {
+          const key = (item.externalId ?? item.url ?? item.title ?? '') as string;
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            allItems.push(item);
+          }
+        }
+      } else if (result.status === 'rejected') {
+        logger.error('Adapter failed:', result.reason);
       }
     }
-    
-    // 所有适配器都失败
-    logger.error(`All adapters failed for market: ${params.market}`);
+
+    logger.info(`Aggregated ${allItems.length} items from [${sources.join(', ')}] for market ${params.market}`);
     return {
-      items: [],
-      source: 'failed',
+      items: allItems,
+      source: sources.join('+') || 'none',
       fetchedAt: new Date(),
     };
   }
@@ -243,8 +257,101 @@ function getDefaultAdapters(): NewsServiceConfig['adapters'] {
       priority: 100,
       enabled: true,
     },
-  ];
-}
+    // ─── Google News 聚合层（优先级 90，覆盖内置 source，但低于外部 adapter）────
+    {
+      name: 'google-news-us',
+      type: 'custom' as const,
+      config: {
+        name: 'google-news-us',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchUSMarketNewsViaGoogle } = await import('../sources/google-news');
+          const items = await fetchUSMarketNewsViaGoogle();
+          return { items, source: 'google_news_us', fetchedAt: new Date() };
+        },
+      },
+      markets: ['us'],
+      priority: 90,
+      enabled: true,
+    },
+    {
+      name: 'google-news-hk',
+      type: 'custom' as const,
+      config: {
+        name: 'google-news-hk',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchHKMarketNewsViaGoogle } = await import('../sources/google-news');
+          const items = await fetchHKMarketNewsViaGoogle();
+          return { items, source: 'google_news_hk', fetchedAt: new Date() };
+        },
+      },
+      markets: ['hk'],
+      priority: 90,
+      enabled: true,
+    },
+    {
+      name: 'google-news-a',
+      type: 'custom' as const,
+      config: {
+        name: 'google-news-a',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchAStockNewsViaGoogle } = await import('../sources/google-news');
+          const items = await fetchAStockNewsViaGoogle();
+          return { items, source: 'google_news_a', fetchedAt: new Date() };
+        },
+      },
+      markets: ['a'],
+      priority: 90,
+      enabled: true,
+    },
+    // ─── Finnhub（优先级 80，需 FINNHUB_API_KEY）──────────────────────────────
+    {
+      name: 'finnhub-us',
+      type: 'custom' as const,
+      config: {
+        name: 'finnhub-us',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchFinnhubNews } = await import('../sources/finnhub');
+          const items = await fetchFinnhubNews();
+          return { items, source: 'finnhub', fetchedAt: new Date() };
+        },
+      },
+      markets: ['us'],
+      priority: 80,
+      enabled: !!process.env.FINNHUB_API_KEY,
+    },
+    // ─── 加密货币扩展源（Cointelegraph + The Block，优先级 90）────────────────
+    {
+      name: 'crypto-extra',
+      type: 'custom' as const,
+      config: {
+        name: 'crypto-extra',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchCryptoExtraNews } = await import('../sources/crypto-extra');
+          const items = await fetchCryptoExtraNews();
+          return { items, source: 'crypto_extra', fetchedAt: new Date() };
+        },
+      },
+      markets: ['btc'],
+      priority: 90,
+      enabled: true,
+    },
+    // ─── 宏观经济（新市场 'macro'，美联储/ECB/IMF，优先级 100）─────────────────
+    {
+      name: 'macro-builtin',
+      type: 'custom' as const,
+      config: {
+        name: 'macro-builtin',
+        fetchFunction: async (_params: NewsFetchParams): Promise<NewsResult> => {
+          const { fetchMacroNews } = await import('../sources/macro');
+          const items = await fetchMacroNews();
+          return { items, source: 'macro', fetchedAt: new Date() };
+        },
+      },
+      markets: ['macro'],
+      priority: 100,
+      enabled: true,
+    },
+  ];}
 
 
 
