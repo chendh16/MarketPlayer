@@ -203,8 +203,8 @@ function generateHTML(market: any[], aData: any[], hkData: any[], usData: any[],
 }
 
 // 发送每日报告
-export async function sendDailyReport(type: 'morning' | 'afternoon' = 'morning'): Promise<void> {
-  logger.info(`[DailyReport] 开始生成${type === 'morning' ? '早报' : '晚报'}...`);
+export async function sendDailyReport(type: 'morning' | 'afternoon' | 'night' = 'morning'): Promise<void> {
+  logger.info(`[DailyReport] 开始生成${type === 'morning' ? '早报' : type === 'afternoon' ? '晚报' : '夜间简报'}...`);
 
   // 获取金融数据
   const [market, aData, hkData, usData] = await Promise.all([
@@ -232,6 +232,8 @@ export async function sendDailyReport(type: 'morning' | 'afternoon' = 'morning')
   
   const subject = type === 'morning' 
     ? '📈 每日综合报告 (早) - ' + new Date().toLocaleDateString('zh-CN')
+    : type === 'night'
+    ? '🌙 每日夜间简报 - ' + new Date().toLocaleDateString('zh-CN')
     : '📈 每日综合报告 (晚) - ' + new Date().toLocaleDateString('zh-CN');
 
   // 发送邮件
