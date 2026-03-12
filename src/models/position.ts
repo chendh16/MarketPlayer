@@ -1,6 +1,7 @@
+import { TradingMarket } from '../types/market';
 export interface Position {
   symbol: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   quantity: number;
   marketValue: number;      // 当前市值
   positionPct: number;      // 占总资产百分比

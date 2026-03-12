@@ -1,3 +1,4 @@
+import { TradingMarket } from '../../types/market';
 import { checkRisk } from '../../services/risk/engine';
 import { getAccountSnapshot } from '../../services/futu/position';
 import { getUserById, getManualPositions } from '../../db/queries';
@@ -9,7 +10,7 @@ import { logger } from '../../utils/logger';
 export async function check_risk(params: {
   userId: string;
   symbol: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   direction: 'long' | 'short';
   positionPct: number;
   broker?: 'futu' | 'longbridge';

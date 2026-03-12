@@ -2,12 +2,13 @@ import { newsService } from '../../services/news/adapters/service';
 import { runUSStockFetch, runHKStockFetch, runAStockFetch, runBTCFetch } from '../../services/scheduler/news-fetcher';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
+import { TradingMarket } from '../../types/market';
 
 /**
  * fetch_news — 通过 newsService 拉取指定市场资讯（不写库/不入队）
  */
 export async function fetch_news(params: {
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   symbols?: string[];
   limit?: number;
   since?: string;
@@ -36,7 +37,7 @@ export async function fetch_news(params: {
  * process_pipeline — 完整资讯处理流程：抓取→过滤→写库→入队
  * 等同于 cron 触发一次，可由 Agent 手动调用
  */
-export async function process_pipeline(params: { market: 'us' | 'hk' | 'a' | 'btc' }) {
+export async function process_pipeline(params: { market: TradingMarket }) {
   const { market } = params;
   logger.info(`[MCP] process_pipeline market=${market}`);
 

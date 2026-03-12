@@ -21,6 +21,7 @@ import { check_risk } from './tools/risk';
 import { get_positions, get_account, get_broker_balance } from './tools/position';
 import { get_deliveries, get_delivery, confirm_order } from './tools/order';
 import { execute_longbridge_order, cancel_longbridge_order } from './tools/execute-order';
+import { fetch_realtime_quote, fetch_kline, fetch_batch_quote, search_stock } from './tools/stock';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -44,6 +45,11 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   // 长桥下单
   execute_longbridge_order,
   cancel_longbridge_order,
+  // A股行情（东方财富）
+  fetch_realtime_quote,
+  fetch_kline,
+  fetch_batch_quote,
+  search_stock,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────

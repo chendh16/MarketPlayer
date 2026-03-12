@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
+import { TradingMarket } from '../types/market';
 
-export function isMarketOpen(market: 'us' | 'hk' | 'a' | 'btc'): boolean {
+export function isMarketOpen(market: TradingMarket): boolean {
   if (market === 'btc') return true;
 
   const now = DateTime.now().setZone('Asia/Shanghai');

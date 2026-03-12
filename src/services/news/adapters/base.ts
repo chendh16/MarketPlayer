@@ -4,6 +4,7 @@
  */
 
 import { NewsItem } from '../../../models/signal';
+import { Market } from '../../../types/market';
 import { callMCP, MCPCallParams } from './mcp';
 
 /**
@@ -45,7 +46,7 @@ export interface NewsAdapter {
  * 资讯获取参数
  */
 export interface NewsFetchParams {
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: Market;
   symbols?: string[];
   limit?: number;
   since?: Date;

@@ -22,6 +22,14 @@ const configSchema = z.object({
   FEISHU_ENCRYPT_KEY: z.string().optional(),
   FEISHU_VERIFICATION_TOKEN: z.string().optional(),
 
+  // Email / SMTP
+  EMAIL_SMTP_HOST: z.string().optional(),
+  EMAIL_SMTP_PORT: z.coerce.number().default(465),
+  EMAIL_SMTP_SECURE: z.preprocess(v => v === 'true', z.boolean()).default(true),
+  EMAIL_SMTP_USER: z.string().optional(),
+  EMAIL_SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+
   // AI 配置（可插拔）
   AI_PROVIDER: z.enum(['anthropic', 'openai', 'azure', 'custom', 'zhipu']).default('anthropic'),
   AI_API_KEY: z.string().min(1),
@@ -29,7 +37,7 @@ const configSchema = z.object({
     (v) => (v === '' || v === null ? undefined : v),
     z.string().url().optional()
   ), // 自定义 API 地址
-  AI_MODEL: z.string().default('claude-sonnet-4-20250514'),
+  AI_MODEL: z.string().default('claude-sonnet-4-5'),
   AI_DAILY_CALL_LIMIT: z.coerce.number().default(500),
   AI_HOURLY_COST_ALERT_USD: z.coerce.number().default(5.0),
   AI_HOURLY_COST_BRAKE_USD: z.coerce.number().default(10.0),

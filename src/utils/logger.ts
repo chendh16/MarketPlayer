@@ -14,7 +14,18 @@ const consoleFormat = winston.format.combine(
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
-      msg += ` ${JSON.stringify(meta)}`;
+      try {
+        const seen = new WeakSet();
+        msg += ` ${JSON.stringify(meta, (_k, v) => {
+          if (typeof v === 'object' && v !== null) {
+            if (seen.has(v)) return '[Circular]';
+            seen.add(v);
+          }
+          return v;
+        })}`;
+      } catch {
+        msg += ` [unserializable meta]`;
+      }
     }
     return msg;
   })

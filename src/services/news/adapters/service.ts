@@ -210,7 +210,7 @@ function getDefaultAdapters(): NewsServiceConfig['adapters'] {
       },
       markets: ['us'],
       priority: 100,
-      enabled: !!process.env.ALPHA_VANTAGE_API_KEY,
+      enabled: true,
     },
     {
       name: 'hk-stock-builtin',

@@ -12,7 +12,9 @@ const router = express.Router();
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
+  logger.debug(`[requireAuth] Authorization header: ${header ? header.substring(0, 30) + '...' : 'MISSING'}`);
   if (!header?.startsWith('Bearer ')) {
+    logger.warn('[requireAuth] Missing or invalid Authorization header');
     res.status(401).json({ error: 'Missing or invalid Authorization header' });
     return;
   }
@@ -20,8 +22,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
     const token = header.slice(7);
     const payload = jwt.verify(token, config.JWT_SECRET) as { userId: string; role?: string };
     (req as any).auth = payload;
+    logger.debug(`[requireAuth] Token verified for user: ${payload.userId}`);
     next();
-  } catch {
+  } catch (err) {
+    logger.warn(`[requireAuth] Token verification failed: ${err}`);
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
@@ -240,7 +244,7 @@ router.get('/admin/dashboard/stats', requireAuth, requireAdmin, async (_req: Req
         SELECT
           COUNT(*)::int AS total,
           COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS today,
-          ROUND(AVG(confidence)::numeric, 1) AS avg_confidence
+          COALESCE(ROUND(AVG(confidence), 1), 0) AS avg_confidence
         FROM signals
       `),
       queryOne(`
@@ -271,7 +275,7 @@ router.get('/admin/dashboard/stats', requireAuth, requireAdmin, async (_req: Req
       signals: {
         total: signals?.total ?? 0,
         today: signals?.today ?? 0,
-        avgConfidence: signals?.avg_confidence ?? 0,
+        avgConfidence: Number(signals?.avgConfidence) || 0,
       },
       orders: {
         total: orders?.total ?? 0,
@@ -318,17 +322,20 @@ router.get('/admin/dashboard/signals', requireAuth, requireAdmin, async (req: Re
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '50')), 100);
     const rows = await query(`
-      SELECT
-        s.id, s.symbol, s.market, s.direction,
-        s.confidence, s.suggested_position_pct, s.reasoning,
-        s.expires_at, s.created_at,
-        COUNT(sd.id)::int AS delivery_count,
-        COUNT(sd.id) FILTER (WHERE sd.status = 'pending')::int AS pending_count,
-        COUNT(sd.id) FILTER (WHERE sd.status = 'completed')::int AS completed_count
-      FROM signals s
-      LEFT JOIN signal_deliveries sd ON s.id = sd.signal_id
-      GROUP BY s.id
-      ORDER BY s.created_at DESC
+      SELECT * FROM (
+        SELECT DISTINCT ON (s.symbol, s.market)
+          s.id, s.symbol, s.market, s.direction,
+          s.confidence, s.suggested_position_pct, s.reasoning,
+          s.expires_at, s.created_at,
+          COUNT(sd.id)::int AS delivery_count,
+          COUNT(sd.id) FILTER (WHERE sd.status = 'pending')::int AS pending_count,
+          COUNT(sd.id) FILTER (WHERE sd.status = 'completed')::int AS completed_count
+        FROM signals s
+        LEFT JOIN signal_deliveries sd ON s.id = sd.signal_id
+        GROUP BY s.id
+        ORDER BY s.symbol, s.market, s.created_at DESC
+      ) deduped
+      ORDER BY created_at DESC
       LIMIT $1
     `, [limit]);
 

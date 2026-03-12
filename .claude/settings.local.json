@@ -46,7 +46,25 @@
       "Bash(bun install 2>&1 | tail -5)",
       "Bash(docker compose up -d postgres redis 2>&1)",
       "Bash(which psql && psql --version; which redis-cli && redis-cli --version; brew services list 2>/dev/null | grep -E \"postgresql|redis\")",
-      "Bash(brew install postgresql@15 redis 2>&1)"
+      "Bash(brew install postgresql@15 redis 2>&1)",
+      "Bash(PGPASSWORD=password psql:*)",
+      "Bash(cat:*)",
+      "Bash(tail:*)",
+      "Bash(do:*)",
+      "Bash(open:*)",
+      "Bash(osascript:*)",
+      "Bash(__NEW_LINE_5ad489cadcf61119__ echo:*)",
+      "Bash(npm list:*)",
+      "Bash(/tmp/quick_fix.txt:*)",
+      "Bash(__NEW_LINE_9063baff435e1a77__ echo:*)",
+      "Bash(grep:*)",
+      "Bash(git stash:*)",
+      "Bash(ps:*)",
+      "Bash(pm2:*)",
+      "Bash(cp:*)",
+      "Bash(sed:*)",
+      "Bash(brew services:*)",
+      "Read(//Users/zhengzefeng/.claude/**)"
     ]
   }
 }

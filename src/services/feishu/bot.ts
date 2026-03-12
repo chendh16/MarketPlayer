@@ -25,7 +25,7 @@ async function getTenantAccessToken(): Promise<string> {
       signal: AbortSignal.timeout(10000),
     });
 
-    const data: FeishuAccessTokenResponse = await response.json();
+    const data = await response.json() as FeishuAccessTokenResponse;
 
     if (data.code !== 0 || !data.tenant_access_token) {
       throw new Error(`Failed to get access token: ${data.msg}`);
@@ -79,7 +79,7 @@ export async function sendMessageToUser(
       signal: AbortSignal.timeout(10000),
     });
 
-    const data: FeishuMessageResponse = await response.json();
+    const data = await response.json() as FeishuMessageResponse;
 
     if (data.code !== 0 || !data.data?.message_id) {
       logger.error(`Failed to send Feishu message to ${openId}: ${data.msg}`);
@@ -115,7 +115,7 @@ export async function updateMessage(messageId: string, card: any): Promise<void>
       signal: AbortSignal.timeout(10000),
     });
 
-    const data: FeishuMessageResponse = await response.json();
+    const data = await response.json() as FeishuMessageResponse;
 
     if (data.code !== 0) {
       logger.error(`Failed to update Feishu message ${messageId}: ${data.msg}`);

@@ -1,3 +1,4 @@
+import { TradingMarket } from '../types/market';
 export interface User {
   id: string;
   discordUserId: string;
@@ -5,7 +6,8 @@ export interface User {
   feishuOpenId?: string;
   feishuUserId?: string;
   feishuUsername?: string;
-  notificationChannels: ('discord' | 'feishu')[];
+  email?: string;
+  notificationChannels: ('discord' | 'feishu' | 'email')[];
   riskPreference: 'conservative' | 'balanced' | 'aggressive';
   customSinglePositionLimit?: number;
   customTotalPositionLimit?: number;
@@ -55,7 +57,7 @@ export interface ManualPosition {
   id: string;
   userId: string;
   symbol: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   quantity: number;
   avgCost?: number;
   updatedAt: Date;

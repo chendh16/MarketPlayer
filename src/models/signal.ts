@@ -1,8 +1,10 @@
+import { TradingMarket, Market } from '../types/market';
+
 export interface Signal {
   id: string;
   newsItemId?: string;
   symbol: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   direction: 'long' | 'short';
   confidence: number;           // 0-100
   suggestedPositionPct: number;
@@ -64,7 +66,7 @@ export interface NewsItem {
   title: string;
   content?: string;
   url?: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: Market;
   symbols?: string[];
   triggerType?: string;
   aiSummary?: string;

@@ -1,28 +1,35 @@
 import cron from 'node-cron';
 import { preFilter, markAsProcessed } from '../news/filter';
 import { createNewsItem } from '../../db/queries';
-import { newsQueue } from '../../queues/news-queue';
+import { enqueueNewsItem } from '../../queues/news-queue';
 import { newsService } from '../news/adapters/service';
 import { logger } from '../../utils/logger';
 import { isMarketOpen } from '../../utils/market-hours';
 import { config } from '../../config';
 import { NewsItem } from '../../models/signal';
+import { TradingMarket, Market } from '../../types/market';
 
 // ─── 共用预过滤辅助 ──────────────────────────────────────────────────────────
 
 async function applyPreFilter(
   items: Partial<NewsItem>[],
-  market: string,
+  market: Market,
 ): Promise<Partial<NewsItem>[]> {
   const filtered: Partial<NewsItem>[] = [];
   for (const item of items) {
+    // Only apply preFilter for trading markets
+    if (market === 'macro') {
+      filtered.push(item);
+      continue;
+    }
     const { pass, reason } = await preFilter({
       symbol: item.symbols?.[0] || '',
-      market: market as 'us' | 'hk' | 'a' | 'btc',
+      market: market as TradingMarket,
       triggerType: item.triggerType,
       changePercent: 0,
     });
     if (pass) {
+      await markAsProcessed(item.symbols?.[0] || '', market as TradingMarket);
       filtered.push(item);
     } else {
       logger.debug(`Filtered out: ${item.title} (${reason})`);
@@ -75,10 +82,26 @@ export async function fetchBTCNewsRaw(): Promise<Partial<NewsItem>[]> {
 
 export async function fetchMacroNewsRaw(): Promise<Partial<NewsItem>[]> {
   const result = await newsService.fetchNews({ market: 'macro' });
-  return applyPreFilter(result.items, 'macro' as any);
+  return applyPreFilter(result.items, 'macro');
 }
 
-// ─── 核心调度函数（写库 + 入队）──────────────────────────────────────────────
+// ─── 有界并发辅助（替代 Promise.all 防止 API 超频）──────────────────────────
+
+async function pLimit<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+  async function worker(): Promise<void> {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
+// ─── 核心调度函数（写库 + 幂等入队）──────────────────────────────────────────
 
 async function persistAndQueue(
   items: Partial<NewsItem>[],
@@ -88,9 +111,7 @@ async function persistAndQueue(
   for (const item of items) {
     const created = await createNewsItem(item);
     if (created) {
-      await markAsProcessed(item.symbols?.[0] || defaultSymbol, market);
-      await newsQueue.add('process-news', { newsItemId: created.id });
-      logger.info(`Queued news item: ${created.id}`);
+      await enqueueNewsItem(created.id); // 幂等：1小时内重复 ID 自动跳过
     }
   }
 }
@@ -194,4 +215,17 @@ export function startAllFetchers() {
   startBTCFetcher();
   startMacroFetcher();
   logger.info('All news fetchers started');
+}
+
+// ─── 多市场并发拉取（供 MCP pipeline 等场景调用，最多3并发防止 API 超频）──────
+
+export async function runAllFetchesConcurrent(): Promise<void> {
+  const tasks = [
+    () => runUSStockFetch().catch((e: Error) => logger.error('runUSStockFetch failed:', e)),
+    () => runHKStockFetch().catch((e: Error) => logger.error('runHKStockFetch failed:', e)),
+    () => runAStockFetch().catch((e: Error) => logger.error('runAStockFetch failed:', e)),
+    () => runBTCFetch().catch((e: Error) => logger.error('runBTCFetch failed:', e)),
+    () => runMacroFetch().catch((e: Error) => logger.error('runMacroFetch failed:', e)),
+  ];
+  await pLimit(tasks, 3);
 }

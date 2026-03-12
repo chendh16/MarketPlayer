@@ -76,7 +76,7 @@ const MACRO_SOURCES = [
     limit: 10,
   },
   {
-    url: 'https://www.ecb.europa.eu/rss/press.html',
+    url: 'https://www.ecb.europa.eu/rss/pressrelease.en.rss',
     name: 'ecb',
     symbols: ['EUR'],
     limit: 10,

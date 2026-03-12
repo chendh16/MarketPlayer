@@ -9,6 +9,7 @@
 
 import { logger } from '../../../utils/logger';
 import { NewsItem } from '../../../models/signal';
+import { Market } from '../../../types/market';
 
 function extractTextRSS(xml: string, tag: string): string {
   const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i');
@@ -18,7 +19,7 @@ function extractTextRSS(xml: string, tag: string): string {
 
 async function fetchGoogleNewsRSS(
   query: string,
-  market: string,
+  market: Market,
   symbols: string[],
   hl: string,
   gl: string,

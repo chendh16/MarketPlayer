@@ -21,9 +21,18 @@ import {
   buildNewsOnlyCard,
 } from '../feishu/formatter';
 
+// Email
+import { sendEmail, isEmailConfigured } from '../email/mailer';
+import {
+  buildSignalEmailHtml,
+  buildWarningSignalEmailHtml,
+  buildNewsOnlyEmailHtml,
+} from '../email/formatter';
+
 export interface PushResult {
   discord?: { messageId: string; channelId: string } | null;
   feishu?: { messageId: string } | null;
+  email?: { messageId: string } | null;
 }
 
 /**
@@ -71,6 +80,19 @@ export async function pushSignalToUser(
     }
   }
 
+  // 邮件推送
+  if (channels.includes('email') && user.email && isEmailConfigured()) {
+    try {
+      const { subject, html } = riskCheck.status === 'warning'
+        ? buildWarningSignalEmailHtml(signal, delivery, riskCheck)
+        : buildSignalEmailHtml(signal, delivery, riskCheck, accountSnapshot);
+      result.email = await sendEmail({ to: user.email, subject, html });
+    } catch (error) {
+      logger.error(`Failed to push signal to Email for user ${user.id}:`, error);
+      result.email = null;
+    }
+  }
+
   return result;
 }
 
@@ -104,6 +126,17 @@ export async function pushNewsOnlyToUser(
     } catch (error) {
       logger.error(`Failed to push news to Feishu for user ${user.id}:`, error);
       result.feishu = null;
+    }
+  }
+
+  // 邮件推送
+  if (channels.includes('email') && user.email && isEmailConfigured()) {
+    try {
+      const { subject, html } = buildNewsOnlyEmailHtml(newsItem, analysis);
+      result.email = await sendEmail({ to: user.email, subject, html });
+    } catch (error) {
+      logger.error(`Failed to push news to Email for user ${user.id}:`, error);
+      result.email = null;
     }
   }
 

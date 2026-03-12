@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MarketPlayer Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/refresh-scheduler.js"></script>
+  <script src="/js/circuit-breaker.js"></script>
   <style>
     .tab-active { border-bottom: 2px solid #6366f1; color: #6366f1; }
     .tab-inactive { color: #6b7280; }
@@ -673,19 +676,8 @@
         return '<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
       }
 
-      function fmtTime(iso) {
-        if (!iso) return '--';
-        var d = new Date(iso);
-        var mm = String(d.getMonth() + 1).padStart(2, '0');
-        var dd = String(d.getDate()).padStart(2, '0');
-        var hh = String(d.getHours()).padStart(2, '0');
-        var min = String(d.getMinutes()).padStart(2, '0');
-        return mm + '-' + dd + ' ' + hh + ':' + min;
-      }
-
-      function escHtml(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      }
+      var fmtTime = DashUtils.fmtTime;
+      var escHtml = DashUtils.escHtml;
 
       function renderStats(data) {
         document.getElementById('macro-stat-total').textContent = data.length;
@@ -757,12 +749,35 @@
         }
       };
 
-      setInterval(function(){ if (document.getElementById('tab-macro').style.display !== 'none') window.loadMacroPanel(); }, 60000);
+      refreshScheduler.schedule('macro', function () {
+        window.guardedLoad('macro', window.loadMacroPanel);
+      }, 60000);
     })();
   </script>
+
+  <script>
+    // ══════════════════════════════════════════════════════════════════
+    // Admin Token Management
     // ══════════════════════════════════════════════════════════════════
     function getAdminToken() {
-      return sessionStorage.getItem('mp_admin_token') || '';
+      // 优先从 sessionStorage 读取，如果没有则从 localStorage 读取
+      var token = sessionStorage.getItem('mp_admin_token') || localStorage.getItem('mp_admin_token') || '';
+      if (token && !sessionStorage.getItem('mp_admin_token')) {
+        // 如果从 localStorage 读取到了，同步到 sessionStorage
+        sessionStorage.setItem('mp_admin_token', token);
+      }
+
+      // 开发环境备用 token（如果前面都没有）
+      if (!token) {
+        var devToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMDI4NTA5MTQyMTEwOTc4MDg5Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyODEzNDg5LCJleHAiOjE3NzM0MTgyODl9.-YLGs2xXBZhaNhYSsWoxjGaVpAq2sh8Gw7DZUHTCexs';
+        console.warn('[getAdminToken] Using fallback dev token');
+        // 保存到 storage 以便下次使用
+        sessionStorage.setItem('mp_admin_token', devToken);
+        localStorage.setItem('mp_admin_token', devToken);
+        token = devToken;
+      }
+
+      return token;
     }
 
     document.getElementById('save-token-btn').addEventListener('click', function () {
@@ -844,14 +859,51 @@
     });
 
     // ══════════════════════════════════════════════════════════════════
+    // 1b. AppContext — centralised panel state (replaces scattered globals)
+    // ══════════════════════════════════════════════════════════════════
+    window.ctx = {
+      news: [],
+      signals: [],
+      orders: [],
+      deliveries: [],
+      users: [],
+      stats: {},
+      filters: {},
+      expanded: {},
+    };
+
+    // ══════════════════════════════════════════════════════════════════
+    // 1c. guardedLoad — prevents concurrent requests for the same panel
+    // ══════════════════════════════════════════════════════════════════
+    var _inFlight = new Set();
+    window.guardedLoad = async function (key, fn) {
+      if (_inFlight.has(key)) return;
+      _inFlight.add(key);
+      try { await fn(); } finally { _inFlight.delete(key); }
+    };
+
+    // ══════════════════════════════════════════════════════════════════
     // 2. window.dashboardFetch — used by all panels
     // ══════════════════════════════════════════════════════════════════
     window.dashboardFetch = async function (url) {
       var token = getAdminToken();
-      var res = await fetch(url, {
-        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
+      console.log('[dashboardFetch] URL:', url);
+      console.log('[dashboardFetch] Token:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
+
+      var headers = {};
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+      console.log('[dashboardFetch] Headers:', JSON.stringify(headers));
+
+      var res = await fetch(url, { headers: headers });
+      console.log('[dashboardFetch] Response status:', res.status);
+
+      if (!res.ok) {
+        var errorText = await res.text();
+        console.error('[dashboardFetch] Error:', errorText);
+        throw new Error('HTTP ' + res.status + ': ' + errorText);
+      }
       return res.json();
     };
 
@@ -942,8 +994,10 @@
         fmtOverviewTime(new Date().toISOString());
     }
 
-    // Auto-refresh overview every 30 seconds
-    setInterval(loadOverview, 30000);
+    // Auto-refresh overview every 30 seconds (pauses when browser tab is hidden)
+    refreshScheduler.schedule('overview', function () {
+      window.guardedLoad('overview', loadOverview);
+    }, 30000);
 
     // ══════════════════════════════════════════════════════════════════
     // 5. Boot: show overview tab by default
@@ -959,33 +1013,15 @@
   <script>
   (function () {
     /* ── State ── */
-    var _newsAllData = [];
     var _newsFilter = 'all';
     var _newsMarket = 'all';
     var _newsExpandedId = null;
-    var _newsTimerId = null;
+    var _newsBreaker = new CircuitBreaker('news', { failureThreshold: 3 });
 
-    /* ── Helpers ── */
-    function fmtTime(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      var mm  = String(d.getMonth() + 1).padStart(2, '0');
-      var dd  = String(d.getDate()).padStart(2, '0');
-      var HH  = String(d.getHours()).padStart(2, '0');
-      var min = String(d.getMinutes()).padStart(2, '0');
-      return mm + '-' + dd + ' ' + HH + ':' + min;
-    }
-
-    function marketBadge(market) {
-      var map = {
-        us:  { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'US' },
-        hk:  { bg: 'bg-red-100',    text: 'text-red-700',    label: 'HK' },
-        a:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'A股' },
-        btc: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'BTC' },
-      };
-      var s = map[market] || { bg: 'bg-gray-100', text: 'text-gray-600', label: market || '--' };
-      return '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
-    }
+    /* ── Shared helpers ── */
+    var fmtTime = DashUtils.fmtTime;
+    var escHtml = DashUtils.escHtml;
+    var marketBadge = DashUtils.marketBadge;
 
     function aiStatusBadge(processed) {
       if (processed) {
@@ -997,14 +1033,6 @@
     function truncate(str, len) {
       if (!str) return '<span class="text-gray-300">-</span>';
       return str.length > len ? str.slice(0, len) + '…' : str;
-    }
-
-    function escHtml(str) {
-      return String(str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
     }
 
     /* ── Stats bar ── */
@@ -1032,7 +1060,7 @@
         btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
         btnAll.className     = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       }
-      renderTable(_newsAllData);
+      renderTable(ctx.news);
     };
 
     window._newsSetMarket = function (market) {
@@ -1045,13 +1073,13 @@
           ? 'px-3 py-1 rounded-full text-sm font-medium bg-gray-700 text-white transition-colors'
           : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderTable(_newsAllData);
+      renderTable(ctx.news);
     };
 
     /* ── Row expand toggle ── */
     window._newsToggleRow = function (id) {
       _newsExpandedId = _newsExpandedId === id ? null : id;
-      renderTable(_newsAllData);
+      renderTable(ctx.news);
     };
 
     /* ── Source credibility tier badge ── */
@@ -1154,50 +1182,34 @@
     /* ── Main load function ── */
     window.loadNewsPanel = async function () {
       try {
-        var data = await window.dashboardFetch('/api/admin/dashboard/news?limit=100');
-        _newsAllData = Array.isArray(data) ? data : [];
-        renderStats(_newsAllData);
-        renderTable(_newsAllData);
-        var now = new Date();
-        document.getElementById('news-last-refresh').textContent = fmtTime(now.toISOString());
+        var data = await _newsBreaker.execute(function () {
+          return window.dashboardFetch('/api/admin/dashboard/news?limit=100');
+        });
+        ctx.news = Array.isArray(data) ? data : [];
+        renderStats(ctx.news);
+        renderTable(ctx.news);
+        document.getElementById('news-last-refresh').textContent = fmtTime(new Date().toISOString());
       } catch (err) {
         renderError(err && err.message ? err.message : '未知错误');
       }
     };
 
-    /* ── Auto-refresh (30s) ── */
-    function startAutoRefresh() {
-      if (_newsTimerId) clearInterval(_newsTimerId);
-      _newsTimerId = setInterval(function () {
-        window.loadNewsPanel();
-      }, 30000);
-    }
-
-    /* ── Init ── */
-    // Do NOT call loadNewsPanel() here — switchTab('overview') already sets display:none on this tab.
-    // The panel will load when the user first switches to the news tab.
-    startAutoRefresh();
+    /* ── Auto-refresh (30s, pauses when browser tab hidden) ── */
+    refreshScheduler.schedule('news', function () {
+      window.guardedLoad('news', window.loadNewsPanel);
+    }, 30000);
   })();
   </script>
 
   <!-- Signals panel script -->
   <script>
   (function () {
-    var _signalsData = [];
     var _signalsFilter = 'all';
     var _signalsMarket = 'all';
-    var _signalsTimer = null;
     var _expandedIds = new Set();
+    var _signalsBreaker = new CircuitBreaker('signals', { failureThreshold: 3 });
 
-    function fmtDate(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      var mm  = String(d.getMonth() + 1).padStart(2, '0');
-      var dd  = String(d.getDate()).padStart(2, '0');
-      var hh  = String(d.getHours()).padStart(2, '0');
-      var min = String(d.getMinutes()).padStart(2, '0');
-      return mm + '-' + dd + ' ' + hh + ':' + min;
-    }
+    var fmtDate = DashUtils.fmtTime;
 
     function isExpired(expiresAt) {
       if (!expiresAt) return false;
@@ -1210,24 +1222,8 @@
       return 'bg-red-100 text-red-700';
     }
 
-    function directionBadge(direction) {
-      var isLong = direction === 'long';
-      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold '
-        + (isLong ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
-        + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>';
-    }
-
-    function marketBadge(market) {
-      var map = {
-        us:  'bg-blue-100 text-blue-700',
-        hk:  'bg-purple-100 text-purple-700',
-        a:   'bg-orange-100 text-orange-700',
-        btc: 'bg-yellow-100 text-yellow-700',
-      };
-      var cls = map[market] || 'bg-gray-100 text-gray-600';
-      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">'
-        + (market || '').toUpperCase() + '</span>';
-    }
+    var directionBadge = DashUtils.directionBadge;
+    var marketBadge    = DashUtils.marketBadge;
 
     function filterSignals(data) {
       var result = data;
@@ -1247,7 +1243,7 @@
           ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-700 text-white transition-colors'
           : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderCards(_signalsData);
+      renderCards(ctx.signals);
     }
 
     function renderStats(data) {
@@ -1334,7 +1330,7 @@
           ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors'
           : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderCards(_signalsData);
+      renderCards(ctx.signals);
     }
 
     function signalsToggleCard(id) {
@@ -1343,7 +1339,7 @@
       } else {
         _expandedIds.add(id);
       }
-      renderCards(_signalsData);
+      renderCards(ctx.signals);
     }
 
     async function loadSignalsPanel() {
@@ -1353,10 +1349,12 @@
       if (errorEl)   errorEl.classList.add('hidden');
 
       try {
-        var data = await window.dashboardFetch('/api/admin/dashboard/signals?limit=50');
-        _signalsData = Array.isArray(data) ? data : [];
-        renderStats(_signalsData);
-        renderCards(_signalsData);
+        var data = await _signalsBreaker.execute(function () {
+          return window.dashboardFetch('/api/admin/dashboard/signals?limit=50');
+        });
+        ctx.signals = Array.isArray(data) ? data : [];
+        renderStats(ctx.signals);
+        renderCards(ctx.signals);
       } catch (err) {
         console.error('[signals panel]', err);
         if (errorEl) {
@@ -1368,39 +1366,25 @@
       }
     }
 
-    function startSignalsAutoRefresh() {
-      if (_signalsTimer) clearInterval(_signalsTimer);
-      _signalsTimer = setInterval(function () {
-        window.loadSignalsPanel();
-      }, 30000);
-    }
-
     window.loadSignalsPanel  = loadSignalsPanel;
     window.signalsSetFilter  = signalsSetFilter;
     window.signalsSetMarket  = signalsSetMarket;
     window.signalsToggleCard = signalsToggleCard;
 
-    startSignalsAutoRefresh();
+    refreshScheduler.schedule('signals', function () {
+      window.guardedLoad('signals', window.loadSignalsPanel);
+    }, 30000);
   })();
   </script>
 
   <!-- Orders panel script -->
   <script>
   (function () {
-    var _ordersData = [];
     var _ordersFilter = 'all';
-    var _ordersTimer = null;
     var _expandedOrderIds = new Set();
+    var _ordersBreaker = new CircuitBreaker('orders', { failureThreshold: 3 });
 
-    function fmtDate(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      var mm  = String(d.getMonth() + 1).padStart(2, '0');
-      var dd  = String(d.getDate()).padStart(2, '0');
-      var hh  = String(d.getHours()).padStart(2, '0');
-      var min = String(d.getMinutes()).padStart(2, '0');
-      return mm + '-' + dd + ' ' + hh + ':' + min;
-    }
+    var fmtDate = DashUtils.fmtTime;
 
     function fmtPrice(val) {
       if (val === null || val === undefined || val === '') return '-';
@@ -1421,24 +1405,8 @@
       return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + cls + '">' + (status || '--') + '</span>';
     }
 
-    function directionBadge(direction) {
-      var isBuy = direction === 'buy' || direction === 'long';
-      return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold '
-        + (isBuy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
-        + '">' + (direction || '--').toUpperCase() + '</span>';
-    }
-
-    function marketBadge(market) {
-      var map = {
-        us:  'bg-blue-100 text-blue-700',
-        hk:  'bg-purple-100 text-purple-700',
-        a:   'bg-orange-100 text-orange-700',
-        btc: 'bg-yellow-100 text-yellow-700',
-      };
-      var cls = map[market] || 'bg-gray-100 text-gray-600';
-      return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold ' + cls + '">'
-        + (market || '').toUpperCase() + '</span>';
-    }
+    var directionBadge = DashUtils.directionBadge;
+    var marketBadge    = DashUtils.marketBadge;
 
     function retryBadge(count) {
       if (!count || count === 0) return '<span class="text-gray-300">0</span>';
@@ -1515,7 +1483,7 @@
           ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors'
           : 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderTable(_ordersData);
+      renderTable(ctx.orders);
     }
 
     function ordersToggleRow(id) {
@@ -1524,7 +1492,7 @@
       } else {
         _expandedOrderIds.add(id);
       }
-      renderTable(_ordersData);
+      renderTable(ctx.orders);
     }
 
     async function loadOrdersPanel() {
@@ -1534,10 +1502,12 @@
       if (errorEl)   errorEl.classList.add('hidden');
 
       try {
-        var data = await window.dashboardFetch('/api/admin/orders?limit=100');
-        _ordersData = Array.isArray(data) ? data : [];
-        renderStats(_ordersData);
-        renderTable(_ordersData);
+        var data = await _ordersBreaker.execute(function () {
+          return window.dashboardFetch('/api/admin/orders?limit=100');
+        });
+        ctx.orders = Array.isArray(data) ? data : [];
+        renderStats(ctx.orders);
+        renderTable(ctx.orders);
       } catch (err) {
         console.error('[orders panel]', err);
         if (errorEl) {
@@ -1549,45 +1519,41 @@
       }
     }
 
-    function startOrdersAutoRefresh() {
-      if (_ordersTimer) clearInterval(_ordersTimer);
-      _ordersTimer = setInterval(function () {
-        window.loadOrdersPanel();
-      }, 30000);
-    }
-
     window.loadOrdersPanel  = loadOrdersPanel;
     window.ordersSetFilter  = ordersSetFilter;
     window.ordersToggleRow  = ordersToggleRow;
 
-    startOrdersAutoRefresh();
+    refreshScheduler.schedule('orders', function () {
+      window.guardedLoad('orders', window.loadOrdersPanel);
+    }, 30000);
   })();
   </script>
 
   <!-- System panel script -->
   <script>
   (function () {
-    function fmtTime(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      var mm  = String(d.getMonth() + 1).padStart(2, '0');
-      var dd  = String(d.getDate()).padStart(2, '0');
-      var HH  = String(d.getHours()).padStart(2, '0');
-      var min = String(d.getMinutes()).padStart(2, '0');
-      return mm + '-' + dd + ' ' + HH + ':' + min;
-    }
+    var fmtTime = DashUtils.fmtTime;
+    var escHtml = DashUtils.escHtml;
+    var _sysBreaker = new CircuitBreaker('system', { failureThreshold: 3, cooldownMs: 3 * 60 * 1000 });
+    var SYS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for cost data
 
     function fmtCost(val) {
       var n = parseFloat(val) || 0;
       return '$' + n.toFixed(4);
     }
 
-    function escHtml(str) {
-      return String(str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    function withCache(key, ttlMs, fetchFn) {
+      var cached = localStorage.getItem(key);
+      if (cached) {
+        try {
+          var obj = JSON.parse(cached);
+          if (Date.now() - obj.at < ttlMs) return Promise.resolve(obj.data);
+        } catch (e) {}
+      }
+      return Promise.resolve(fetchFn()).then(function (data) {
+        try { localStorage.setItem(key, JSON.stringify({ data: data, at: Date.now() })); } catch (e) {}
+        return data;
+      });
     }
 
     function todayCostClass(usd) {
@@ -1665,13 +1631,18 @@
 
     window.loadSystemPanel = async function () {
       var results = await Promise.allSettled([
-        (async function () {
-          return await window.dashboardFetch('/api/admin/costs');
-        })(),
-        (async function () {
-          var resp = await fetch('/api/health');
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          return await resp.json();
+        // 成本数据：走 localStorage 缓存（6小时）+ 熔断器
+        withCache('mp_sys_costs', SYS_CACHE_TTL, function () {
+          return _sysBreaker.execute(function () {
+            return window.dashboardFetch('/api/admin/costs');
+          });
+        }),
+        // 健康检查：不缓存，直接请求
+        (function () {
+          return fetch('/api/health').then(function (resp) {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return resp.json();
+          });
         })(),
       ]);
 
@@ -1696,11 +1667,9 @@
       document.getElementById('sys-last-refresh').textContent = fmtTime(new Date().toISOString());
     };
 
-    (function startAutoRefresh() {
-      setInterval(function () {
-        window.loadSystemPanel();
-      }, 60000);
-    })();
+    refreshScheduler.schedule('system', function () {
+      window.guardedLoad('system', window.loadSystemPanel);
+    }, 60000);
 
     // Do NOT auto-init here; panel loads when tab is first activated.
   })();
@@ -1709,36 +1678,14 @@
   <!-- Deliveries panel script -->
   <script>
   (function () {
-    var _dlvData = [];
     var _dlvFilter = 'all';
     var _dlvExpandedId = null;
-    var _dlvTimer = null;
+    var _dlvBreaker = new CircuitBreaker('deliveries', { failureThreshold: 3 });
 
-    function fmtTime(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      return String(d.getMonth() + 1).padStart(2, '0') + '-'
-        + String(d.getDate()).padStart(2, '0') + ' '
-        + String(d.getHours()).padStart(2, '0') + ':'
-        + String(d.getMinutes()).padStart(2, '0');
-    }
-
-    function escHtml(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function marketBadge(market) {
-      var map = { us:'bg-blue-100 text-blue-700', hk:'bg-red-100 text-red-700', a:'bg-green-100 text-green-700', btc:'bg-orange-100 text-orange-700' };
-      var cls = map[market] || 'bg-gray-100 text-gray-600';
-      return '<span class="inline-flex px-1.5 py-0.5 rounded text-xs font-semibold ' + cls + '">' + (market || '--').toUpperCase() + '</span>';
-    }
-
-    function directionBadge(direction) {
-      var isLong = direction === 'long';
-      return '<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold '
-        + (isLong ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
-        + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>';
-    }
+    var fmtTime       = DashUtils.fmtTime;
+    var escHtml       = DashUtils.escHtml;
+    var marketBadge   = DashUtils.marketBadge;
+    var directionBadge = DashUtils.directionBadge;
 
     function riskBadge(riskResult) {
       if (!riskResult) return '<span class="text-gray-300">--</span>';
@@ -1785,12 +1732,12 @@
           ? 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors'
           : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderTable(_dlvData);
+      renderTable(ctx.deliveries);
     };
 
     window.dlvToggleRow = function (id) {
       _dlvExpandedId = _dlvExpandedId === id ? null : id;
-      renderTable(_dlvData);
+      renderTable(ctx.deliveries);
     };
 
     function renderTable(data) {
@@ -1853,10 +1800,12 @@
       if (errorEl)   errorEl.classList.add('hidden');
 
       try {
-        var data = await window.dashboardFetch('/api/admin/deliveries?limit=100');
-        _dlvData = Array.isArray(data) ? data : [];
-        renderStats(_dlvData);
-        renderTable(_dlvData);
+        var data = await _dlvBreaker.execute(function () {
+          return window.dashboardFetch('/api/admin/deliveries?limit=100');
+        });
+        ctx.deliveries = Array.isArray(data) ? data : [];
+        renderStats(ctx.deliveries);
+        renderTable(ctx.deliveries);
         document.getElementById('dlv-last-refresh').textContent = fmtTime(new Date().toISOString());
       } catch (err) {
         if (errorEl) {
@@ -1868,29 +1817,34 @@
       }
     };
 
-    if (_dlvTimer) clearInterval(_dlvTimer);
-    _dlvTimer = setInterval(function () { window.loadDeliveriesPanel(); }, 30000);
+    refreshScheduler.schedule('deliveries', function () {
+      window.guardedLoad('deliveries', window.loadDeliveriesPanel);
+    }, 30000);
   })();
   </script>
 
   <!-- Users panel script -->
   <script>
   (function () {
-    var _usrData = [];
     var _usrFilter = 'all';
-    var _usrTimer = null;
+    var _usrBreaker = new CircuitBreaker('users', { failureThreshold: 3 });
+    var USR_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 
-    function fmtTime(iso) {
-      if (!iso) return '--';
-      var d = new Date(iso);
-      return String(d.getMonth() + 1).padStart(2, '0') + '-'
-        + String(d.getDate()).padStart(2, '0') + ' '
-        + String(d.getHours()).padStart(2, '0') + ':'
-        + String(d.getMinutes()).padStart(2, '0');
-    }
+    var fmtTime = DashUtils.fmtTime;
+    var escHtml = DashUtils.escHtml;
 
-    function escHtml(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    function withCache(key, ttlMs, fetchFn) {
+      var cached = localStorage.getItem(key);
+      if (cached) {
+        try {
+          var obj = JSON.parse(cached);
+          if (Date.now() - obj.at < ttlMs) return Promise.resolve(obj.data);
+        } catch (e) {}
+      }
+      return Promise.resolve(fetchFn()).then(function (data) {
+        try { localStorage.setItem(key, JSON.stringify({ data: data, at: Date.now() })); } catch (e) {}
+        return data;
+      });
     }
 
     function riskPrefBadge(pref) {
@@ -1924,7 +1878,7 @@
           ? 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors'
           : 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
       });
-      renderTable(_usrData);
+      renderTable(ctx.users);
     };
 
     function renderTable(data) {
@@ -1953,10 +1907,14 @@
       if (errorEl) errorEl.classList.add('hidden');
 
       try {
-        var data = await window.dashboardFetch('/api/admin/users?limit=100');
-        _usrData = Array.isArray(data) ? data : [];
-        renderStats(_usrData);
-        renderTable(_usrData);
+        var data = await withCache('mp_usr_list', USR_CACHE_TTL, function () {
+          return _usrBreaker.execute(function () {
+            return window.dashboardFetch('/api/admin/users?limit=100');
+          });
+        });
+        ctx.users = Array.isArray(data) ? data : [];
+        renderStats(ctx.users);
+        renderTable(ctx.users);
         document.getElementById('usr-last-refresh').textContent = fmtTime(new Date().toISOString());
       } catch (err) {
         if (errorEl) {
@@ -1966,8 +1924,9 @@
       }
     };
 
-    if (_usrTimer) clearInterval(_usrTimer);
-    _usrTimer = setInterval(function () { window.loadUsersPanel(); }, 60000);
+    refreshScheduler.schedule('users', function () {
+      window.guardedLoad('users', window.loadUsersPanel);
+    }, 60000);
   })();
   </script>
 

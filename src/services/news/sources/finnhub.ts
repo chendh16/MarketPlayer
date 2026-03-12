@@ -12,6 +12,7 @@
 import { config } from '../../../config';
 import { logger } from '../../../utils/logger';
 import { NewsItem } from '../../../models/signal';
+import { Market } from '../../../types/market';
 
 interface FinnhubNewsItem {
   id?: number;
@@ -28,7 +29,7 @@ function dateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-function mapFinnhubItem(item: FinnhubNewsItem, market = 'us'): Partial<NewsItem> {
+function mapFinnhubItem(item: FinnhubNewsItem, market: Market = 'us'): Partial<NewsItem> {
   return {
     source: 'finnhub',
     externalId: item.id != null ? String(item.id) : (item.url ?? item.headline),

@@ -49,7 +49,7 @@ export class AIProviderFactory {
   static create(provider: string, apiKey: string, baseUrl?: string, model?: string): AIProvider {
     switch (provider.toLowerCase()) {
       case 'anthropic':
-        return new AnthropicProvider(apiKey, model);
+        return new AnthropicProvider(apiKey, model, baseUrl);
       case 'openai':
         return new OpenAIProvider(apiKey, baseUrl, model);
       case 'azure':
@@ -70,14 +70,18 @@ export class AIProviderFactory {
 class AnthropicProvider implements AIProvider {
   private apiKey: string;
   private model: string;
+  private baseUrl?: string;
 
-  constructor(apiKey: string, model?: string) {
+  constructor(apiKey: string, model?: string, baseUrl?: string) {
     this.apiKey = apiKey;
-    this.model = model || 'claude-sonnet-4-20250514';
+    this.model = model || 'claude-sonnet-4-5';
+    this.baseUrl = baseUrl;
   }
 
   async sendMessage(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const client = new Anthropic({ apiKey: this.apiKey });
+    const clientOptions: ConstructorParameters<typeof Anthropic>[0] = { apiKey: this.apiKey };
+    if (this.baseUrl) clientOptions.baseURL = this.baseUrl;
+    const client = new Anthropic(clientOptions);
     const systemPrompt = options?.systemPrompt
       || messages
         .filter((m) => m.role === 'system')

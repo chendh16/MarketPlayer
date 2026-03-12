@@ -1,10 +1,11 @@
+import { TradingMarket } from '../types/market';
 export interface Order {
   id: string;
   deliveryId: string;
   userId: string;
   broker: 'futu' | 'longbridge';
   symbol: string;
-  market: 'us' | 'hk' | 'a' | 'btc';
+  market: TradingMarket;
   direction: 'buy' | 'sell';
   quantity: number;
   referencePrice?: number;

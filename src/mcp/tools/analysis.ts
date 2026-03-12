@@ -1,6 +1,7 @@
 import { analyzeNewsItem, generateSignal } from '../../services/ai/analyzer';
 import { getNewsItem, updateNewsItem, createSignal } from '../../db/queries';
 import { logger } from '../../utils/logger';
+import { TradingMarket } from '../../types/market';
 
 /**
  * analyze_news — 对已入库的资讯执行 AI 分析，结果写库并返回
@@ -36,6 +37,11 @@ export async function generate_signal(params: { newsItemId: string }) {
   if (!item) throw new Error(`NewsItem not found: ${newsItemId}`);
   if (!item.aiProcessed) throw new Error(`NewsItem ${newsItemId} not yet analyzed. Call analyze_news first.`);
 
+  // Skip signal generation for macro news
+  if (item.market === 'macro') {
+    return { generated: false, reason: 'Macro news does not generate trading signals' };
+  }
+
   const analysis = {
     summary: item.aiSummary ?? '',
     impact: item.aiImpactAnalysis ?? '',
@@ -52,7 +58,7 @@ export async function generate_signal(params: { newsItemId: string }) {
   const signal = await createSignal({
     newsItemId,
     symbol: item.symbols?.[0] ?? '',
-    market: item.market,
+    market: item.market as TradingMarket,
     direction: signalResult.direction,
     confidence: signalResult.confidence,
     suggestedPositionPct: signalResult.suggestedPositionPct,

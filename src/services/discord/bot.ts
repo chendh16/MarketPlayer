@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { GatewayIntentBits, REST } from 'discord.js';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
 import {

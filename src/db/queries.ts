@@ -165,6 +165,22 @@ export async function updateSignalStatus(signalId: string, status: string): Prom
   `, [status, signalId]);
 }
 
+export async function getActiveSignalForSymbol(
+  symbol: string,
+  market: string,
+): Promise<{ id: string } | null> {
+  const result = await queryOne<{ id: string }>(
+    `SELECT id FROM signals
+     WHERE symbol = $1
+       AND market = $2
+       AND expires_at > NOW()
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [symbol, market],
+  );
+  return result || null;
+}
+
 // ==================== 信号推送相关 ====================
 
 export async function createSignalDelivery(data: Partial<SignalDelivery>): Promise<SignalDelivery> {

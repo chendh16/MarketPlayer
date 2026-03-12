@@ -1,7 +1,17 @@
 MarketPlayer 技能索引 — openclaw 可调用的全部能力
 
 MCP 服务器地址：http://localhost:{MCP_SERVER_PORT}（默认 3001）
-健康检查：GET /health
+API 服务器地址：http://localhost:3000
+MCP 健康检查：GET /health
+API 健康检查：GET /api/health
+
+---
+
+## 系统层
+
+| 技能 | 斜杠命令 | 端点 | 说明 |
+|------|----------|------|------|
+| 健康检查 | `/get-health` | GET /api/health | 检查 API 服务器运行状态，返回 status 和 timestamp |
 
 ---
 
@@ -52,8 +62,10 @@ MCP 服务器地址：http://localhost:{MCP_SERVER_PORT}（默认 3001）
 | 技能 | 斜杠命令 | MCP 工具 | 说明 |
 |------|----------|----------|------|
 | 查推送记录 | `/get-deliveries` | `get_deliveries` | 查 signal_deliveries，可按用户/状态过滤 |
-| 查单条推送 | 直接调MCP | `get_delivery` | 查单条推送详情（含orderToken） |
+| 查单条推送 | `/get-delivery` | `get_delivery` | 查单条推送详情（含orderToken） |
 | 确认下单 | `/confirm-order` | `confirm_order` | 确认下单，入BullMQ队列，支持overrideWarning |
+| 取消订单 | `/cancel-order` | `cancel_longbridge_order` | 取消长桥订单 |
+| 执行订单 | `/execute-order` | `execute_longbridge_order` | 直接通过长桥SDK执行订单 |
 
 下单模式（每个券商独立配置）：
 - Mode A：全自动（富途需OpenAPI权限，长桥需交易权限）
@@ -61,6 +73,41 @@ MCP 服务器地址：http://localhost:{MCP_SERVER_PORT}（默认 3001）
 - Mode C：纯通知，不执行下单
 
 ---
+
+## 用户层
+
+| 技能 | 斜杠命令 | 端点 | 说明 |
+|------|----------|------|------|
+| 查用户信息 | `/get-user` | GET /api/users/:discordUserId | 按 Discord 用户ID查询用户详情 |
+| 查用户信号 | `/get-user-signals` | GET /api/users/:userId/signals | 查询用户信号推送历史，支持 limit 参数（最大100） |
+| 查用户订单 | `/get-user-orders` | GET /api/users/:userId/orders | 查询用户订单历史，支持 limit 参数（最大100） |
+
+---
+
+## 通知层
+
+| 技能 | 斜杠命令 | 说明 |
+|------|----------|------|
+| 发送邮件 | `/send-email` | 通过 SMTP 向指定地址发送 HTML 邮件（需配置 EMAIL_SMTP_* 环境变量） |
+
+渠道配置：users.notificationChannels 数组，可选值：discord / feishu / email
+
+---
+
+## 管理员层
+
+所有管理员端点均需 Bearer JWT Token（通过 POST /api/admin/token 获取）。
+
+| 技能 | 斜杠命令 | 端点 | 说明 |
+|------|----------|------|------|
+| 获取管理Token | `/admin-token` | POST /api/admin/token | 凭 ADMIN_DISCORD_USER_ID 换取管理JWT |
+| 查AI成本统计 | `/admin-costs` | GET /api/admin/costs | 今日和本月AI调用次数及费用，按类型分组 |
+| 查聚合统计 | `/admin-stats` | GET /api/admin/dashboard/stats | news/signals/orders/deliveries 四维汇总数据 |
+| 查资讯列表 | `/admin-news` | GET /api/admin/dashboard/news | 最新资讯列表，含AI处理状态（最大100条） |
+| 查信号列表 | `/admin-signals` | GET /api/admin/dashboard/signals | 最新信号列表，含推送统计（最大100条） |
+| 查推送记录 | `/admin-deliveries` | GET /api/admin/deliveries | 管理员视图推送记录，可按 status 过滤 |
+| 查所有订单 | `/admin-orders` | GET /api/admin/orders | 管理员视图所有订单，可按 status 过滤 |
+| 查用户列表 | `/admin-users` | GET /api/admin/users | 所有用户及其信号数/订单数统计 |
 
 ---
 
@@ -92,6 +139,16 @@ MCP 服务器地址：http://localhost:{MCP_SERVER_PORT}（默认 3001）
 3. /analyze-news <newsItemId>          → AI分析
 4. /generate-signal <newsItemId>       → 生成信号（若 generated=true）
 5. /check-risk userId symbol direction positionPct  → 风控检查
-6. 若 level=pass，通知用户查看 Discord
+6. 若 level=pass，通知用户查看 Discord / 飞书 / Email
 7. 用户点击确认 → /confirm-order deliveryId orderToken
+```
+
+## 管理员操作流程
+
+```
+1. /admin-token discordUserId=<ADMIN_ID>  → 获取 JWT token
+2. /admin-stats                           → 查看系统整体状态
+3. /admin-costs                           → 查看 AI 成本
+4. /admin-signals                         → 查看最新信号
+5. /admin-deliveries status=pending       → 查看待处理推送
 ```

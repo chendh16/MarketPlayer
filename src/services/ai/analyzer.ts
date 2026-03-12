@@ -108,8 +108,10 @@ export async function analyzeNewsItem(newsItem: any): Promise<AnalysisResult> {
     temperature: 0.7,
   });
 
-  // 去除 AI 返回的 markdown 代码块包装（```json ... ```）
-  const rawContent = response.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  // 去除思维标签（<thinking>...</thinking>）和 markdown 代码块包装
+  const rawContent = response.content
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    .replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
   const result = JSON.parse(rawContent);
 
   await logAICost({
@@ -145,7 +147,9 @@ export async function generateSignal(
     temperature: 0.7,
   });
 
-  const rawContent2 = response.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  const rawContent2 = response.content
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    .replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
   const result = JSON.parse(rawContent2);
 
   await logAICost({

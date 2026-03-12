@@ -5,10 +5,14 @@ import { startDiscordBot } from './services/discord/bot';
 import { newsWorker } from './queues/news-queue';
 import { orderWorker } from './queues/order-queue';
 import { remindWorker } from './queues/remind-queue';
+import { deliveryWorker } from './queues/delivery-queue';
 import { startAPIServer } from './api/server';
 import { initAllFutuConnections } from './services/futu/connection';
 import { startAllFetchers } from './services/scheduler/news-fetcher';
+import { startDailyReportScheduler } from './services/scheduler/daily-report-scheduler';
+import { startDailyLearning } from './services/backtest/daily-learning-scheduler';
 import { startExpiryChecker } from './services/scheduler/expiry-checker';
+import { startDevLearningScheduler } from './services/dev-learning/dev-learning-scheduler';
 import { logger } from './utils/logger';
 import { config } from './config';
 
@@ -42,12 +46,15 @@ async function bootstrap() {
     
     // 4. 启动 BullMQ Workers
     logger.info('Starting BullMQ workers...');
-    // newsWorker、orderWorker、remindWorker 已在导入时自动启动
+    // newsWorker、orderWorker、remindWorker、deliveryWorker 已在导入时自动启动
 
     // 5. 启动定时任务
     logger.info('Starting scheduled tasks...');
     startAllFetchers();
+    startDailyReportScheduler();
+    startDailyLearning();
     startExpiryChecker();
+    startDevLearningScheduler();
 
     // 6. 启动富途连接
     logger.info('Initializing Futu connections...');
@@ -89,6 +96,7 @@ async function shutdown() {
     await newsWorker.close();
     await orderWorker.close();
     await remindWorker.close();
+    await deliveryWorker.close();
     
     logger.info('Closing database connections...');
     await closePostgres();
