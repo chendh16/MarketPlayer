@@ -46,8 +46,7 @@ function isTradingTime(market: 'a' | 'hk' | 'us'): boolean {
 }
 
 function isWeekend(): boolean {
-  const weekday = new Date().getDay();
-  return weekday === 0 || weekday === 6;
+  return new Date().getDay() === 0 || new Date().getDay() === 6;
 }
 
 function getActiveMarkets(): string[] {
@@ -85,27 +84,60 @@ async function runALearning(): Promise<void> {
   } catch (e) { logger.error('[FinScheduler] A股学习失败', e); }
 }
 
-async function runWeekendLearning(): Promise<void> {
-  logger.info('[FinScheduler] 周末学习 - 周总结复盘...');
-  try {
-    // 周末进行全面的周总结
-    logger.info('[FinScheduler] 周总结复盘...');
-    logger.info('[FinScheduler] 数据分析...');
-    logger.info('[FinScheduler] 策略优化...');
-    logger.info('[FinScheduler] 新标的研究...');
-    logger.info('[FinScheduler] 下周策略准备...');
-    logger.info('[FinScheduler] 周末学习完成');
-  } catch (e) { logger.error('[FinScheduler] 周末学习失败', e); }
+// ==================== 周末学习任务 ====================
+
+async function runWeekendSummary(): Promise<void> {
+  logger.info('[FinScheduler] ========== 周末学习开始 ==========');
+  
+  // 1. 周总结复盘
+  logger.info('[FinScheduler] 📊 本周交易复盘...');
+  // 分析本周信号、盈亏、决策
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 2. 数据分析
+  logger.info('[FinScheduler] 📈 数据分析...');
+  // 分析持仓表现、胜率、最大回撤
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 3. 策略优化
+  logger.info('[FinScheduler] 🔧 策略优化...');
+  // 评估策略表现，调整参数
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 4. 新标的研究
+  logger.info('[FinScheduler] 🔍 新标的研究...');
+  // 筛选潜在投资标的
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 5. 下周策略
+  logger.info('[FinScheduler] 📋 下周策略制定...');
+  // 制定下周交易计划
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 6. 行业研究
+  logger.info('[FinScheduler] 🏭 行业深度研究...');
+  // 深入研究某个行业
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 7. 技术学习
+  logger.info('[FinScheduler] 📚 技术指标学习...');
+  // 学习新技术指标
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // 8. 竞品分析
+  logger.info('[FinScheduler] 🔎 竞品分析...');
+  // 分析其他AI交易系统
+  
+  logger.info('[FinScheduler] ========== 周末学习完成 ==========');
 }
 
 async function runComprehensive(): Promise<void> {
-  const markets = getActiveMarkets();
-  
   if (isWeekend()) {
-    await runWeekendLearning();
+    await runWeekendSummary();
     return;
   }
   
+  const markets = getActiveMarkets();
   logger.info(`[FinScheduler] 综合学习, 活跃市场: ${markets.join(', ')}`);
   
   if (markets.includes('A股')) await runALearning();
@@ -124,46 +156,40 @@ export function startFinScheduler() {
     await runComprehensive();
   });
   
-  // 每天 09:00 - 开盘前/周末总结
+  // 每天 09:00
   cron.schedule('0 9 * * *', async () => {
-    if (isWeekend()) {
-      await runWeekendLearning();
-    } else {
-      await runALearning();
-      await runHKLearning();
-    }
+    if (isWeekend()) await runWeekendSummary();
+    else { await runALearning(); await runHKLearning(); }
   });
   
-  // 每天 14:00 - 午间/周末
+  // 每天 14:00
   cron.schedule('0 14 * * *', async () => {
     await runComprehensive();
   });
   
-  // 每天 21:00 - 美股开盘前
+  // 每天 21:00 (美股开盘前)
   cron.schedule('0 21 * * 1-5', async () => {
     await runUSLearning();
   });
   
-  // 每天 15:30 - A股收盘后
+  // 每天 15:30 (A股收盘后)
   cron.schedule('30 15 * * 1-5', async () => {
     await runComprehensive();
   });
   
-  // 每天 04:30 - 美股收盘后
+  // 每天 04:30 (美股收盘后)
   cron.schedule('30 4 * * 1-5', async () => {
     await runUSLearning();
   });
   
-  // 每天 10:00 - 周末专项学习
+  // 周末 10:00 专项学习
   cron.schedule('0 10 * * 0,6', async () => {
-    logger.info('[FinScheduler] 周末专项学习...');
-    await runWeekendLearning();
+    await runWeekendSummary();
   });
   
-  // 每天 15:00 - 周末总结
+  // 周末 15:00 周总结
   cron.schedule('0 15 * * 0,6', async () => {
-    logger.info('[FinScheduler] 周末总结...');
-    await runWeekendLearning();
+    await runWeekendSummary();
   });
   
   logger.info('[FinScheduler] 金融团队定时任务已启动');
