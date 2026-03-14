@@ -34,6 +34,8 @@ import { compare_stock, get_competitors, compare_valuation_quick, compare_profit
 import { get_model_status, toggle_model, recommend_model, get_cost_status, test_model_connection } from './tools/model_config';
 import { init_virtual_account, get_virtual_account, reset_virtual_account, virtual_buy, virtual_sell, virtual_short, virtual_cover, get_virtual_positions, get_virtual_orders, get_virtual_summary } from '../services/virtual';
 import { get_hk_stock_detail, get_us_stock_detail, get_batch_hk_stocks, get_batch_us_stocks } from './tools/hk-us';
+import { get_stock_flow, get_batch_stock_flow, get_north_bound_flow, analyze_flow } from './tools/flow';
+import { set_stop_config, get_stop_config, get_all_stop_configs, remove_stop_config, check_stop_triggered } from './tools/stop-loss';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -119,6 +121,17 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   get_us_stock_detail,
   get_batch_hk_stocks,
   get_batch_us_stocks,
+  // 资金流向
+  get_stock_flow,
+  get_batch_stock_flow,
+  get_north_bound_flow,
+  analyze_flow,
+  // 止损止盈
+  set_stop_config,
+  get_stop_config,
+  get_all_stop_configs,
+  remove_stop_config,
+  check_stop_triggered,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
