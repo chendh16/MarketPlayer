@@ -39,6 +39,7 @@ import { set_stop_config, get_stop_config, get_all_stop_configs, remove_stop_con
 import { get_hk_quote, get_us_quote, get_batch_hk_quotes, get_batch_us_quotes, get_history_kline, get_quote_summary } from './tools/quote';
 import { run_strategy, scan_market, get_strategy_advice } from './tools/strategy';
 import { init_account, position_buy, position_sell, get_account_overview, suggest_position, rebalance_portfolio, risk_check, get_cash } from './tools/position-manager';
+import { notify_text, notify_card, notify_alert, notify_signal, notify_portfolio, notify_daily } from './tools/notify';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -155,6 +156,13 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   rebalance_portfolio,
   risk_check,
   get_cash,
+  // 通知
+  notify_text,
+  notify_card,
+  notify_alert,
+  notify_signal,
+  notify_portfolio,
+  notify_daily,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
