@@ -271,7 +271,7 @@ export async function fetch_batch_indicators(params: {
   );
 
   const validResults = results
-    .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value)
+    .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && !!r.value)
     .map(r => r.value);
 
   return {

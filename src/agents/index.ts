@@ -397,7 +397,7 @@ export class AgentCoordinator {
       return 0;
     });
     
-    const total = scores.reduce((a, b) => a + b, 0);
+    const total = scores.reduce<number>((a, b) => a + b, 0);
     
     if (total > 0) return 'BUY';
     if (total < 0) return 'SELL';
