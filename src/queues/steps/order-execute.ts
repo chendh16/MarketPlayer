@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+// v13 兼容：移除按钮相关
 import { SignalDelivery, Signal, RiskCheckResult } from '../../models/signal';
 import { User } from '../../models/user';
 import { AccountSnapshot } from '../../models/position';
@@ -172,39 +172,10 @@ export async function notifyOrderFailed(
     const ref = getDeliveryMessageRef(delivery);
     if (!ref) return;
 
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`retry_order:${delivery.id}:${delivery.orderToken}`)
-        .setLabel('🔁 重试下单')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`abandon:${delivery.id}:${delivery.orderToken}`)
-        .setLabel('❌ 放弃')
-        .setStyle(ButtonStyle.Secondary),
-    );
-
-    if (failureType === 'price_deviation') {
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`confirm:${delivery.id}:${delivery.orderToken}`)
-          .setLabel('✅ 按市价再试')
-          .setStyle(ButtonStyle.Success),
-      );
-    }
-
-    if (failureType === 'insufficient_funds') {
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`adjust:${delivery.id}:${delivery.orderToken}`)
-          .setLabel('✏️ 调整仓位后确认')
-          .setStyle(ButtonStyle.Secondary),
-      );
-    }
-
+    // v13 兼容：移除按钮，简化消息
     await editMessage(ref.channelId, ref.messageId, {
-      content: `❌ 订单处理失败\n订单ID: ${orderId}\n类型: ${failureType ?? 'system_error'}\n原因: ${reason ?? '未知错误'}\n请选择补救操作：`,
-      components: [row],
+      content: `❌ 订单处理失败\n订单ID: ${orderId}\n类型: ${failureType ?? 'system_error'}\n原因: ${reason ?? '未知错误'}\n请回复补救操作`,
+      components: [],
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);

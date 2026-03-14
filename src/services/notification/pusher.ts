@@ -55,9 +55,9 @@ export async function pushSignalToUser(
       if (riskCheck.status === 'warning') {
         message = buildWarningSignalMessage(signal, delivery, riskCheck);
       } else {
-        message = buildNormalSignalMessage(signal, delivery, riskCheck, accountSnapshot);
+        message = buildNormalSignalMessage(signal, delivery, riskCheck);
       }
-      result.discord = await sendDiscordMessage(user.discordUserId, message);
+      result.discord = null; // await sendDiscordMessage(user.discordUserId, message);
     } catch (error) {
       logger.error(`Failed to push signal to Discord for user ${user.id}:`, error);
       result.discord = null;
@@ -111,7 +111,7 @@ export async function pushNewsOnlyToUser(
   if (channels.includes('discord') && user.discordUserId) {
     try {
       const message = buildNewsOnlyMessage(newsItem, analysis);
-      result.discord = await sendDiscordMessage(user.discordUserId, message);
+      result.discord = null; // await sendDiscordMessage(user.discordUserId, message);
     } catch (error) {
       logger.error(`Failed to push news to Discord for user ${user.id}:`, error);
       result.discord = null;
@@ -153,7 +153,7 @@ export async function sendTextToUser(user: User, text: string): Promise<PushResu
   // Discord 推送
   if (channels.includes('discord') && user.discordUserId) {
     try {
-      result.discord = await sendDiscordMessage(user.discordUserId, text);
+      result.discord = null; // await sendDiscordMessage(user.discordUserId, text);
     } catch (error) {
       logger.error(`Failed to send text to Discord for user ${user.id}:`, error);
       result.discord = null;
