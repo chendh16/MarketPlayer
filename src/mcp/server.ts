@@ -42,6 +42,7 @@ import { init_account, position_buy, position_sell, get_account_overview, sugges
 import { notify_text, notify_card, notify_alert, notify_signal, notify_portfolio, notify_daily } from './tools/notify';
 import { save_position_record, get_position_record, get_all_position_records, delete_position_record, save_trading_signal, get_trading_signals, save_user_setting, get_user_setting, get_database_stats } from './tools/persistence';
 import { run_single_backtest, run_batch_backtest, compare_strategies } from './tools/backtest';
+import { ai_predict, ai_batch_predict, get_feature_importance, ai_strategy_advice } from './tools/ai-strategy';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -179,6 +180,11 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   run_single_backtest,
   run_batch_backtest,
   compare_strategies,
+  // AI策略
+  ai_predict,
+  ai_batch_predict,
+  get_feature_importance,
+  ai_strategy_advice,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
