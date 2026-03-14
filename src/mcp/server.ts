@@ -32,6 +32,7 @@ import { calculate_risk, calculate_portfolio_risk } from './tools/risk_metrics';
 import { analyze_stock_sentiment, analyze_batch_sentiment, get_sentiment_alert } from './tools/sentiment';
 import { compare_stock, get_competitors, compare_valuation_quick, compare_profitability_quick } from './tools/comparison';
 import { get_model_status, toggle_model, recommend_model, get_cost_status, test_model_connection } from './tools/model_config';
+import { init_virtual_account, get_virtual_account, reset_virtual_account, virtual_buy, virtual_sell, virtual_short, virtual_cover, get_virtual_positions, get_virtual_orders, get_virtual_summary } from '../services/virtual';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -101,6 +102,17 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   recommend_model,
   get_cost_status,
   test_model_connection,
+  // 虚拟盘
+  init_virtual_account,
+  get_virtual_account,
+  reset_virtual_account,
+  virtual_buy,
+  virtual_sell,
+  virtual_short,
+  virtual_cover,
+  get_virtual_positions,
+  get_virtual_orders,
+  get_virtual_summary,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
