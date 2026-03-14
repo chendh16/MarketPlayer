@@ -37,6 +37,8 @@ import { get_hk_stock_detail, get_us_stock_detail, get_batch_hk_stocks, get_batc
 import { get_stock_flow, get_batch_stock_flow, get_north_bound_flow, analyze_flow } from './tools/flow';
 import { set_stop_config, get_stop_config, get_all_stop_configs, remove_stop_config, check_stop_triggered } from './tools/stop-loss';
 import { get_hk_quote, get_us_quote, get_batch_hk_quotes, get_batch_us_quotes, get_history_kline, get_quote_summary } from './tools/quote';
+import { run_strategy, scan_market, get_strategy_advice } from './tools/strategy';
+import { init_account, position_buy, position_sell, get_account_overview, suggest_position, rebalance_portfolio, risk_check, get_cash } from './tools/position-manager';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -140,6 +142,19 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   get_batch_us_quotes,
   get_history_kline,
   get_quote_summary,
+  // 量化策略
+  run_strategy,
+  scan_market,
+  get_strategy_advice,
+  // 仓位管理
+  init_account,
+  position_buy,
+  position_sell,
+  get_account_overview,
+  suggest_position,
+  rebalance_portfolio,
+  risk_check,
+  get_cash,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
