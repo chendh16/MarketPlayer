@@ -33,6 +33,7 @@ import { analyze_stock_sentiment, analyze_batch_sentiment, get_sentiment_alert }
 import { compare_stock, get_competitors, compare_valuation_quick, compare_profitability_quick } from './tools/comparison';
 import { get_model_status, toggle_model, recommend_model, get_cost_status, test_model_connection } from './tools/model_config';
 import { init_virtual_account, get_virtual_account, reset_virtual_account, virtual_buy, virtual_sell, virtual_short, virtual_cover, get_virtual_positions, get_virtual_orders, get_virtual_summary } from '../services/virtual';
+import { get_hk_stock_detail, get_us_stock_detail, get_batch_hk_stocks, get_batch_us_stocks } from './tools/hk-us';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -113,6 +114,11 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   get_virtual_positions,
   get_virtual_orders,
   get_virtual_summary,
+  // 港股美股基本面
+  get_hk_stock_detail,
+  get_us_stock_detail,
+  get_batch_hk_stocks,
+  get_batch_us_stocks,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
