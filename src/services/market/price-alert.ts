@@ -51,23 +51,23 @@ async function sendAlertEmail(quote: StockQuote, targetPrice: number, direction:
     <h2>${emoji} 价格预警触发</h2>
     <table border="1" cellpadding="10" style="border-collapse:collapse;font-size:14px">
       <tr><td><b>市场</b></td><td>${quote.market.toUpperCase()}</td></tr>
-      <tr><td><b>股票</b></td><td>${quote.name || quote.code}</td></tr>
-      <tr><td><b>代码</b></td><td>${quote.code}</td></tr>
+      <tr><td><b>股票</b></td><td>${quote.name || quote.symbol}</td></tr>
+      <tr><td><b>代码</b></td><td>${quote.symbol}</td></tr>
       <tr><td><b>当前价格</b></td><td style="color:${color};font-size:18px"><b>${quote.price.toFixed(2)}</b></td></tr>
       <tr><td><b>预警价格</b></td><td>${targetPrice.toFixed(2)}</td></tr>
-      <tr><td><b>涨跌幅</b></td><td style="color:${quote.change >= 0 ? 'red' : 'green'}">${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%</td></tr>
-      <tr><td><b>更新时间</b></td><td>${quote.updateTime.toLocaleString('zh-CN')}</td></tr>
+      <tr><td><b>涨跌幅</b></td><td style="color:${quote.change >= 0 ? 'red' : 'green'}">${quote.changePct >= 0 ? '+' : ''}${quote.changePct.toFixed(2)}%</td></tr>
+      <tr><td><b>更新时间</b></td><td>${quote.timestamp.toLocaleString('zh-CN')}</td></tr>
     </table>
     <p style="color:#888;font-size:12px">由 MarketPlayer 自动发送</p>
   `;
   
   await sendEmail({
     to: '845567595@qq.com',  // TODO: 从配置获取用户邮箱
-    subject: `${emoji} 价格预警 - ${quote.name || quote.code} 达到 ${targetPrice}`,
+    subject: `${emoji} 价格预警 - ${quote.name || quote.symbol} 达到 ${targetPrice}`,
     html
   });
   
-  logger.info(`[PriceAlert] 预警邮件已发送: ${quote.code} ${direction} ${targetPrice}`);
+  logger.info(`[PriceAlert] 预警邮件已发送: ${quote.symbol} ${direction} ${targetPrice}`);
 }
 
 // 检查所有预警
