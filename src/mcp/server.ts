@@ -40,6 +40,8 @@ import { get_hk_quote, get_us_quote, get_batch_hk_quotes, get_batch_us_quotes, g
 import { run_strategy, scan_market, get_strategy_advice } from './tools/strategy';
 import { init_account, position_buy, position_sell, get_account_overview, suggest_position, rebalance_portfolio, risk_check, get_cash } from './tools/position-manager';
 import { notify_text, notify_card, notify_alert, notify_signal, notify_portfolio, notify_daily } from './tools/notify';
+import { save_position_record, get_position_record, get_all_position_records, delete_position_record, save_trading_signal, get_trading_signals, save_user_setting, get_user_setting, get_database_stats } from './tools/persistence';
+import { run_single_backtest, run_batch_backtest, compare_strategies } from './tools/backtest';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -163,6 +165,20 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   notify_signal,
   notify_portfolio,
   notify_daily,
+  // 数据持久化
+  save_position_record,
+  get_position_record,
+  get_all_position_records,
+  delete_position_record,
+  save_trading_signal,
+  get_trading_signals,
+  save_user_setting,
+  get_user_setting,
+  get_database_stats,
+  // 回测
+  run_single_backtest,
+  run_batch_backtest,
+  compare_strategies,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
