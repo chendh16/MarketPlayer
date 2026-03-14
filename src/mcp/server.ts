@@ -22,6 +22,16 @@ import { get_positions, get_account, get_broker_balance } from './tools/position
 import { get_deliveries, get_delivery, confirm_order } from './tools/order';
 import { execute_longbridge_order, cancel_longbridge_order } from './tools/execute-order';
 import { fetch_realtime_quote, fetch_kline, fetch_batch_quote, search_stock } from './tools/stock';
+import { fetch_stock_rank, fetch_top_gainers, fetch_top_losers, fetch_top_volume, fetch_top_turnover } from './tools/rank';
+import { fetch_board_rank, fetch_industry_board, fetch_concept_board, fetch_region_board, fetch_board_stocks } from './tools/board';
+import { fetch_technical_indicators, fetch_batch_indicators } from './tools/indicator';
+import { fetch_position_review } from './tools/position-review';
+import { get_financial_indicator, get_financial_summary } from './tools/financial';
+import { calculate_valuation, compare_valuation } from './tools/valuation';
+import { calculate_risk, calculate_portfolio_risk } from './tools/risk_metrics';
+import { analyze_stock_sentiment, analyze_batch_sentiment, get_sentiment_alert } from './tools/sentiment';
+import { compare_stock, get_competitors, compare_valuation_quick, compare_profitability_quick } from './tools/comparison';
+import { get_model_status, toggle_model, recommend_model, get_cost_status, test_model_connection } from './tools/model_config';
 
 // ─── 工具注册表 ───────────────────────────────────────────────────────────────
 
@@ -50,6 +60,47 @@ const tools: Record<string, (body: any) => Promise<any>> = {
   fetch_kline,
   fetch_batch_quote,
   search_stock,
+  // A股排行榜
+  fetch_stock_rank,
+  fetch_top_gainers,
+  fetch_top_losers,
+  fetch_top_volume,
+  fetch_top_turnover,
+  // 行业板块
+  fetch_board_rank,
+  fetch_industry_board,
+  fetch_concept_board,
+  fetch_region_board,
+  fetch_board_stocks,
+  // 技术指标
+  fetch_technical_indicators,
+  fetch_batch_indicators,
+  // 持仓复盘
+  fetch_position_review,
+  // 财务数据
+  get_financial_indicator,
+  get_financial_summary,
+  // 估值计算
+  calculate_valuation,
+  compare_valuation,
+  // 风险指标
+  calculate_risk,
+  calculate_portfolio_risk,
+  // 舆情分析
+  analyze_stock_sentiment,
+  analyze_batch_sentiment,
+  get_sentiment_alert,
+  // 竞品对比
+  compare_stock,
+  get_competitors,
+  compare_valuation_quick,
+  compare_profitability_quick,
+  // 模型配置
+  get_model_status,
+  toggle_model,
+  recommend_model,
+  get_cost_status,
+  test_model_connection,
 };
 
 // ─── Express 路由 ─────────────────────────────────────────────────────────────
