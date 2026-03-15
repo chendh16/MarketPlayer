@@ -1,6 +1,6 @@
 /**
  * 每日多策略信号推送 - Top 6 策略
- * RSI, AO, 威廉%R, 布林带, 支撑阻力, 价量
+ * 区分短线/中线/长线策略
  */
 
 import * as fs from 'fs';
@@ -11,10 +11,9 @@ const DATA_DIR = '/Users/zhengzefeng/.openclaw/workspace/MarketPlayer/data/cache
 
 interface KLine { date: string; open: number; high: number; low: number; close: number; volume: number; }
 
-// Top 6 策略
+// Top 6 策略 (标注短线/中线)
 const strategies = [
-  {
-    name: 'RSI', fn: (klines: KLine[]) => {
+  { name: 'RSI', type: '短线', period: 14, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
       for (let i = 14; i < klines.length; i++) {
         const prices = klines.slice(i - 13, i + 1).map(k => k.close);
@@ -31,22 +30,20 @@ const strategies = [
       return s;
     }
   },
-  {
-    name: 'AO', fn: (klines: KLine[]) => {
+  { name: 'AO', type: '短线', period: 34, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
       for (let i = 34; i < klines.length; i++) {
-        const ma5 = klines.slice(i - 4, i + 1).reduce((a, b) => a + (b.high + b.low) / 2, 0) / 5;
-        const ma34 = klines.slice(i - 33, i + 1).reduce((a, b) => a + (b.high + b.low) / 2, 0) / 34;
-        const pma5 = klines.slice(i - 5, i).reduce((a, b) => a + (b.high + b.low) / 2, 0) / 5;
-        const pma34 = klines.slice(i - 34, i).reduce((a, b) => a + (b.high + b.low) / 2, 0) / 34;
+        const ma5 = klines.slice(i - 4, i + 1).reduce((a: number, b: KLine) => a + (b.high + b.low) / 2, 0) / 5;
+        const ma34 = klines.slice(i - 33, i + 1).reduce((a: number, b: KLine) => a + (b.high + b.low) / 2, 0) / 34;
+        const pma5 = klines.slice(i - 5, i).reduce((a: number, b: KLine) => a + (b.high + b.low) / 2, 0) / 5;
+        const pma34 = klines.slice(i - 34, i).reduce((a: number, b: KLine) => a + (b.high + b.low) / 2, 0) / 34;
         if (pma5 <= pma34 && ma5 > ma34) s[i] = 1;
         if (pma5 >= pma34 && ma5 < ma34) s[i] = -1;
       }
       return s;
     }
   },
-  {
-    name: '威廉%R', fn: (klines: KLine[]) => {
+  { name: '威廉%R', type: '短线', period: 14, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
       for (let i = 14; i < klines.length; i++) {
         const highs = klines.slice(i - 13, i + 1).map(k => k.high);
@@ -58,36 +55,35 @@ const strategies = [
       return s;
     }
   },
-  {
-    name: '布林带', fn: (klines: KLine[]) => {
+  { name: '布林带', type: '短线', period: 20, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
       for (let i = 20; i < klines.length; i++) {
         const slice = klines.slice(i - 20, i).map(k => k.close);
-        const sma = slice.reduce((a, b) => a + b, 0) / 20;
-        const std = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - sma, 2), 0) / 20);
+        const sma = slice.reduce((a: number, b: number) => a + b, 0) / 20;
+        const std = Math.sqrt(slice.reduce((a: number, b: number) => a + Math.pow(b - sma, 2), 0) / 20);
         if (klines[i].close < sma - 2 * std) s[i] = 1;
         if (klines[i].close > sma + 2 * std) s[i] = -1;
       }
       return s;
     }
   },
-  {
-    name: '支撑阻力', fn: (klines: KLine[]) => {
+  { name: 'MA均线', type: '中线', period: 20, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
-      for (let i = 30; i < klines.length; i++) {
-        const high30 = Math.max(...klines.slice(i - 29, i).map(k => k.high));
-        const low30 = Math.min(...klines.slice(i - 29, i).map(k => k.low));
-        if (klines[i].close > high30 * 0.99) s[i] = 1;
-        if (klines[i].close < low30 * 1.01) s[i] = -1;
+      for (let i = 20; i < klines.length; i++) {
+        const ma5 = klines.slice(i - 4, i + 1).reduce((a: number, b: KLine) => a + b.close, 0) / 5;
+        const ma20 = klines.slice(i - 19, i + 1).reduce((a: number, b: KLine) => a + b.close, 0) / 20;
+        const pma5 = klines.slice(i - 5, i).reduce((a: number, b: KLine) => a + b.close, 0) / 5;
+        const pma20 = klines.slice(i - 20, i).reduce((a: number, b: KLine) => a + b.close, 0) / 20;
+        if (pma5 <= pma20 && ma5 > ma20) s[i] = 1;
+        if (pma5 >= pma20 && ma5 < ma20) s[i] = -1;
       }
       return s;
     }
   },
-  {
-    name: '价量', fn: (klines: KLine[]) => {
+  { name: '价量', type: '短线', period: 20, fn: (klines: KLine[]) => {
       const s = new Array(klines.length).fill(0);
       for (let i = 20; i < klines.length; i++) {
-        const avgVol = klines.slice(i - 19, i + 1).reduce((a, b) => a + b.volume, 0) / 20;
+        const avgVol = klines.slice(i - 19, i + 1).reduce((a: number, b: KLine) => a + b.volume, 0) / 20;
         const priceUp = klines[i].close > klines[i-1].close;
         if (priceUp && klines[i].volume > avgVol) s[i] = 1;
         if (!priceUp && klines[i].volume > avgVol) s[i] = -1;
@@ -98,21 +94,27 @@ const strategies = [
 ];
 
 function calcSignals(symbol: string, klines: KLine[]): any {
-  let result: any = { symbol, signals: {} };
-  let buy = 0, sell = 0;
+  let result: any = { symbol, signals: {}, shortBuy: 0, shortSell: 0, midBuy: 0, midSell: 0 };
   const lastIdx = klines.length - 1;
   
   for (const strat of strategies) {
     const sigs = strat.fn(klines);
     const sig = sigs[lastIdx];
-    result.signals[strat.name] = sig;
-    if (sig === 1) buy++;
-    if (sig === -1) sell++;
+    result.signals[strat.name] = { sig, type: strat.type };
+    
+    if (sig === 1) {
+      if (strat.type === '短线') result.shortBuy++;
+      if (strat.type === '中线') result.midBuy++;
+    }
+    if (sig === -1) {
+      if (strat.type === '短线') result.shortSell++;
+      if (strat.type === '中线') result.midSell++;
+    }
   }
   
-  result.action = buy > sell ? '🟢买入' : sell > buy ? '🔴卖出' : '⚪观望';
-  result.buyCount = buy;
-  result.sellCount = sell;
+  const totalBuy = result.shortBuy + result.midBuy;
+  const totalSell = result.shortSell + result.midSell;
+  result.action = totalBuy > totalSell ? '🟢买入' : totalSell > totalBuy ? '🔴卖出' : '⚪观望';
   
   return result;
 }
@@ -126,11 +128,10 @@ function loadKlines(symbol: string): KLine[] | null {
 export async function sendTop6Signals() {
   const stocks = ['META', 'TSLA', 'NVDA', 'AAPL', 'MU', 'AVGO', 'GOOGL', 'AMZN', 'MSFT', 'COST', 'LLY', 'JPM'];
   
-  let msg = `📊 短线Top6策略信号 (${new Date().toLocaleDateString('zh-CN')})\n\n`;
-  msg += `策略: RSI | AO | 威廉%R | 布林带 | 支撑阻力 | 价量\n`;
-  msg += `═`.repeat(35) + '\n';
+  let msg = `📊 每日多策略信号 (${new Date().toLocaleDateString('zh-CN')})\n\n`;
+  msg += `──────────── 短线策略 (RSI/AO/威廉%/布林/价量) ────────────\n`;
   
-  let totalBuy = 0, totalSell = 0;
+  let shortBuyCount = 0, shortSellCount = 0, midBuyCount = 0, midSellCount = 0;
   
   for (const symbol of stocks) {
     const klines = loadKlines(symbol);
@@ -138,20 +139,36 @@ export async function sendTop6Signals() {
     
     const r = calcSignals(symbol, klines);
     
-    if (r.action === '🟢买入') totalBuy++;
-    if (r.action === '🔴卖出') totalSell++;
+    if (r.action === '🟢买入') {
+      if (r.shortBuy > 0) shortBuyCount++;
+      if (r.midBuy > 0) midBuyCount++;
+    }
+    if (r.action === '🔴卖出') {
+      if (r.shortSell > 0) shortSellCount++;
+      if (r.midSell > 0) midSellCount++;
+    }
     
-    msg += `${symbol}: ${r.action}`;
-    if (r.buyCount > 0) msg += ` (${r.buyCount}买)`;
-    if (r.sellCount > 0) msg += ` (${r.sellCount}卖)`;
-    msg += '\n';
+    // 短线信号
+    let shortSig = '';
+    if (r.shortBuy >= 2) shortSig += '🟢';
+    else if (r.shortSell >= 2) shortSig += '🔴';
+    else shortSig += '⚪';
+    
+    // 中线信号
+    let midSig = '';
+    if (r.midBuy >= 1) midSig += '🟢';
+    else if (r.midSell >= 1) midSig += '🔴';
+    else midSig += '⚪';
+    
+    msg += `${symbol}: ${r.action} [短:${shortSig} 中:${midSig}]\n`;
   }
   
-  msg += `═`.repeat(35) + '\n';
-  msg += `📈 汇总: ${totalBuy}个买入 | ${totalSell}个卖出`;
+  msg += `\n─────────────── 汇总 ───────────────\n`;
+  msg += `短线: 🟢${shortBuyCount}个买入 | 🔴${shortSellCount}个卖出\n`;
+  msg += `中线: 🟢${midBuyCount}个买入 | 🔴${midSellCount}个卖出`;
   
   await sendMessageToUser('ou_3d8c36452b5a0ca480873393ad876e12', { text: msg });
-  console.log('✅ Top6策略信号已推送');
+  console.log('✅ 多策略信号已推送(区分短线/中线)');
 }
 
 sendTop6Signals();
