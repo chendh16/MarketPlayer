@@ -139,22 +139,62 @@ async function runQuantAgent() {
   console.log('[Quant-Agent] 组合回测已推送');
 }
 
+// ==================== Quant Agent: 各市场信号 ====================
+
+async function runAStockSignal(period: string) {
+  console.log(`[AStock] ${period}信号推送`);
+  // TODO: 实现A股信号推送
+}
+
+async function runHKStockSignal(period: string) {
+  console.log(`[HKStock] ${period}信号推送`);
+  // TODO: 实现港股信号推送
+}
+
+async function runUSStockSignal(period: string) {
+  console.log(`[USStock] ${period}信号推送`);
+  // TODO: 实现美股信号推送
+}
+
 // ==================== 启动调度器 ====================
 
 export function startFinTeamDailyTasks() {
-  console.log('[FinTeam] 启动每日任务...');
+  console.log('[FinTeam] 启动每日任务 (盘前/盘中/盘后)...');
   
-  // Strategy Agent: 每天4次收集策略
-  cron.schedule('0 9 * * *', async () => { await collectStrategies(); });  // 09:00
-  cron.schedule('0 12 * * *', async () => { await collectStrategies(); }); // 12:00
-  cron.schedule('0 15 * * *', async () => { await collectStrategies(); }); // 15:00
-  cron.schedule('0 20 * * *', async () => { await collectStrategies(); }); // 20:00
+  // ========== A股 (北京时间) ==========
+  // 盘前: 09:00
+  cron.schedule('0 9 * * 1-5', async () => { await runAStockSignal('盘前'); });
+  // 盘中: 10:30, 14:00
+  cron.schedule('30 10 * * 1-5', async () => { await runAStockSignal('盘中上午'); });
+  cron.schedule('0 14 * * 1-5', async () => { await runAStockSignal('盘中下午'); });
+  // 盘后: 15:30
+  cron.schedule('30 15 * * 1-5', async () => { await runAStockSignal('盘后'); });
   
-  // Quant Agent: 每天2次组合回测
-  cron.schedule('30 9 * * *', async () => { await runQuantAgent(); }); // 09:30
-  cron.schedule('0 14 * * *', async () => { await runQuantAgent(); }); // 14:00
+  // ========== 港股 (北京时间) ==========
+  // 盘前: 09:00
+  cron.schedule('0 9 * * 1-5', async () => { await runHKStockSignal('盘前'); });
+  // 盘中: 11:00, 14:30
+  cron.schedule('0 11 * * 1-5', async () => { await runHKStockSignal('盘中上午'); });
+  cron.schedule('30 14 * * 1-5', async () => { await runHKStockSignal('盘中下午'); });
+  // 盘后: 16:10
+  cron.schedule('10 16 * * 1-5', async () => { await runHKStockSignal('盘后'); });
   
-  console.log('[FinTeam] 每日任务已启动: strategy(4次) + quant(2次)');
+  // ========== 美股 (北京时间) ==========
+  // 盘前: 21:00 (前一天)
+  cron.schedule('0 21 * * 0-4', async () => { await runUSStockSignal('盘前'); });
+  // 盘中: 22:30, 02:00
+  cron.schedule('30 22 * * 0-4', async () => { await runUSStockSignal('盘中晚'); });
+  cron.schedule('0 2 * * 1-5', async () => { await runUSStockSignal('盘中凌晨'); });
+  // 盘后: 04:30
+  cron.schedule('30 4 * * 1-5', async () => { await runUSStockSignal('盘后'); });
+  
+  // ========== Strategy Agent: 每天4次 ==========
+  cron.schedule('0 9 * * *', async () => { await collectStrategies(); });
+  cron.schedule('0 12 * * *', async () => { await collectStrategies(); });
+  cron.schedule('0 15 * * *', async () => { await collectStrategies(); });
+  cron.schedule('0 20 * * *', async () => { await collectStrategies(); });
+  
+  console.log('[FinTeam] 已启动: A股/港股/美股 盘前/盘中/盘后');
 }
 
 // 立即执行一次
