@@ -144,22 +144,17 @@ async function runQuantAgent() {
 export function startFinTeamDailyTasks() {
   console.log('[FinTeam] 启动每日任务...');
   
-  // 每天 09:00 - Strategy Agent 收集策略
-  cron.schedule('0 9 * * *', async () => {
-    await collectStrategies();
-  });
+  // Strategy Agent: 每天4次收集策略
+  cron.schedule('0 9 * * *', async () => { await collectStrategies(); });  // 09:00
+  cron.schedule('0 12 * * *', async () => { await collectStrategies(); }); // 12:00
+  cron.schedule('0 15 * * *', async () => { await collectStrategies(); }); // 15:00
+  cron.schedule('0 20 * * *', async () => { await collectStrategies(); }); // 20:00
   
-  // 每天 09:30 - Quant Agent 组合回测
-  cron.schedule('30 9 * * *', async () => {
-    await runQuantAgent();
-  });
+  // Quant Agent: 每天2次组合回测
+  cron.schedule('30 9 * * *', async () => { await runQuantAgent(); }); // 09:30
+  cron.schedule('0 14 * * *', async () => { await runQuantAgent(); }); // 14:00
   
-  // 每天 14:00 - Quant Agent 下午信号
-  cron.schedule('0 14 * * *', async () => {
-    await runQuantAgent();
-  });
-  
-  console.log('[FinTeam] 每日任务已启动');
+  console.log('[FinTeam] 每日任务已启动: strategy(4次) + quant(2次)');
 }
 
 // 立即执行一次
