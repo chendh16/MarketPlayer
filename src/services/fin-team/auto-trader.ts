@@ -279,6 +279,12 @@ export function startFinTeamScheduler() {
   // 初始化账户
   init_virtual_account({ initialCash: 1000000 });
   
+  // 每天 09:00 - 每日策略信号推送
+  cron.schedule('0 9 * * 1-5', async () => {
+    const { sendDailySignals } = await import('../../../scripts/daily-signals');
+    await sendDailySignals();
+  });
+  
   // 每天 09:30 A股开盘 - 每日分析
   cron.schedule('30 9 * * 1-5', async () => {
     await runDailyAnalysis();

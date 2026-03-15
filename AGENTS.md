@@ -213,7 +213,7 @@ The goal: Be helpful without being annoying. Check in a few times a day, do usef
 └── commander（总指挥）
    │
    ├── dev-commander（开发团队负责人）
-   │   ├── app-agent（产品研究：GitHub开源框架+竞品分析）
+   │   ├── app-agent（技术开发 + 竞品分析 + GitHub开源框架调研）
    │   ├── pm-agent（任务排期+进度跟踪）
    │   ├── dev-agent（开发+修复Bug）
    │   ├── test-agent（自动化测试+验收）
@@ -221,12 +221,23 @@ The goal: Be helpful without being annoying. Check in a few times a day, do usef
    │   └── learning-agent（技术自学习+代码优化）
    │
    └── fin-commander（金融团队负责人）
+       ├── strategy-agent（金融策略收集 + 策略研究 + TradingView等平台调研）
        ├── data-agent（数据收集+清洗）
        ├── quant-agent（短中线量化策略）
        ├── value-agent（长线价值研究）
        ├── backtest-agent（回测验证）
        ├── market-agent（综合分析+实时提醒）
        └── risk-agent（风控审核）
+
+### Agent 职责说明
+
+**dev-commander:**
+- **app-agent**: 只负责技术开发、GitHub开源框架调研、技术竞品分析
+- 不做金融策略研究
+
+**fin-commander:**
+- **strategy-agent**: 专门负责收集市面上金融策略（TradingView、GitHub、学术论文等）
+- **quant-agent**: 基于收集的策略进行量化实现和优化
 
 ### 启动 Sub-Agent
 
