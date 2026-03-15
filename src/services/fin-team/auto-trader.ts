@@ -82,13 +82,31 @@ async function runDailyAnalysis(): Promise<DailyAnalysis> {
   
   logger.info(`[FinTeam] 分析完成: ${signals.length} 个信号`);
   
-  // 推送给用户审核
+  // 自动执行买入信号（无需审核）
+  let executed = 0;
+  for (const sig of signals) {
+    if (sig.action === 'buy' && sig.confidence >= 0.7) {
+      const success = await executeTrade(sig);
+      if (success) executed++;
+    }
+  }
+  
+  dailyAnalysis = {
+    date: today,
+    strongStocks: strongStocks.map(s => s.symbol),
+    signals,
+    executedTrades: executed,
+    summary: `分析了 ${strongStocks.length} 只强势股，自动买入 ${executed} 笔`,
+  };
+  
+  // 推送结果通知
   let signalMsg = `📈 每日交易信号 (${today})\n\n`;
   for (const sig of signals) {
+    const status = sig.action === 'buy' && sig.confidence >= 0.7 ? '✅ 已买入' : '📋 观望';
     signalMsg += `• ${sig.symbol} (${sig.market.toUpperCase()}) - ${sig.reason}\n`;
-    signalMsg += `  建议: 买入 x${sig.quantity} 置信度: ${(sig.confidence * 100).toFixed(0)}%\n\n`;
+    signalMsg += `  建议: 买入 x${sig.quantity} 置信度: ${(sig.confidence * 100).toFixed(0)}% ${status}\n\n`;
   }
-  signalMsg += `\n回复 "买入 [股票代码]" 确认执行`;
+  signalMsg += `\n共自动买入 ${executed} 笔`;
   
   await notify('📈 每日交易信号', signalMsg);
   
