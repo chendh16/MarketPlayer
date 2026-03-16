@@ -58,7 +58,7 @@ const EVENT_PATTERNS: Record<EventType, {
     weight: 0.7,
   },
   risk_alert: {
-    keywords: ['风险警示', '退市风险', 'ST', '\\*ST', '违规', '调查', '立案', '涉嫌'],
+    keywords: ['风险警示', '退市风险', '\\bST\\b', '\\*ST', '违规', '调查', '立案', '涉嫌'],
     sentiment: -0.9,
     weight: 1.2,
   },

@@ -6,8 +6,9 @@
 import { NewsItem } from '../../../models/signal';
 import { detectEvent, DetectedEvent } from './event-detector';
 
-// 金融领域正面词汇（基于 Loughran-McDonald 词典优化）
+// 金融领域正面词汇（中英文）
 const POSITIVE_WORDS = new Set([
+  // 中文
   '增长', '上升', '上涨', '盈利', '利润', '突破', '创新', '领先', '优质',
   '推荐', '买入', '增持', '看好', '机会', '利好', '成功', '完成', '获批',
   '签约', '中标', '订单', '合作', '扩张', '提升', '提高', '改善', '强劲',
@@ -15,10 +16,19 @@ const POSITIVE_WORDS = new Set([
   '提速', '加速', '爆发', '拐点', '景气', '复苏', '回暖', '向好', '价值',
   '上调', '提价', '涨价', '出厂价', '新品', '上市', '获批', '融资', '并购',
   '回购', '分红', '业绩预增', '扭亏', '摘帽', '扶持', '补贴', '减免', '放松',
+  // 英文
+  'surge', 'surges', 'soar', 'soars', 'rally', 'rallies', 'gain', 'gains',
+  'rise', 'rises', 'rose', 'rising', 'jump', 'jumps', 'jumped',
+  'profit', 'profits', 'profitable', 'growth', 'grow', 'grew', 'growing',
+  'beat', 'beats', 'exceed', 'exceeds', 'exceeded', 'outperform', 'outperformed',
+  'upgrade', 'upgraded', 'raise', 'raises', 'raised', 'target', 'targeted',
+  'bullish', 'positive', 'strong', 'strength', 'breakthrough', 'record',
+  'AI', 'demand', 'surges', 'demand surges', 'breakthrough'
 ]);
 
-// 金融领域负面词汇
+// 金融领域负面词汇（中英文）
 const NEGATIVE_WORDS = new Set([
+  // 中文
   '下跌', '下降', '下滑', '亏损', '风险', '警示', '退市', 'ST', '违规',
   '处罚', '调查', '诉讼', '仲裁', '判决', '罚款', '赔偿', '损失', '减少',
   '下降', '下滑', '减持', '卖出', '看空', '利空', '失败', '推迟', '终止',
