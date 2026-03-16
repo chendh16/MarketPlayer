@@ -2,23 +2,22 @@ import { logger } from '../../../utils/logger';
 import { NewsItem } from '../../../models/signal';
 
 interface EastMoneyNewsItem {
-  InfoCode?: string;
   id?: string;
-  Title?: string;
-  Content?: string;
-  Brief?: string;
+  title?: string;
+  content?: string;
+  digest?: string;
   ShowTime?: string;
-  CreateTime?: string;
+  url_w?: string;
+  column?: string;
 }
 
 interface EastMoneyResponse {
-  data?: { list?: EastMoneyNewsItem[] };
-  re?: EastMoneyNewsItem[];
+  rc?: number;
+  LivesList?: EastMoneyNewsItem[];
 }
 
-// DataCenter API：返回稳定 JSON，无需登录
-const PRIMARY_URL = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_KUAIBAO_NEWS&columns=ALL&filter=(MARK%3D%221%22)&pageNumber=1&pageSize=30&sortTypes=-1&sortColumns=ACTIVE_TIME&source=WEB&client=WEB';
-const FALLBACK_URL = 'https://gblobapi.eastmoney.com/Information/NewFlash/GetInformationList?client=WAP&type=1&IsGlobalNews=0&count=30';
+// 有效的新闻API
+const NEWS_URL = 'https://newsapi.eastmoney.com/kuaixun/v1/getlist_102_ajaxResult_50_1_.html';
 
 function extractAStockCodes(text: string): string[] {
   const matches = text.match(/\b[036]\d{5}\b/g);
@@ -29,28 +28,24 @@ async function fetchEastMoneyNews(url: string): Promise<EastMoneyNewsItem[]> {
   const res = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'zh-CN,zh;q=0.9',
+      'Accept': '*/*',
       'Referer': 'https://www.eastmoney.com/',
-      'Origin': 'https://www.eastmoney.com',
     },
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  if (text.trimStart().startsWith('<')) throw new Error('Unexpected HTML response');
-  const data = JSON.parse(text) as EastMoneyResponse;
-  // DataCenter API 返回格式：{ result: { data: [...] } }
-  const dcData = (data as any)?.result?.data;
-  if (dcData) {
-    return dcData.map((item: any): EastMoneyNewsItem => ({
-      InfoCode: item.SECURITY_CODE ?? item.CODE,
-      Title: item.TITLE ?? item.NOTICE_TITLE,
-      Content: item.CONTENT ?? item.MEDIA_NAME,
-      ShowTime: item.ACTIVE_TIME ?? item.UPDATE_DATE,
-    }));
+  
+  // 解析 JavaScript 回调格式: var ajaxResult={...}
+  const match = text.match(/var\s+ajaxResult\s*=\s*({[\s\S]*})/);
+  if (!match) throw new Error('Invalid response format');
+  
+  const data = JSON.parse(match[1]) as EastMoneyResponse;
+  if (data.rc !== 0 && data.rc !== 1) {
+    throw new Error(`API error: rc=${data.rc}`);
   }
-  return data?.data?.list ?? data?.re ?? [];
+  
+  return data.LivesList || [];
 }
 
 export async function fetchAStockNews(): Promise<Partial<NewsItem>[]> {
@@ -58,30 +53,26 @@ export async function fetchAStockNews(): Promise<Partial<NewsItem>[]> {
 
   let items: EastMoneyNewsItem[] = [];
   try {
-    items = await fetchEastMoneyNews(PRIMARY_URL);
+    items = await fetchEastMoneyNews(NEWS_URL);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    logger.warn(`Eastmoney primary API failed: ${msg}, trying fallback`);
-    try {
-      items = await fetchEastMoneyNews(FALLBACK_URL);
-    } catch (fallbackError: unknown) {
-      const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      logger.error(`Eastmoney fallback also failed: ${fbMsg}`);
-      return [];
-    }
+    logger.error(`Eastmoney API failed: ${msg}`);
+    return [];
   }
 
   const results: Partial<NewsItem>[] = items.map((item): Partial<NewsItem> => {
-    const title = item.Title ?? '';
-    const externalId = item.InfoCode ?? item.id ?? title;
-    const symbols = extractAStockCodes(title);
-    const publishedRaw = item.ShowTime ?? item.CreateTime;
+    const title = item.title || '';
+    const content = item.digest || item.content || '';
+    // 使用新闻ID作为标识
+    const externalId = item.id || title;
+    const symbols = extractAStockCodes(title + content);
+    const publishedRaw = item.ShowTime || '';
 
     return {
       source: 'eastmoney',
       externalId,
       title,
-      content: item.Content ?? item.Brief ?? undefined,
+      content: item.digest || item.content || '',
       market: 'a',
       symbols: symbols.length > 0 ? symbols : undefined,
       triggerType: 'news',
