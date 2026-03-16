@@ -281,7 +281,7 @@ export function startFinTeamScheduler() {
   
   // 每天 09:00 - 每日策略信号推送
   cron.schedule('0 9 * * 1-5', async () => {
-    const { sendDailySignals } = await import('../../../scripts/daily-signals');
+    const { sendDailySignals } = await import('./daily-signals');
     await sendDailySignals();
   });
   
