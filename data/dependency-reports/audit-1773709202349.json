@@ -1,0 +1,190 @@
+{
+  "date": "2026-03-17T01:00:02.349Z",
+  "audit": {
+    "vulnerabilities": [
+      {
+        "name": "flatted",
+        "severity": "high",
+        "via": [
+          {
+            "source": 1114526,
+            "name": "flatted",
+            "dependency": "flatted",
+            "title": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+            "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+            "severity": "high",
+            "cwe": [
+              "CWE-674"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<3.4.0"
+          }
+        ]
+      }
+    ],
+    "stats": {
+      "dependencies": {
+        "prod": 223,
+        "dev": 381,
+        "optional": 17,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 618
+      },
+      "devDependencies": 0,
+      "totalDependencies": "[object Object]0"
+    }
+  },
+  "outdated": [
+    {
+      "name": "@anthropic-ai/sdk",
+      "current": "0.78.0",
+      "wanted": "0.78.0",
+      "latest": "0.79.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "@eslint/js",
+      "current": "9.39.3",
+      "wanted": "9.39.4",
+      "latest": "10.0.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "@sentry/node",
+      "current": "7.120.4",
+      "wanted": "7.120.4",
+      "latest": "10.43.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "@types/express",
+      "current": "4.17.25",
+      "wanted": "4.17.25",
+      "latest": "5.0.6",
+      "type": "dependencies"
+    },
+    {
+      "name": "@types/jest",
+      "current": "29.5.14",
+      "wanted": "29.5.14",
+      "latest": "30.0.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "@types/node",
+      "current": "20.19.35",
+      "wanted": "20.19.37",
+      "latest": "25.5.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "@types/pg",
+      "current": "8.16.0",
+      "wanted": "8.18.0",
+      "latest": "8.18.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "bullmq",
+      "current": "5.70.1",
+      "wanted": "5.71.0",
+      "latest": "5.71.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "discord.js",
+      "current": "13.17.1",
+      "wanted": "13.17.1",
+      "latest": "14.25.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "dotenv",
+      "current": "16.6.1",
+      "wanted": "16.6.1",
+      "latest": "17.3.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "eslint",
+      "current": "9.39.3",
+      "wanted": "9.39.4",
+      "latest": "10.0.3",
+      "type": "dependencies"
+    },
+    {
+      "name": "express",
+      "current": "4.22.1",
+      "wanted": "4.22.1",
+      "latest": "5.2.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "futu-api",
+      "current": "9.6.5608",
+      "wanted": "9.6.5608",
+      "latest": "10.0.6008",
+      "type": "dependencies"
+    },
+    {
+      "name": "jest",
+      "current": "29.7.0",
+      "wanted": "29.7.0",
+      "latest": "30.3.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "longport",
+      "current": "3.0.22",
+      "wanted": "3.0.23",
+      "latest": "3.0.23",
+      "type": "dependencies"
+    },
+    {
+      "name": "node-cron",
+      "current": "3.0.3",
+      "wanted": "3.0.3",
+      "latest": "4.2.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "nodemailer",
+      "current": "8.0.1",
+      "wanted": "8.0.2",
+      "latest": "8.0.2",
+      "type": "dependencies"
+    },
+    {
+      "name": "pg",
+      "current": "8.19.0",
+      "wanted": "8.20.0",
+      "latest": "8.20.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "redis",
+      "current": "4.7.1",
+      "wanted": "4.7.1",
+      "latest": "5.11.0",
+      "type": "dependencies"
+    },
+    {
+      "name": "typescript-eslint",
+      "current": "8.56.1",
+      "wanted": "8.57.1",
+      "latest": "8.57.1",
+      "type": "dependencies"
+    },
+    {
+      "name": "zod",
+      "current": "3.25.76",
+      "wanted": "3.25.76",
+      "latest": "4.3.6",
+      "type": "dependencies"
+    }
+  ]
+}

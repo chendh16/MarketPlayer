@@ -1,53 +1,48 @@
 {
-  "date": "2026-03-11",
+  "date": "2026-03-16",
   "sources": [
     {
       "name": "HackerNews",
       "items": [
         {
-          "title": "Faster Asin() Was Hiding in Plain Sight",
-          "url": "https://16bpp.net/blog/post/faster-asin-was-hiding-in-plain-sight/",
+          "title": "Launch HN: Voygr (YC W26) – A better maps API for agents and AI apps",
+          "url": "https://news.ycombinator.com/item?id=47401042",
+          "score": 58
+        },
+        {
+          "title": "Starlink Mini as a failover",
+          "url": "https://www.jackpearce.co.uk/posts/starlink-failover/",
+          "score": 163
+        },
+        {
+          "title": "Apideck CLI – An AI-agent interface with much lower context consumption than MCP",
+          "url": "https://www.apideck.com/blog/mcp-server-eating-context-window-cli-alternative",
+          "score": 112
+        },
+        {
+          "title": "Nvidia Launches Vera CPU, Purpose-Built for Agentic AI",
+          "url": "https://nvidianews.nvidia.com/news/nvidia-launches-vera-cpu-purpose-built-for-agentic-ai",
+          "score": 96
+        },
+        {
+          "title": "Show HN: Claude Code skills that build complete Godot games",
+          "url": "https://github.com/htdt/godogen",
+          "score": 122
+        },
+        {
+          "title": "AirPods Max 2",
+          "url": "https://www.apple.com/airpods-max/",
+          "score": 170
+        },
+        {
+          "title": "Launch HN: Chamber (YC W26) – An AI Teammate for GPU Infrastructure",
+          "url": "https://www.usechamber.io/",
+          "score": 19
+        },
+        {
+          "title": "Speed at the cost of quality: Study of use of Cursor AI in open source projects (2025)",
+          "url": "https://arxiv.org/abs/2511.04427",
           "score": 85
-        },
-        {
-          "title": "AI Agent Hacks McKinsey",
-          "url": "https://codewall.ai/blog/how-we-hacked-mckinseys-ai-platform",
-          "score": 140
-        },
-        {
-          "title": "PeppyOS: A simpler alternative to ROS 2 (now with containers support)",
-          "url": "https://peppy.bot/",
-          "score": 48
-        },
-        {
-          "title": "Show HN: Open-source browser for AI agents",
-          "url": "https://github.com/theredsix/agent-browser-protocol",
-          "score": 7
-        },
-        {
-          "title": "Ask HN: Is Claude Down Again?",
-          "url": "https://news.ycombinator.com/item?id=47336163",
-          "score": 44
-        },
-        {
-          "title": "Yann LeCun raises $1B to build AI that understands the physical world",
-          "url": "https://www.wired.com/story/yann-lecun-raises-dollar1-billion-to-build-ai-that-understands-the-physical-world/",
-          "score": 558
-        },
-        {
-          "title": "Agents that run while I sleep",
-          "url": "https://www.claudecodecamp.com/p/i-m-building-agents-that-run-while-i-sleep",
-          "score": 388
-        },
-        {
-          "title": "Julia Snail – An Emacs Development Environment for Julia Like Clojure's Cider",
-          "url": "https://github.com/gcv/julia-snail",
-          "score": 130
-        },
-        {
-          "title": "When the chain becomes the product: Seven years inside a token-funded venture",
-          "url": "https://markmhendrickson.com/posts/when-the-chain-becomes-the-product/",
-          "score": 43
         }
       ]
     },
@@ -57,62 +52,62 @@
         {
           "title": "openclaw/openclaw",
           "url": "https://github.com/openclaw/openclaw",
-          "stars": 303296,
-          "score": 303296
+          "stars": 317406,
+          "score": 317406
         },
         {
           "title": "x1xhlol/system-prompts-and-models-of-ai-tools",
           "url": "https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools",
-          "stars": 130223,
-          "score": 130223
+          "stars": 131537,
+          "score": 131537
         },
         {
           "title": "anomalyco/opencode",
           "url": "https://github.com/anomalyco/opencode",
-          "stars": 120202,
-          "score": 120202
+          "stars": 123455,
+          "score": 123455
         },
         {
           "title": "google-gemini/gemini-cli",
           "url": "https://github.com/google-gemini/gemini-cli",
-          "stars": 97276,
-          "score": 97276
+          "stars": 97984,
+          "score": 97984
         },
         {
           "title": "anthropics/skills",
           "url": "https://github.com/anthropics/skills",
-          "stars": 90500,
-          "score": 90500
+          "stars": 95035,
+          "score": 95035
         },
         {
           "title": "obra/superpowers",
           "url": "https://github.com/obra/superpowers",
-          "stars": 77644,
-          "score": 77644
-        },
-        {
-          "title": "anthropics/claude-code",
-          "url": "https://github.com/anthropics/claude-code",
-          "stars": 76652,
-          "score": 76652
-        },
-        {
-          "title": "github/spec-kit",
-          "url": "https://github.com/github/spec-kit",
-          "stars": 75850,
-          "score": 75850
+          "stars": 88478,
+          "score": 88478
         },
         {
           "title": "affaan-m/everything-claude-code",
           "url": "https://github.com/affaan-m/everything-claude-code",
-          "stars": 71625,
-          "score": 71625
+          "stars": 80306,
+          "score": 80306
+        },
+        {
+          "title": "anthropics/claude-code",
+          "url": "https://github.com/anthropics/claude-code",
+          "stars": 78734,
+          "score": 78734
+        },
+        {
+          "title": "github/spec-kit",
+          "url": "https://github.com/github/spec-kit",
+          "stars": 77484,
+          "score": 77484
         },
         {
           "title": "openai/codex",
           "url": "https://github.com/openai/codex",
-          "stars": 64630,
-          "score": 64630
+          "stars": 65667,
+          "score": 65667
         }
       ]
     },

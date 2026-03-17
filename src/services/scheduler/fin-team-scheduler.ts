@@ -29,15 +29,29 @@ const A_STOCK_POOL = [
 
 // ==================== 飞书通知 ====================
 
+import { sendMessageToUser as sendFeishuMessage } from '../feishu/bot';
+
+// 飞书用户ID（从环境变量或配置获取）
+const FEISHU_USER_OPEN_ID = process.env.FEISHU_USER_OPEN_ID || 'ou_3d8c36452b5a0ca480873393ad876e12';
+
 async function notifyUser(title: string, content: string): Promise<void> {
   try {
-    // 发送邮件
+    // 1. 飞书通知 - 优先
+    try {
+      const textContent = `**${title}**\n\n${content}`;
+      await sendFeishuMessage(FEISHU_USER_OPEN_ID, { text: textContent });
+      logger.info(`[FinScheduler] 飞书通知已发送: ${title}`);
+    } catch (e) {
+      logger.warn('[FinScheduler] 飞书通知失败，尝试邮件:', e);
+    }
+    
+    // 2. 邮件通知 - 备用
     await sendEmail({
       to: process.env.EMAIL_TO || '845567595@qq.com',
       subject: `[MarketPlayer] ${title}`,
       html: content.replace(/\n/g, '<br>'),
     });
-    logger.info(`[FinScheduler] 已发送通知: ${title}`);
+    logger.info(`[FinScheduler] 邮件通知已发送: ${title}`);
   } catch (e) {
     logger.error('[FinScheduler] 通知发送失败', e);
   }

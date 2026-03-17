@@ -288,27 +288,39 @@ async function createFutuConnection(userId: string): Promise<FutuTradeConnection
 }
 
 async function loadUserCredential(userId: string): Promise<FutuCredentialPayload> {
-  const account = await getBrokerAccount(userId, 'futu');
-  if (!account?.encryptedCredentials) {
-    return {
-      tradePassword: config.FUTU_TRADE_PASSWORD,
-      tradePasswordMd5: config.FUTU_TRADE_PASSWORD_MD5,
-      accId: config.FUTU_TRADE_ACC_ID,
-      trdEnv: config.FUTU_TRD_ENV,
-    };
-  }
-
+  // 如果PostgreSQL不可用，直接使用环境变量
   try {
-    const decrypted = decrypt(account.encryptedCredentials);
-    const parsed = JSON.parse(decrypted) as FutuCredentialPayload;
-    return {
-      tradePassword: parsed.tradePassword ?? config.FUTU_TRADE_PASSWORD,
-      tradePasswordMd5: parsed.tradePasswordMd5 ?? config.FUTU_TRADE_PASSWORD_MD5,
-      accId: parsed.accId ?? config.FUTU_TRADE_ACC_ID,
-      trdEnv: parsed.trdEnv ?? config.FUTU_TRD_ENV,
-    };
-  } catch (error) {
-    logger.warn(`Invalid futu credential payload for user=${userId}, fallback to env config`, error);
+    const account = await getBrokerAccount(userId, 'futu');
+    if (!account?.encryptedCredentials) {
+      return {
+        tradePassword: config.FUTU_TRADE_PASSWORD,
+        tradePasswordMd5: config.FUTU_TRADE_PASSWORD_MD5,
+        accId: config.FUTU_TRADE_ACC_ID,
+        trdEnv: config.FUTU_TRD_ENV,
+      };
+    }
+
+    try {
+      const decrypted = decrypt(account.encryptedCredentials);
+      const parsed = JSON.parse(decrypted) as FutuCredentialPayload;
+      return {
+        tradePassword: parsed.tradePassword ?? config.FUTU_TRADE_PASSWORD,
+        tradePasswordMd5: parsed.tradePasswordMd5 ?? config.FUTU_TRADE_PASSWORD_MD5,
+        accId: parsed.accId ?? config.FUTU_TRADE_ACC_ID,
+        trdEnv: parsed.trdEnv ?? config.FUTU_TRD_ENV,
+      };
+    } catch (error) {
+      logger.warn(`Invalid futu credential payload for user=${userId}, fallback to env config`, error);
+      return {
+        tradePassword: config.FUTU_TRADE_PASSWORD,
+        tradePasswordMd5: config.FUTU_TRADE_PASSWORD_MD5,
+        accId: config.FUTU_TRADE_ACC_ID,
+        trdEnv: config.FUTU_TRD_ENV,
+      };
+    }
+  } catch (dbError) {
+    // PostgreSQL不可用时直接使用环境变量
+    logger.warn('PostgreSQL not available, using env config for futu');
     return {
       tradePassword: config.FUTU_TRADE_PASSWORD,
       tradePasswordMd5: config.FUTU_TRADE_PASSWORD_MD5,
