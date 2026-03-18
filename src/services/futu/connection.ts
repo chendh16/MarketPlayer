@@ -422,3 +422,36 @@ function toNumber(value: unknown): number | undefined {
   }
   return undefined;
 }
+
+// ==================== 账户查询工具 ====================
+
+/**
+ * 获取所有Futu账户列表
+ */
+export async function getAllFutuAccounts(): Promise<Array<{
+  accId: number;
+  accIndex: number;
+  accType: number;
+  trdEnv: string;
+  nickname: string;
+  currency: string;
+}>> {
+  const { getFutuConnection } = await import('./connection');
+  const conn = await getFutuConnection('default');
+  
+  if (!conn || !(conn as any).getAccList) {
+    return [];
+  }
+  
+  try {
+    const accList = await (conn as any).getAccList();
+    return accList.map((acc: any) => ({
+      ...acc,
+      // 判断货币类型
+      currency: acc.accType === 1 ? 'HKD' : acc.accType === 2 ? 'USD' : 'CNY',
+    }));
+  } catch (error) {
+    logger.error('[Futu] getAllFutuAccounts error:', error);
+    return [];
+  }
+}

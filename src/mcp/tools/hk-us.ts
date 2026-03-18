@@ -1,11 +1,12 @@
 /**
  * 港股美股基本面 MCP 工具
- * 
+ *
  * 提供港股/美股行情、K线、资金流向数据获取
  * 数据来源：Yahoo Finance / 腾讯港股API
  */
 
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 import { getHKStockDetail, getUSStockDetail, HKStockDetail, USStockDetail } from '../../services/market/hk-us-service';
 
 /**
@@ -38,11 +39,11 @@ export async function fetch_hk_kline(params: {
 }> {
   const { code, period = '1day', startDate, endDate, limit = 500 } = params;
   logger.info(`[MCP] fetch_hk_kline code=${code} period=${period}`);
-  
+
   try {
     // 腾讯港股K线API - 修正格式
     const hkCode = code.padStart(5, '0');
-    
+
     // 周期映射 - 腾讯使用 day/week/min
     const periodMap: Record<string, string> = {
       '1min': 'min',
@@ -53,22 +54,22 @@ export async function fetch_hk_kline(params: {
       '1day': 'day',
       '1week': 'week',
     };
-    
+
     const periodType = periodMap[period] || 'day';
-    
+
     // 腾讯API格式: param=hk00700,day,,,500,qfq
     const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_${period}&param=hk${hkCode},${periodType},,,${limit},qfq`;
-    
+
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const text = await response.text();
-    
+
     // 解析返回数据 - 格式: kline_1day={"code":0,"data":{"hk00700":{"day":[...]}}}
     let klineData: string[] = [];
     try {
@@ -83,11 +84,11 @@ export async function fetch_hk_kline(params: {
     } catch (e) {
       logger.error('[MCP] parse error:', e);
     }
-    
+
     if (klineData.length === 0) {
       return { success: false, error: '无法解析K线数据' };
     }
-    
+
     const klines: KlineData[] = klineData.slice(0, limit).map((item: any) => ({
       time: item[0],
       open: parseFloat(item[1]) || 0,
@@ -96,7 +97,7 @@ export async function fetch_hk_kline(params: {
       low: parseFloat(item[4]) || 0,
       volume: parseInt(item[5]) || 0,
     }));
-    
+
     return { success: true, data: klines };
   } catch (error: any) {
     logger.error('[MCP] fetch_hk_kline error:', error);
@@ -122,7 +123,7 @@ export async function fetch_us_kline(params: {
 }> {
   const { code, period = '1day', startDate, endDate, limit = 500 } = params;
   logger.info(`[MCP] fetch_us_kline code=${code} period=${period}`);
-  
+
   // 首先尝试 Yahoo Finance
   try {
     const intervalMap: Record<string, string> = {
@@ -130,7 +131,7 @@ export async function fetch_us_kline(params: {
       '1hour': '1h', '1day': '1d', '1week': '1wk', '1month': '1mo',
     };
     const interval = intervalMap[period] || '1d';
-    
+
     let startTime: number;
     if (startDate) {
       startTime = Math.floor(new Date(startDate).getTime() / 1000);
@@ -143,27 +144,27 @@ export async function fetch_us_kline(params: {
       startTime = Math.floor(Date.now() / 1000) - limit * sec;
     }
     const endTime = endDate ? Math.floor(new Date(endDate).getTime() / 1000) : Math.floor(Date.now() / 1000);
-    
+
     const ticker = code.includes('.') ? code : `${code}`;
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=${interval}&period1=${startTime}&period2=${endTime}&count=${limit}`;
-    
+
     const response = await fetch(url, {
-      headers: { 
+      headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.9',
         'Referer': 'https://finance.yahoo.com/',
       },
     });
-    
+
     if (response.ok) {
       const data = await response.json() as any;
       const result = data.chart?.result?.[0];
-      
+
       if (result && result.timestamp && result.indicators?.quote?.[0]) {
         const timestamps = result.timestamp as number[];
         const quotes = result.indicators.quote[0];
-        
+
         const klines: KlineData[] = timestamps.map((ts, i) => ({
           time: new Date(ts * 1000).toISOString(),
           open: quotes.open[i] || 0,
@@ -172,29 +173,31 @@ export async function fetch_us_kline(params: {
           close: quotes.close[i] || 0,
           volume: quotes.volume[i] || 0,
         })).filter(k => k.close > 0);
-        
-        return { success: true, data: klines };
+
+        if (klines.length > 0) {
+          return { success: true, data: klines };
+        }
       }
     }
   } catch (error: any) {
     logger.warn('[MCP] Yahoo fetch failed:', error.message);
   }
-  
-  // Yahoo 失败，尝试 Alpha Vantage（如果有 API Key）
+
+  // Yahoo 失败或无数据，尝试 Alpha Vantage
   try {
-    const { config } = await import('../../config');
     const apiKey = config.ALPHA_VANTAGE_API_KEY;
-    
+    logger.info(`[MCP] Alpha Vantage API Key: ${apiKey?.substring(0, 5)}...`);
+
     if (apiKey && apiKey !== 'your_key') {
       const func = period === '1day' ? 'TIME_SERIES_DAILY' : 'TIME_SERIES_INTRADAY';
       const url = `https://www.alphavantage.co/query?function=${func}&symbol=${code}&apikey=${apiKey}${period !== '1day' ? `&interval=${period}` : ''}`;
-      
+
       const response = await fetch(url);
       const data = await response.json() as any;
-      
+
       const timeKey = data['Meta Data']?.['4. Last Refreshed'] ? 'Time Series (Daily)' : 
-                      data['Meta Data']?.['3. Last Refreshed'] ? `Time Series (${period})` : null;
-      
+                      data['Meta Data']?.['3. Last Refreshed'] ? 'Time Series (Daily)' : null;
+
       if (timeKey && data[timeKey]) {
         const timeSeries = data[timeKey];
         const klines: KlineData[] = Object.entries(timeSeries)
@@ -207,17 +210,17 @@ export async function fetch_us_kline(params: {
             close: parseFloat(values['4. close']) || 0,
             volume: parseInt(values['5. volume']) || 0,
           })).reverse();
-        
+
         return { success: true, data: klines };
       }
     }
   } catch (error: any) {
     logger.warn('[MCP] Alpha Vantage fetch failed:', error.message);
   }
-  
-  return { 
-    success: false, 
-    error: 'Yahoo Finance 访问受限，请配置 ALPHA_VANTAGE_API_KEY 或稍后重试' 
+
+  return {
+    success: false,
+    error: 'Yahoo Finance 访问受限，请配置 ALPHA_VANTAGE_API_KEY 或稍后重试'
   };
 }
 
@@ -233,17 +236,17 @@ export async function get_hk_stock_detail(params: {
 }> {
   const { code } = params;
   logger.info(`[MCP] get_hk_stock_detail code=${code}`);
-  
+
   try {
     const data = await getHKStockDetail(code);
-    
+
     if (!data) {
       return {
         success: false,
         error: `无法获取港股${code}数据`,
       };
     }
-    
+
     return {
       success: true,
       data,
@@ -269,17 +272,17 @@ export async function get_us_stock_detail(params: {
 }> {
   const { code } = params;
   logger.info(`[MCP] get_us_stock_detail code=${code}`);
-  
+
   try {
     const data = await getUSStockDetail(code);
-    
+
     if (!data) {
       return {
         success: false,
         error: `无法获取美股${code}数据`,
       };
     }
-    
+
     return {
       success: true,
       data,
@@ -305,10 +308,10 @@ export async function get_batch_hk_stocks(params: {
 }> {
   const { codes } = params;
   logger.info(`[MCP] get_batch_hk_stocks count=${codes.length}`);
-  
+
   const results: HKStockDetail[] = [];
   const errors: string[] = [];
-  
+
   for (const code of codes) {
     try {
       const data = await getHKStockDetail(code);
@@ -321,7 +324,7 @@ export async function get_batch_hk_stocks(params: {
       errors.push(code);
     }
   }
-  
+
   return {
     success: results.length > 0,
     data: results,
@@ -341,10 +344,10 @@ export async function get_batch_us_stocks(params: {
 }> {
   const { codes } = params;
   logger.info(`[MCP] get_batch_us_stocks count=${codes.length}`);
-  
+
   const results: USStockDetail[] = [];
   const errors: string[] = [];
-  
+
   for (const code of codes) {
     try {
       const data = await getUSStockDetail(code);
@@ -357,7 +360,7 @@ export async function get_batch_us_stocks(params: {
       errors.push(code);
     }
   }
-  
+
   return {
     success: results.length > 0,
     data: results,
@@ -389,23 +392,23 @@ export async function get_hk_stock_flow(params: {
 }> {
   const { code } = params;
   logger.info(`[MCP] get_hk_stock_flow code=${code}`);
-  
+
   try {
     const hkCode = code.padStart(5, '0');
     // 东方财富港股资金流向API
     const url = `https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?secid=0.${hkCode}&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65`;
-    
+
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       signal: AbortSignal.timeout(10000),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const data = await response.json() as any;
-    
+
     // 检查返回数据
     if (!data.data || !data.data.klines || data.data.klines.length === 0) {
       // 返回基本信息（从实时报价获取）
@@ -433,11 +436,11 @@ export async function get_hk_stock_flow(params: {
       }
       return { success: false, error: '无资金流向数据' };
     }
-    
+
     const klines = data.data.klines;
     // 取最新一条
     const latest = klines[klines.length - 1].split(',');
-    
+
     return {
       success: true,
       data: {
@@ -452,8 +455,8 @@ export async function get_hk_stock_flow(params: {
     };
   } catch (error: any) {
     logger.error('[MCP] get_hk_stock_flow error:', error);
-    return { 
-      success: true, 
+    return {
+      success: true,
       data: {
         code,
         name: '',
@@ -464,7 +467,7 @@ export async function get_hk_stock_flow(params: {
         timestamp: new Date().toISOString(),
         note: '资金流向API暂不可用，请稍后重试',
       },
-      error: error.message 
+      error: error.message
     };
   }
 }
@@ -490,11 +493,10 @@ export async function get_us_stock_flow(params: {
 }> {
   const { code } = params;
   logger.info(`[MCP] get_us_stock_flow code=${code}`);
-  
+
   try {
-    const { config } = await import('../../config');
     const apiKey = config.ALPHA_VANTAGE_API_KEY;
-    
+
     if (!apiKey || apiKey === 'your_key') {
       return {
         success: true,
@@ -507,18 +509,18 @@ export async function get_us_stock_flow(params: {
         },
       };
     }
-    
+
     // Alpha Vantage 的 GLOBAL_QUOTE 可以获取价格和成交量
     const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${code}&apikey=${apiKey}`;
-    
+
     const response = await fetch(url);
     const data = await response.json() as any;
     const quote = data['Global Quote'];
-    
+
     if (!quote || Object.keys(quote).length === 0) {
       return { success: false, error: '无法获取美股数据' };
     }
-    
+
     return {
       success: true,
       data: {

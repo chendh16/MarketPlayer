@@ -122,12 +122,15 @@ export async function cancelFutuOrder(
 ): Promise<FutuOrderResult> {
   try {
     const connection = await getFutuConnection(user.id);
+    // 根据配置选择账户索引
+    const accIndex = config.FUTU_USE_US_ACCOUNT ? config.FUTU_US_ACC_INDEX : config.FUTU_TRADE_ACC_INDEX;
+    
     await connection.modifyOrder({
       orderId: brokerOrderId,
       modifyOp: 'CANCEL',
       trdEnv: config.FUTU_TRD_ENV,
       accId: config.FUTU_TRADE_ACC_ID,
-      accIndex: config.FUTU_TRADE_ACC_INDEX,
+      accIndex,
     });
     return {
       success: true,
@@ -145,6 +148,9 @@ function buildPlaceOrderRequest(order: Order): FutuPlaceOrderRequest {
   const slipPct = Math.max(0, config.FUTU_ORDER_PRICE_SLIPPAGE_PCT);
   const price = applySlippage(reference, order.direction, slipPct, order.market);
   const qty = Math.max(1, Math.floor(order.quantity));
+  
+  // 根据配置选择账户索引
+  const accIndex = config.FUTU_USE_US_ACCOUNT ? config.FUTU_US_ACC_INDEX : config.FUTU_TRADE_ACC_INDEX;
 
   return {
     trdMarket: mapTrdMarket(order.market),
@@ -155,7 +161,7 @@ function buildPlaceOrderRequest(order: Order): FutuPlaceOrderRequest {
     price,
     trdEnv: config.FUTU_TRD_ENV,
     accId: config.FUTU_TRADE_ACC_ID,
-    accIndex: config.FUTU_TRADE_ACC_INDEX,
+    accIndex,
     remark: `MarketPlayer order=${order.id}`,
   };
 }

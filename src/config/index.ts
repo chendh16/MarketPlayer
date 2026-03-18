@@ -62,6 +62,10 @@ const configSchema = z.object({
     z.coerce.number().optional()
   ),
   FUTU_TRADE_ACC_INDEX: z.coerce.number().default(0),
+  // 美元模拟账户索引 (通常是 accIndex=1)
+  FUTU_US_ACC_INDEX: z.coerce.number().default(0),
+  // 是否使用美元账户
+  FUTU_USE_US_ACCOUNT: z.coerce.boolean().default(false),
   FUTU_TRADE_PASSWORD: z.preprocess(
     (v) => (v === '' || v === null ? undefined : v),
     z.string().optional()
