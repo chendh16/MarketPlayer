@@ -226,6 +226,8 @@ export async function getHistoryKLine(
       return await getUSKLine(symbol, interval, range);
     } else if (market === 'hk') {
       return await getHKKLine(symbol, interval, range);
+    } else if (market === 'a') {
+      return await getAKLine(symbol, interval, range);
     }
     return [];
   } catch (error) {
@@ -272,6 +274,52 @@ async function getHKKLine(symbol: string, interval: string, range: string): Prom
   // 简化处理
   logger.warn('[KLine] 港股K线获取待完善');
   return [];
+}
+
+/**
+ * 获取A股K线 (使用新浪财经API)
+ */
+async function getAKLine(symbol: string, interval: string, range: string): Promise<KLine[]> {
+  try {
+    // A股股票代码转换: 600000 -> sh600000
+    const tsSymbol = symbol.startsWith('sh') || symbol.startsWith('sz') 
+      ? symbol 
+      : (parseInt(symbol) < 600000 ? `sz${symbol}` : `sh${symbol}`);
+    
+    const intervalMap: Record<string, string> = {
+      '1d': 'day',
+      '1w': 'week',
+      '1M': 'month',
+    };
+    
+    const period = intervalMap[interval] || 'day';
+    const url = `https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${tsSymbol}&scale=${period}&ma=no`;
+    
+    const response = await fetch(url);
+    const text = await response.text();
+    
+    if (!text || text === 'null') {
+      return [];
+    }
+    
+    const data = JSON.parse(text) as Array<{day: string; open: number; high: number; low: number; close: number; volume: string}>;
+    
+    if (!Array.isArray(data)) {
+      return [];
+    }
+    
+    return data.map(item => ({
+      timestamp: new Date(item.day).getTime(),
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
+      volume: parseInt(String(item.volume)) || 0,
+    })).reverse(); // 升序排列
+  } catch (error) {
+    logger.error('[KLine] 获取A股K线失败:', error);
+    return [];
+  }
 }
 
 // ==================== 兼容旧版本 ====================
