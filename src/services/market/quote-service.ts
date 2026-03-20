@@ -71,7 +71,8 @@ export async function getHKQuote(symbol: string): Promise<RealtimeQuote | null> 
 export async function getUSQuote(symbol: string): Promise<RealtimeQuote | null> {
   try {
     // 使用Twelvedata API (免费demo key有限制)
-    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=1&apikey=demo`;
+    const apiKey = process.env.TWELVEDATA_API_KEY || 'demo';
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=1&apikey=${apiKey}`;
     
     const response = await fetch(url);
     const data = await response.json() as any;
@@ -247,7 +248,8 @@ async function getUSKLine(symbol: string, interval: string, range: string): Prom
     };
     const outputsize = rangeMap[range] || 30;
     
-    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=${outputsize}&apikey=demo`;
+    const apiKey = process.env.TWELVEDATA_API_KEY || 'demo';
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=${outputsize}&apikey=${apiKey}`;
     
     const response = await fetch(url);
     const data = await response.json() as any;
