@@ -5,17 +5,13 @@
     "weather": null,
     "competitorAnalysis": 1708273200,
     "morningReport": 1771416240,
-    "eveningReport": 1771447080,
-    "codeVerify": 1771458480
+    "eveningReport": 1771435680,
+    "codeVerify": 1771436880
   },
   "todayTasks": {
     "7:00_竞品分析": "completed",
     "9:00_金融汇报": "completed",
     "16:00_日终报告": "completed",
     "22:00_代码验证": "completed"
-  },
-  "networkStatus": {
-    "eastmoney": "blocked",
-    "tengxun_historical": "working"
   }
 }
