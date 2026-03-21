@@ -5,8 +5,12 @@ import { getUserByDiscordId, createUser, getManualPositions } from '../../db/que
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
 import { handleFeishuEvent } from '../../services/feishu/handler';
+import technicalRoutes from './technical';
 
 const router = express.Router();
+
+// 挂载技术指标路由
+router.use('/technical', technicalRoutes);
 
 // ─── JWT 认证中间件 ────────────────────────────────────────────────────────────
 

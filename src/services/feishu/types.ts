@@ -67,5 +67,20 @@ export interface FeishuCardActionEvent {
 export interface FeishuEvent {
   schema: string;
   header: FeishuEventHeader;
-  event: FeishuCardActionEvent;
+  event: FeishuCardActionEvent | FeishuMessageEvent;
+}
+
+export interface FeishuMessageEvent {
+  open_id: string;
+  user_id: string;
+  message: {
+    message_id: string;
+    message_type: string;
+    text?: string;
+  };
+  chat_id: string;
+  sender: {
+    open_id: string;
+    user_id: string;
+  };
 }

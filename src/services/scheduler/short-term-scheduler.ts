@@ -12,32 +12,13 @@ import { logger } from '../../utils/logger';
 import { evaluateShortTerm, ShortTermSignal } from '../../strategies/shortTerm';
 import { sendShortTermSignals, sendPositionAlert, sendTradeNotification } from './short-term-notifier';
 import { checkPositions, syncPositions, getPositions, openPosition, closePosition, getVirtualCash } from '../trading/position-tracker';
+import { HK_TOP50, US_TOP50, A_TOP50 } from '../../config/stock-pools';
 
-// 监控的股票池
+// 监控的股票池 - 使用前50只
 const STOCK_POOLS = {
-  a: [
-    { symbol: '600519', name: '贵州茅台' },
-    { symbol: '000001', name: '平安银行' },
-    { symbol: '600000', name: '浦发银行' },
-    { symbol: '600036', name: '招商银行' },
-    { symbol: '601318', name: '中国平安' },
-  ],
-  hk: [
-    { symbol: '00700', name: '腾讯控股' },
-    { symbol: '09988', name: '阿里巴巴' },
-    { symbol: '09999', name: '网易' },
-    { symbol: '09618', name: '京东集团' },
-    { symbol: '06690', name: '海尔智家' },
-  ],
-  us: [
-    { symbol: 'AAPL', name: '苹果' },
-    { symbol: 'MSFT', name: '微软' },
-    { symbol: 'GOOG', name: '谷歌' },
-    { symbol: 'AMZN', name: '亚马逊' },
-    { symbol: 'NVDA', name: '英伟达' },
-    { symbol: 'TSLA', name: '特斯拉' },
-    { symbol: 'META', name: 'Meta' },
-  ],
+  a: A_TOP50.map(s => ({ symbol: s.code, name: s.name })),
+  hk: HK_TOP50.map(s => ({ symbol: s.code, name: s.name })),
+  us: US_TOP50.map(s => ({ symbol: s.code, name: s.name })),
 };
 
 // 已推送的信号（避免重复推送）

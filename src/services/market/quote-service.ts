@@ -453,23 +453,14 @@ export async function getHKStockPrice(symbol: string): Promise<StockQuote | null
 }
 
 // ==================== 兼容旧版本2 ====================
+import { A_TOP50, HK_TOP50, US_TOP50 } from '../../config/stock-pools';
 
 export type Market = 'a' | 'hk' | 'us';
 
 export const DEFAULT_STOCKS: Record<Market, Array<{code: string, name: string}>> = {
-  a: [
-    {code: '000001', name: '平安银行'},
-    {code: '600000', name: '浦发银行'},
-    {code: '600519', name: '贵州茅台'},
-  ],
-  hk: [
-    {code: '00700', name: '腾讯控股'},
-    {code: '09988', name: '阿里巴巴'},
-  ],
-  us: [
-    {code: 'AAPL', name: '苹果'},
-    {code: 'MSFT', name: '微软'},
-  ],
+  a: A_TOP50.slice(0, 50).map(s => ({code: s.code, name: s.name})),
+  hk: HK_TOP50.slice(0, 50).map(s => ({code: s.code, name: s.name})),
+  us: US_TOP50.slice(0, 50).map(s => ({code: s.code, name: s.name})),
 };
 
 // ==================== 兼容旧版本3 ====================

@@ -1,6 +1,6 @@
 import { logger } from '../../utils/logger';
 import { config } from '../../config';
-import type { FeishuEvent, FeishuCardActionEvent } from './types';
+import type { FeishuEvent, FeishuCardActionEvent, FeishuMessageEvent } from './types';
 import {
   stepConfirmOrder,
   stepIgnoreDelivery,
@@ -11,6 +11,7 @@ import {
 } from '../../queues/steps/order-interact';
 import { updateMessage } from './bot';
 import { remindQueue } from '../../queues/remind-queue';
+import { handleTechnicalQuery } from './technical-query';
 
 /**
  * 处理飞书事件回调
@@ -25,12 +26,59 @@ export async function handleFeishuEvent(event: FeishuEvent): Promise<any> {
 
   // 卡片按钮点击事件
   if (header.event_type === 'card.action.trigger') {
-    await handleCardAction(eventData);
+    await handleCardAction(eventData as FeishuCardActionEvent);
+    return { code: 0 };
+  }
+
+  // 用户消息事件
+  if (header.event_type === 'im.message.receive_v1') {
+    await handleUserMessage(eventData as FeishuMessageEvent);
     return { code: 0 };
   }
 
   logger.warn(`Unknown Feishu event type: ${header.event_type}`);
   return { code: 0 };
+}
+
+/**
+ * 处理用户文本消息
+ */
+async function handleUserMessage(eventData: FeishuMessageEvent): Promise<void> {
+  try {
+    const { message, chat_id, sender } = eventData;
+    const openId = sender?.open_id;
+    const text = message?.message_id ? '' : (eventData as any).message?.message?.text;
+    
+    if (!openId || !text) {
+      logger.debug('[Feishu] 忽略无法处理的消息');
+      return;
+    }
+
+    logger.info(`[Feishu] 收到用户消息 from ${openId}: ${text}`);
+
+    // 处理技术指标查询
+    if (text.match(/^(指标|技术|分析|查询|看)\s*[A-Za-z0-9]/i) || 
+        text.match(/^[A-Z]{1,5}$/i) ||
+        text.match(/^\d{5,6}$/) ||
+        text.match(/^(苹果|特斯拉|微软|谷歌|英伟达|腾讯|阿里|茅台|平安)/)) {
+      await handleTechnicalQuery(openId, text);
+      return;
+    }
+
+    // 默认回复帮助信息
+    const helpText = `📌 **MarketPlayer 命令**:
+- 指标 AAPL / MSFT / TSLA
+- 技术分析 600519 / 00700
+- 查询 茅台 / 腾讯
+
+支持: A股(6位代码), 美股(字母), 港股(5位代码)`;
+    
+    const { sendMessageToUser } = await import('./bot');
+    await sendMessageToUser(openId, { text: helpText });
+
+  } catch (error) {
+    logger.error('[Feishu] 处理用户消息失败:', error);
+  }
 }
 
 /**
