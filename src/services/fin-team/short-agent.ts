@@ -11,6 +11,7 @@
 import { getHistoryKLine, KLine } from '../../services/market/quote-service';
 import { logger } from '../../utils/logger';
 import { calculateRelativeStrength } from './relative-strength';
+import { calculateADX, calculateOBV, calculateATR, calculateCCI, calculateKDJ } from './technical-indicators';
 
 /**
  * 交易信号
@@ -28,7 +29,7 @@ export interface ShortSignal {
 }
 
 /**
- * 计算技术指标
+ * 计算技术指标 (含ADX/OBV/ATR)
  */
 function calculateIndicators(klines: KLine[]) {
   const closes = klines.map(k => k.close);
@@ -63,7 +64,31 @@ function calculateIndicators(klines: KLine[]) {
   const high20 = Math.max(...klines.slice(-20).map(k => k.high));
   const low20 = Math.min(...klines.slice(-20).map(k => k.low));
   
-  return { ma5, ma10, ma20, rsi, volatility, volumeRatio, high20, low20, closes, volumes };
+  // ====== 新增: ADX ======
+  const adxData = calculateADX(klines);
+  
+  // ====== 新增: OBV ======
+  const obvData = calculateOBV(klines);
+  
+  // ====== 新增: ATR ======
+  const atr = calculateATR(klines);
+  
+  // ====== 新增: CCI ======
+  const cci = calculateCCI(klines);
+  
+  // ====== 新增: KDJ ======
+  const kdj = calculateKDJ(klines);
+  
+  return { 
+    ma5, ma10, ma20, rsi, volatility, volumeRatio, high20, low20, closes, volumes,
+    adx: adxData.adx,
+    adxTrend: adxData.trend,
+    obv: obvData.obv,
+    obvTrend: obvData.trend,
+    atr,
+    cci,
+    kdj
+  };
 }
 
 /**
@@ -81,7 +106,8 @@ export async function detectShortSignal(
       return { symbol, market, signal: 'HOLD', entryPrice: 0, stopLoss: 0, targetPrice: 0, holdDays: 0, reasons: ['数据不足'], strength: 0 };
     }
     
-    const { ma5, ma10, ma20, rsi, volatility, volumeRatio, high20, low20, closes, volumes } = calculateIndicators(klines);
+    const { ma5, ma10, ma20, rsi, volatility, volumeRatio, high20, low20, closes, volumes,
+      adx, adxTrend, obv, obvTrend, atr, cci, kdj } = calculateIndicators(klines);
     const currentPrice = closes[closes.length - 1];
     const reasons: string[] = [];
     let score = 50;
@@ -120,6 +146,34 @@ export async function detectShortSignal(
       reasons.push('连续3日放量');
     }
     
+    // ====== 新增: ADX趋势强度 ======
+    if (adx > 25) {
+      score += 10;
+      reasons.push(`ADX趋势强(${adx.toFixed(0)})`);
+      if (adxTrend === 'up') {
+        score += 5;
+        reasons.push('上升趋势确认');
+      }
+    }
+    
+    // ====== 新增: OBV能量潮 ======
+    if (obvTrend === 'up') {
+      score += 10;
+      reasons.push('OBV能量向上');
+    }
+    
+    // ====== 新增: CCI超卖 ======
+    if (cci < -100) {
+      score += 10;
+      reasons.push(`CCI超卖(${cci.toFixed(0)})`);
+    }
+    
+    // ====== 新增: KDJ超卖 ======
+    if (kdj.signal === 'buy') {
+      score += 10;
+      reasons.push('KDJ超卖金叉');
+    }
+    
     // ====== 相对强度过滤 (P0) ======
     const rs = await calculateRelativeStrength(symbol, market);
     let relativePass = true;
@@ -129,9 +183,11 @@ export async function detectShortSignal(
       score -= 20; // 相对强度不足扣分
     }
     
-    // ====== 止盈止损计算 ======
+    // ====== 止盈止损计算 (含ATR动态止损) ======
     const targetReturn = 0.08; // 8%止盈
-    const stopLossPct = 0.05; // 5%止损
+    // ATR动态止损: 使用2倍ATR
+    const atrStopLoss = atr > 0 ? (atr * 2 / currentPrice) : 0.05;
+    const stopLossPct = Math.min(atrStopLoss, 0.08); // 最大8%止损
     
     const stopLoss = currentPrice * (1 - stopLossPct);
     const targetPrice = currentPrice * (1 + targetReturn);
