@@ -1,10 +1,16 @@
 /**
  * 短线Agent - 日线循环交易
  * 持仓周期: 2-10天
+ * 
+ * 特性:
+ * - 相对强度过滤 (跑赢大盘才能买入)
+ * - 技术指标信号
+ * - 动态止损
  */
 
 import { getHistoryKLine, KLine } from '../../services/market/quote-service';
 import { logger } from '../../utils/logger';
+import { calculateRelativeStrength } from './relative-strength';
 
 /**
  * 交易信号
@@ -114,15 +120,24 @@ export async function detectShortSignal(
       reasons.push('连续3日放量');
     }
     
-    // ====== 卖出条件 ======
+    // ====== 相对强度过滤 (P0) ======
+    const rs = await calculateRelativeStrength(symbol, market);
+    let relativePass = true;
+    if (rs && !rs.passes) {
+      relativePass = false;
+      reasons.push(`相对强度不足(${rs.relativeStrength.toFixed(1)}%)`);
+      score -= 20; // 相对强度不足扣分
+    }
     
-    // 1. 达到止盈
+    // ====== 止盈止损计算 ======
     const targetReturn = 0.08; // 8%止盈
-    
-    // 2. 跌破止损
     const stopLossPct = 0.05; // 5%止损
     
+    const stopLoss = currentPrice * (1 - stopLossPct);
+    const targetPrice = currentPrice * (1 + targetReturn);
+    
     // ====== 确定信号 ======
+    let holdReason = '';
     
     // 预估持仓天数
     let holdDays = 5;
@@ -131,15 +146,13 @@ export async function detectShortSignal(
     else if (score >= 60) holdDays = 5;
     else holdDays = 7;                   // 弱信号
     
-    // 计算止盈止损
-    const stopLoss = currentPrice * (1 - stopLossPct);
-    const targetPrice = currentPrice * (1 + targetReturn);
-    
-    if (score >= 65) {
+    if (score >= 65 && relativePass) {
       signal = 'BUY';
-      logger.info(`[ShortAgent] ${symbol} BUY 信号: ${score}分, 持仓${holdDays}天`);
+      logger.info(`[ShortAgent] ${symbol} BUY 信号: ${score}分, 持仓${holdDays}天, 相对强度${rs?.relativeStrength.toFixed(1)}%`);
     } else if (score <= 35) {
       signal = 'SELL';
+    } else if (!relativePass) {
+      holdReason = '相对强度不足';
     }
     
     return {
