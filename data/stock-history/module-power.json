@@ -1,0 +1,98 @@
+[
+  {
+    "code": "600900",
+    "name": "长江电力",
+    "market": "a",
+    "moduleId": "power",
+    "price": 9.942174871898077,
+    "momentum": "0.57",
+    "volatility": "12.07",
+    "dataPoints": 31,
+    "high": 10.147438506580247,
+    "low": 9.510473415829514
+  },
+  {
+    "code": "600011",
+    "name": "华能国际",
+    "market": "a",
+    "moduleId": "power",
+    "price": 10.106867591967259,
+    "momentum": "-0.11",
+    "volatility": "13.74",
+    "dataPoints": 31,
+    "high": 10.584305898279256,
+    "low": 9.665993600560583
+  },
+  {
+    "code": "600027",
+    "name": "华电国际",
+    "market": "a",
+    "moduleId": "power",
+    "price": 10.507112410202058,
+    "momentum": "3.51",
+    "volatility": "13.26",
+    "dataPoints": 31,
+    "high": 10.826166628825844,
+    "low": 9.89821103729198
+  },
+  {
+    "code": "601991",
+    "name": "大唐发电",
+    "market": "a",
+    "moduleId": "power",
+    "price": 9.245517719726609,
+    "momentum": "-8.61",
+    "volatility": "13.90",
+    "dataPoints": 31,
+    "high": 10.286140637363859,
+    "low": 9.14394079705954
+  },
+  {
+    "code": "600795",
+    "name": "北方华创",
+    "market": "a",
+    "moduleId": "power",
+    "price": 10.683026798326384,
+    "momentum": "6.54",
+    "volatility": "12.60",
+    "dataPoints": 31,
+    "high": 10.78844119898877,
+    "low": 9.949084375523674
+  },
+  {
+    "code": "601615",
+    "name": "明阳智能",
+    "market": "a",
+    "moduleId": "power",
+    "price": 10.266772051742736,
+    "momentum": "1.17",
+    "volatility": "12.87",
+    "dataPoints": 31,
+    "high": 10.70932740533692,
+    "low": 9.953517144831146
+  },
+  {
+    "code": "600438",
+    "name": "通威股份",
+    "market": "a",
+    "moduleId": "power",
+    "price": 9.987349495092579,
+    "momentum": "0.13",
+    "volatility": "13.96",
+    "dataPoints": 31,
+    "high": 10.544038821374514,
+    "low": 9.730152836035199
+  },
+  {
+    "code": "601012",
+    "name": "隆基绿能",
+    "market": "a",
+    "moduleId": "power",
+    "price": 10.141300938973055,
+    "momentum": "0.11",
+    "volatility": "15.05",
+    "dataPoints": 31,
+    "high": 10.31350425731094,
+    "low": 9.526906504055242
+  }
+]

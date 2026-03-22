@@ -1,0 +1,62 @@
+[
+  {
+    "code": "XOM",
+    "name": "埃克森美孚",
+    "market": "us",
+    "moduleId": "us_energy",
+    "price": 159.67,
+    "momentum": "27.91",
+    "volatility": "23.46",
+    "dataPoints": 365,
+    "high": 162.44,
+    "low": 97.8
+  },
+  {
+    "code": "CVX",
+    "name": "雪佛龙",
+    "market": "us",
+    "moduleId": "us_energy",
+    "price": 201.73,
+    "momentum": "33.83",
+    "volatility": "23.80",
+    "dataPoints": 365,
+    "high": 205.080002,
+    "low": 132.039993
+  },
+  {
+    "code": "COP",
+    "name": "康菲石油",
+    "market": "us",
+    "moduleId": "us_energy",
+    "price": 126.92,
+    "momentum": "10.81",
+    "volatility": "32.46",
+    "dataPoints": 365,
+    "high": 128.13,
+    "low": 79.88
+  },
+  {
+    "code": "EOG",
+    "name": "EOG能源",
+    "market": "us",
+    "moduleId": "us_energy",
+    "price": 138.73,
+    "momentum": "4.21",
+    "volatility": "28.05",
+    "dataPoints": 365,
+    "high": 140.92,
+    "low": 101.59
+  },
+  {
+    "code": "SLB",
+    "name": "斯伦贝谢",
+    "market": "us",
+    "moduleId": "us_energy",
+    "price": 46.63,
+    "momentum": "2.57",
+    "volatility": "36.33",
+    "dataPoints": 365,
+    "high": 52.45,
+    "low": 31.11
+  }
+]

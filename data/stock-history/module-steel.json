@@ -1,0 +1,74 @@
+[
+  {
+    "code": "600019",
+    "name": "宝钢股份",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 10.257951547490812,
+    "momentum": "1.14",
+    "volatility": "14.14",
+    "dataPoints": 31,
+    "high": 10.740537909865422,
+    "low": 9.942674980991265
+  },
+  {
+    "code": "000709",
+    "name": "华菱钢铁",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 9.850018692402253,
+    "momentum": "-2.63",
+    "volatility": "13.25",
+    "dataPoints": 31,
+    "high": 10.672578501089761,
+    "low": 9.71388735267477
+  },
+  {
+    "code": "600782",
+    "name": "新华保险",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 10.13684991243352,
+    "momentum": "0.50",
+    "volatility": "12.87",
+    "dataPoints": 31,
+    "high": 10.6991766917026,
+    "low": 9.921915374199193
+  },
+  {
+    "code": "600019",
+    "name": "宝钢股份",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 10.606994057811058,
+    "momentum": "6.46",
+    "volatility": "14.69",
+    "dataPoints": 31,
+    "high": 10.836483915791352,
+    "low": 9.659160898717637
+  },
+  {
+    "code": "000709",
+    "name": "华菱钢铁",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 10.496476984875107,
+    "momentum": "6.08",
+    "volatility": "10.96",
+    "dataPoints": 31,
+    "high": 10.641068542067522,
+    "low": 9.698115455218119
+  },
+  {
+    "code": "600782",
+    "name": "新华保险",
+    "market": "a",
+    "moduleId": "steel",
+    "price": 10.33602353045571,
+    "momentum": "2.32",
+    "volatility": "13.62",
+    "dataPoints": 31,
+    "high": 10.777280875506204,
+    "low": 9.94970004021571
+  }
+]

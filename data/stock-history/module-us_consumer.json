@@ -1,0 +1,122 @@
+[
+  {
+    "code": "AMZN",
+    "name": "亚马逊",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 205.37,
+    "momentum": "10.11",
+    "volatility": "33.08",
+    "dataPoints": 365,
+    "high": 258.60001,
+    "low": 161.38
+  },
+  {
+    "code": "WMT",
+    "name": "沃尔玛",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 119.019997,
+    "momentum": "47.05",
+    "volatility": "24.27",
+    "dataPoints": 365,
+    "high": 134.69,
+    "low": 78.98
+  },
+  {
+    "code": "HD",
+    "name": "家得宝",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 320.75,
+    "momentum": "-21.45",
+    "volatility": "23.03",
+    "dataPoints": 365,
+    "high": 439.37,
+    "low": 320.26001
+  },
+  {
+    "code": "MCD",
+    "name": "麦当劳",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 308.85001,
+    "momentum": "1.68",
+    "volatility": "18.25",
+    "dataPoints": 365,
+    "high": 341.75,
+    "low": 276.53
+  },
+  {
+    "code": "NKE",
+    "name": "耐克",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 52.37,
+    "momentum": "-36.33",
+    "volatility": "37.65",
+    "dataPoints": 365,
+    "high": 84.76,
+    "low": 52.18
+  },
+  {
+    "code": "PG",
+    "name": "宝洁",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 144.28,
+    "momentum": "-14.57",
+    "volatility": "18.81",
+    "dataPoints": 365,
+    "high": 180.42999,
+    "low": 137.62
+  },
+  {
+    "code": "KO",
+    "name": "可口可乐",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 74.75,
+    "momentum": "6.53",
+    "volatility": "17.20",
+    "dataPoints": 365,
+    "high": 82,
+    "low": 60.62
+  },
+  {
+    "code": "PEP",
+    "name": "百事可乐",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 150.039993,
+    "momentum": "-10.67",
+    "volatility": "21.82",
+    "dataPoints": 365,
+    "high": 177.5,
+    "low": 127.6
+  },
+  {
+    "code": "COST",
+    "name": "好市多",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 972.33002,
+    "momentum": "10.10",
+    "volatility": "20.86",
+    "dataPoints": 365,
+    "high": 1078.22998,
+    "low": 844.059998
+  },
+  {
+    "code": "NFLX",
+    "name": "奈飞",
+    "market": "us",
+    "moduleId": "us_consumer",
+    "price": 91.82,
+    "momentum": "27.58",
+    "volatility": "34.93",
+    "dataPoints": 365,
+    "high": 134.11501,
+    "low": 67.788
+  }
+]

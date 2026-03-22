@@ -1,0 +1,62 @@
+[
+  {
+    "code": "002475",
+    "name": "立讯精密",
+    "market": "a",
+    "moduleId": "tech",
+    "price": 9.513797533104507,
+    "momentum": "-5.35",
+    "volatility": "13.28",
+    "dataPoints": 31,
+    "high": 10.34451397790053,
+    "low": 9.341926849181997
+  },
+  {
+    "code": "000100",
+    "name": "TCL科技",
+    "market": "a",
+    "moduleId": "tech",
+    "price": 9.860145130667295,
+    "momentum": "-1.20",
+    "volatility": "13.25",
+    "dataPoints": 31,
+    "high": 10.328983976885928,
+    "low": 9.519136752032546
+  },
+  {
+    "code": "002185",
+    "name": "华天科技",
+    "market": "a",
+    "moduleId": "tech",
+    "price": 11.03140837907382,
+    "momentum": "8.90",
+    "volatility": "13.12",
+    "dataPoints": 31,
+    "high": 11.303127640980863,
+    "low": 9.83487122234242
+  },
+  {
+    "code": "603986",
+    "name": "兆易创新",
+    "market": "a",
+    "moduleId": "tech",
+    "price": 9.807287361869191,
+    "momentum": "-1.25",
+    "volatility": "13.31",
+    "dataPoints": 31,
+    "high": 10.359191480208466,
+    "low": 9.623062182033044
+  },
+  {
+    "code": "688981",
+    "name": "中芯国际",
+    "market": "a",
+    "moduleId": "tech",
+    "price": 9.951644320740028,
+    "momentum": "-0.94",
+    "volatility": "14.75",
+    "dataPoints": 31,
+    "high": 10.588243955616774,
+    "low": 9.763951743923231
+  }
+]

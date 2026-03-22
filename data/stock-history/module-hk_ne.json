@@ -1,0 +1,110 @@
+[
+  {
+    "code": "00968",
+    "name": "信义光能",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 3.33,
+    "momentum": "3.74",
+    "volatility": "41.10",
+    "dataPoints": 73,
+    "high": 3.73,
+    "low": 2.88
+  },
+  {
+    "code": "00981",
+    "name": "中芯国际",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 59.75,
+    "momentum": "-13.97",
+    "volatility": "40.30",
+    "dataPoints": 73,
+    "high": 80.1,
+    "low": 58.3
+  },
+  {
+    "code": "02208",
+    "name": "金风科技",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 15.54,
+    "momentum": "26.96",
+    "volatility": "82.59",
+    "dataPoints": 73,
+    "high": 18.49,
+    "low": 11.5
+  },
+  {
+    "code": "00968",
+    "name": "信义光能",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 3.33,
+    "momentum": "3.74",
+    "volatility": "41.10",
+    "dataPoints": 73,
+    "high": 3.73,
+    "low": 2.88
+  },
+  {
+    "code": "00981",
+    "name": "中芯国际",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 59.75,
+    "momentum": "-13.97",
+    "volatility": "40.30",
+    "dataPoints": 73,
+    "high": 80.1,
+    "low": 58.3
+  },
+  {
+    "code": "02208",
+    "name": "金风科技",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 15.54,
+    "momentum": "26.96",
+    "volatility": "82.59",
+    "dataPoints": 73,
+    "high": 18.49,
+    "low": 11.5
+  },
+  {
+    "code": "06690",
+    "name": "海尔智家",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 24.6,
+    "momentum": "-7.87",
+    "volatility": "23.79",
+    "dataPoints": 73,
+    "high": 28.2,
+    "low": 24.12
+  },
+  {
+    "code": "06690",
+    "name": "海尔智家",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 24.6,
+    "momentum": "-7.87",
+    "volatility": "23.79",
+    "dataPoints": 73,
+    "high": 28.2,
+    "low": 24.12
+  },
+  {
+    "code": "06690",
+    "name": "海尔智家",
+    "market": "hk",
+    "moduleId": "hk_ne",
+    "price": 24.6,
+    "momentum": "-7.87",
+    "volatility": "23.79",
+    "dataPoints": 73,
+    "high": 28.2,
+    "low": 24.12
+  }
+]

@@ -1,0 +1,86 @@
+[
+  {
+    "code": "AMAT",
+    "name": "应用材料",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 357.059998,
+    "momentum": "76.79",
+    "volatility": "46.21",
+    "dataPoints": 365,
+    "high": 395.95001,
+    "low": 123.74
+  },
+  {
+    "code": "LRCX",
+    "name": "拉姆研究",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 228.36,
+    "momentum": "180.06",
+    "volatility": "50.17",
+    "dataPoints": 365,
+    "high": 256.67999,
+    "low": 56.32
+  },
+  {
+    "code": "KLAC",
+    "name": "科磊",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 1498.67004,
+    "momentum": "90.33",
+    "volatility": "46.00",
+    "dataPoints": 365,
+    "high": 1693.34998,
+    "low": 551.33002
+  },
+  {
+    "code": "AMAT",
+    "name": "应用材料",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 357.059998,
+    "momentum": "76.79",
+    "volatility": "46.21",
+    "dataPoints": 365,
+    "high": 395.95001,
+    "low": 123.74
+  },
+  {
+    "code": "LRCX",
+    "name": "拉姆研究",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 228.36,
+    "momentum": "180.06",
+    "volatility": "50.17",
+    "dataPoints": 365,
+    "high": 256.67999,
+    "low": 56.32
+  },
+  {
+    "code": "KLAC",
+    "name": "科磊",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 1498.67004,
+    "momentum": "90.33",
+    "volatility": "46.00",
+    "dataPoints": 365,
+    "high": 1693.34998,
+    "low": 551.33002
+  },
+  {
+    "code": "AMAT",
+    "name": "应用材料",
+    "market": "us",
+    "moduleId": "us_semi",
+    "price": 357.059998,
+    "momentum": "76.79",
+    "volatility": "46.21",
+    "dataPoints": 365,
+    "high": 395.95001,
+    "low": 123.74
+  }
+]

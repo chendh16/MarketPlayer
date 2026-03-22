@@ -1,0 +1,28 @@
+{
+  "lastModule": "hk_finance",
+  "lastStock": 0,
+  "completed": [
+    "power",
+    "coal",
+    "natural_gas",
+    "tech",
+    "ev",
+    "pharma",
+    "finance",
+    "consumer",
+    "realestate",
+    "steel",
+    "cement",
+    "us_tech",
+    "us_semi",
+    "us_ev",
+    "us_health",
+    "us_finance",
+    "us_consumer",
+    "us_energy",
+    "hk_tech",
+    "hk_ne",
+    "hk_finance"
+  ],
+  "timestamp": "2026-03-22T10:57:49.546Z"
+}

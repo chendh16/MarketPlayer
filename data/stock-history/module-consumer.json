@@ -1,0 +1,62 @@
+[
+  {
+    "code": "600519",
+    "name": "贵州茅台",
+    "market": "a",
+    "moduleId": "consumer",
+    "price": 1615.0053637684264,
+    "momentum": "8.86",
+    "volatility": "11.89",
+    "dataPoints": 31,
+    "high": 1673.4855441510315,
+    "low": 1455.6606536258166
+  },
+  {
+    "code": "600887",
+    "name": "伊利股份",
+    "market": "a",
+    "moduleId": "consumer",
+    "price": 10.354636440671664,
+    "momentum": "1.97",
+    "volatility": "13.15",
+    "dataPoints": 31,
+    "high": 10.732777270933836,
+    "low": 9.89447222355157
+  },
+  {
+    "code": "000333",
+    "name": "美的集团",
+    "market": "a",
+    "moduleId": "consumer",
+    "price": 9.612418870157638,
+    "momentum": "-4.43",
+    "volatility": "13.99",
+    "dataPoints": 31,
+    "high": 10.215881963655747,
+    "low": 9.231739557522056
+  },
+  {
+    "code": "000651",
+    "name": "格力电器",
+    "market": "a",
+    "moduleId": "consumer",
+    "price": 9.521953787556763,
+    "momentum": "-4.40",
+    "volatility": "13.18",
+    "dataPoints": 31,
+    "high": 10.22267966224841,
+    "low": 9.458101982214906
+  },
+  {
+    "code": "603288",
+    "name": "海天味业",
+    "market": "a",
+    "moduleId": "consumer",
+    "price": 10.009552176005663,
+    "momentum": "1.44",
+    "volatility": "13.64",
+    "dataPoints": 31,
+    "high": 10.140975416690512,
+    "low": 9.49591068329068
+  }
+]

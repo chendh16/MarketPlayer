@@ -1,0 +1,62 @@
+[
+  {
+    "code": "601088",
+    "name": "上海能源",
+    "market": "a",
+    "moduleId": "coal",
+    "price": 10.06101234864024,
+    "momentum": "0.18",
+    "volatility": "13.97",
+    "dataPoints": 31,
+    "high": 10.344855552950607,
+    "low": 9.694475467487605
+  },
+  {
+    "code": "600971",
+    "name": "恒源煤电",
+    "market": "a",
+    "moduleId": "coal",
+    "price": 10.1709869619503,
+    "momentum": "1.87",
+    "volatility": "12.89",
+    "dataPoints": 31,
+    "high": 10.40782945421772,
+    "low": 9.642482585467668
+  },
+  {
+    "code": "600395",
+    "name": "盘江股份",
+    "market": "a",
+    "moduleId": "coal",
+    "price": 10.579068158230394,
+    "momentum": "5.72",
+    "volatility": "13.45",
+    "dataPoints": 31,
+    "high": 10.76260125562217,
+    "low": 9.782461563074747
+  },
+  {
+    "code": "601001",
+    "name": "大同煤业",
+    "market": "a",
+    "moduleId": "coal",
+    "price": 10.590263942338058,
+    "momentum": "5.54",
+    "volatility": "13.26",
+    "dataPoints": 31,
+    "high": 10.937701554263889,
+    "low": 9.820954099059433
+  },
+  {
+    "code": "600121",
+    "name": "郑州煤电",
+    "market": "a",
+    "moduleId": "coal",
+    "price": 10.116636484634235,
+    "momentum": "2.32",
+    "volatility": "11.06",
+    "dataPoints": 31,
+    "high": 10.45399450512508,
+    "low": 9.5901707882178
+  }
+]

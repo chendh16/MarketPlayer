@@ -1,0 +1,74 @@
+[
+  {
+    "code": "002594",
+    "name": "比亚迪",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 10.475397067684398,
+    "momentum": "4.36",
+    "volatility": "13.31",
+    "dataPoints": 31,
+    "high": 10.610354278407582,
+    "low": 9.549006786861023
+  },
+  {
+    "code": "300750",
+    "name": "宁德时代",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 10.005534664921695,
+    "momentum": "0.29",
+    "volatility": "14.07",
+    "dataPoints": 31,
+    "high": 10.50947101073355,
+    "low": 9.66242807180714
+  },
+  {
+    "code": "002812",
+    "name": "恩捷股份",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 10.416311294025972,
+    "momentum": "5.45",
+    "volatility": "13.66",
+    "dataPoints": 31,
+    "high": 10.65430980913008,
+    "low": 9.468525599457507
+  },
+  {
+    "code": "300014",
+    "name": "亿纬锂能",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 10.233060311406184,
+    "momentum": "1.37",
+    "volatility": "11.75",
+    "dataPoints": 31,
+    "high": 10.374306710934379,
+    "low": 9.772132855078903
+  },
+  {
+    "code": "002460",
+    "name": "赣锋锂业",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 9.466210103390589,
+    "momentum": "-5.98",
+    "volatility": "13.82",
+    "dataPoints": 31,
+    "high": 10.504296990282501,
+    "low": 9.345951978260567
+  },
+  {
+    "code": "002466",
+    "name": "天齐锂业",
+    "market": "a",
+    "moduleId": "ev",
+    "price": 10.211759516604104,
+    "momentum": "3.51",
+    "volatility": "12.47",
+    "dataPoints": 31,
+    "high": 10.368305079789934,
+    "low": 9.346530270795046
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "code": "601398",
+    "name": "工商银行",
+    "market": "a",
+    "moduleId": "finance",
+    "price": 10.393172449567832,
+    "momentum": "3.58",
+    "volatility": "13.74",
+    "dataPoints": 31,
+    "high": 10.700061895654017,
+    "low": 9.836803272704893
+  },
+  {
+    "code": "601939",
+    "name": "建设银行",
+    "market": "a",
+    "moduleId": "finance",
+    "price": 9.736351248841203,
+    "momentum": "-2.58",
+    "volatility": "13.73",
+    "dataPoints": 31,
+    "high": 10.423379324836317,
+    "low": 9.280048145406132
+  },
+  {
+    "code": "601288",
+    "name": "农业银行",
+    "market": "a",
+    "moduleId": "finance",
+    "price": 10.058123924132495,
+    "momentum": "-0.67",
+    "volatility": "14.82",
+    "dataPoints": 31,
+    "high": 10.595396485585331,
+    "low": 9.720543656876542
+  },
+  {
+    "code": "601318",
+    "name": "中国平安",
+    "market": "a",
+    "moduleId": "finance",
+    "price": 10.02771193749183,
+    "momentum": "1.52",
+    "volatility": "12.96",
+    "dataPoints": 31,
+    "high": 10.465748351175266,
+    "low": 9.771119556147838
+  },
+  {
+    "code": "600030",
+    "name": "中信证券",
+    "market": "a",
+    "moduleId": "finance",
+    "price": 9.746614681201944,
+    "momentum": "-2.89",
+    "volatility": "12.78",
+    "dataPoints": 31,
+    "high": 10.373234672476565,
+    "low": 9.55964065898649
+  }
+]

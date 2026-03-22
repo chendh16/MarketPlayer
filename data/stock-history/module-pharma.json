@@ -1,0 +1,62 @@
+[
+  {
+    "code": "600276",
+    "name": "恒瑞医药",
+    "market": "a",
+    "moduleId": "pharma",
+    "price": 9.832058631073679,
+    "momentum": "-1.03",
+    "volatility": "11.07",
+    "dataPoints": 31,
+    "high": 10.331339226862816,
+    "low": 9.491364124166049
+  },
+  {
+    "code": "600529",
+    "name": "山东药玻",
+    "market": "a",
+    "moduleId": "pharma",
+    "price": 10.598791359761753,
+    "momentum": "4.57",
+    "volatility": "12.26",
+    "dataPoints": 31,
+    "high": 10.926525465972256,
+    "low": 9.909510383209609
+  },
+  {
+    "code": "603259",
+    "name": "药明康德",
+    "market": "a",
+    "moduleId": "pharma",
+    "price": 10.376984661912502,
+    "momentum": "3.39",
+    "volatility": "13.35",
+    "dataPoints": 31,
+    "high": 10.701738426897847,
+    "low": 9.852550535777363
+  },
+  {
+    "code": "002007",
+    "name": "华兰生物",
+    "market": "a",
+    "moduleId": "pharma",
+    "price": 10.016059514564061,
+    "momentum": "1.29",
+    "volatility": "12.40",
+    "dataPoints": 31,
+    "high": 10.325828870604203,
+    "low": 9.533623416350778
+  },
+  {
+    "code": "000513",
+    "name": "丽珠集团",
+    "market": "a",
+    "moduleId": "pharma",
+    "price": 11.150469273971403,
+    "momentum": "10.29",
+    "volatility": "12.97",
+    "dataPoints": 31,
+    "high": 11.347087547956999,
+    "low": 9.953177905282645
+  }
+]

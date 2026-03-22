@@ -1,0 +1,50 @@
+[
+  {
+    "code": "600139",
+    "name": "西部资源",
+    "market": "a",
+    "moduleId": "natural_gas",
+    "price": 10.381321903796566,
+    "momentum": "3.86",
+    "volatility": "13.36",
+    "dataPoints": 31,
+    "high": 10.780463672790297,
+    "low": 9.90476650483057
+  },
+  {
+    "code": "600509",
+    "name": "天富能源",
+    "market": "a",
+    "moduleId": "natural_gas",
+    "price": 9.825403303096516,
+    "momentum": "-0.38",
+    "volatility": "13.26",
+    "dataPoints": 31,
+    "high": 10.359410993676203,
+    "low": 9.60987365959864
+  },
+  {
+    "code": "600903",
+    "name": "贵州燃气",
+    "market": "a",
+    "moduleId": "natural_gas",
+    "price": 9.80322720297379,
+    "momentum": "-1.09",
+    "volatility": "14.73",
+    "dataPoints": 31,
+    "high": 10.081602283984054,
+    "low": 9.056458986103364
+  },
+  {
+    "code": "001914",
+    "name": "招商积余",
+    "market": "a",
+    "moduleId": "natural_gas",
+    "price": 11.303748549370422,
+    "momentum": "13.38",
+    "volatility": "10.91",
+    "dataPoints": 31,
+    "high": 11.4980582982156,
+    "low": 9.77011050184904
+  }
+]

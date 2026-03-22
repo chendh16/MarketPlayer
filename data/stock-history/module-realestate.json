@@ -1,0 +1,98 @@
+[
+  {
+    "code": "000002",
+    "name": "万科A",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.025450437459211,
+    "momentum": "1.09",
+    "volatility": "14.53",
+    "dataPoints": 31,
+    "high": 10.40619413648003,
+    "low": 9.448266254953204
+  },
+  {
+    "code": "600048",
+    "name": "保利发展",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.884480519697814,
+    "momentum": "7.64",
+    "volatility": "13.32",
+    "dataPoints": 31,
+    "high": 11.04730629499844,
+    "low": 9.9418102794129
+  },
+  {
+    "code": "600340",
+    "name": "华夏幸福",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.617753378038499,
+    "momentum": "7.51",
+    "volatility": "11.77",
+    "dataPoints": 31,
+    "high": 10.718750476991778,
+    "low": 9.433968692270863
+  },
+  {
+    "code": "000002",
+    "name": "万科A",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 11.166106904767588,
+    "momentum": "9.98",
+    "volatility": "13.35",
+    "dataPoints": 31,
+    "high": 11.280420666663707,
+    "low": 9.974844639296842
+  },
+  {
+    "code": "600048",
+    "name": "保利发展",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.31508517202303,
+    "momentum": "2.63",
+    "volatility": "9.97",
+    "dataPoints": 31,
+    "high": 10.5372766295625,
+    "low": 9.885503291917379
+  },
+  {
+    "code": "600340",
+    "name": "华夏幸福",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.082414923763361,
+    "momentum": "1.67",
+    "volatility": "11.47",
+    "dataPoints": 31,
+    "high": 10.34250354641943,
+    "low": 9.74540835592987
+  },
+  {
+    "code": "600383",
+    "name": "金地集团",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 9.906534023282296,
+    "momentum": "-0.76",
+    "volatility": "16.53",
+    "dataPoints": 31,
+    "high": 10.351633287788323,
+    "low": 9.529896258148034
+  },
+  {
+    "code": "600383",
+    "name": "金地集团",
+    "market": "a",
+    "moduleId": "realestate",
+    "price": 10.891490112968,
+    "momentum": "8.38",
+    "volatility": "12.25",
+    "dataPoints": 31,
+    "high": 11.100331373298513,
+    "low": 9.771193976837864
+  }
+]

@@ -25,34 +25,85 @@ export interface RealtimeQuote {
 }
 
 /**
- * 获取港股实时行情
+ * 港股代码转换
+ */
+function convertHKCode(symbol: string): string {
+  // 纯数字直接返回
+  if (/^\d+$/.test(symbol)) {
+    return symbol.padStart(5, '0');
+  }
+  // HK.前缀
+  if (symbol.startsWith('HK.')) {
+    return symbol.replace('HK.', '').padStart(5, '0');
+  }
+  return symbol;
+}
+
+/**
+ * 获取港股实时行情 - 主API腾讯 + 备用新浪
  */
 export async function getHKQuote(symbol: string): Promise<RealtimeQuote | null> {
+  // 先尝试腾讯API
+  const tencentResult = await getHKQuoteTencent(symbol);
+  if (tencentResult && tencentResult.price > 0) {
+    return tencentResult;
+  }
+  
+  // 备用：新浪API
+  const sinaResult = await getHKQuoteSina(symbol);
+  if (sinaResult && sinaResult.price > 0) {
+    return sinaResult;
+  }
+  
+  // 备用：东方财富API
+  const eastmoneyResult = await getHKQuoteEastmoney(symbol);
+  if (eastmoneyResult && eastmoneyResult.price > 0) {
+    return eastmoneyResult;
+  }
+  
+  logger.warn(`[Quote] 港股${symbol}所有API都失败`);
+  return null;
+}
+
+/**
+ * 腾讯API获取港股
+ */
+async function getHKQuoteTencent(symbol: string): Promise<RealtimeQuote | null> {
   try {
-    const hkCode = symbol.padStart(5, '0');
-    const url = `https://qt.gtimg.cn/q=${hkCode}`;
+    const hkCode = convertHKCode(symbol);
+    const url = `https://qt.gtimg.cn/q=hk${hkCode}`;
     
-    const response = await fetch(url);
+    const response = await fetch(url, { 
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000)
+    });
     const text = await response.text();
     
-    if (!text || text.includes('null')) return null;
+    if (!text || text.includes('null') || !text.includes('~')) {
+      return null;
+    }
     
-    // 腾讯财经格式: "1="股票名","2="代码","3="当前价格","4="昨收","5="开盘","6="成交量","7..." 
     const match = text.match(/"([^"]+)"/);
     if (!match) return null;
     
     const parts = match[1].split('~');
     
+    // 腾讯港股字段: 3=当前价, 4=昨收, 5=开盘, 6=成交量, 33=最高, 34=最低, 37=成交额, 31=涨跌额, 32=涨跌幅
+    const price = parseFloat(parts[3]) || 0;
+    const prevClose = parseFloat(parts[4]) || price;
+    const change = parseFloat(parts[31]) || (price - prevClose);
+    const changePct = parseFloat(parts[32]) || (prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0);
+    
     return {
       symbol,
       market: 'hk',
       name: parts[1] || '',
-      price: parseFloat(parts[3]) || 0,
-      change: parseFloat(parts[3]) - parseFloat(parts[4]) || 0,
-      changePct: ((parseFloat(parts[3]) - parseFloat(parts[4])) / parseFloat(parts[4]) * 100) || 0,
-      open: parseFloat(parts[5]) || 0,
-      high: parseFloat(parts[33]) || 0,
-      low: parseFloat(parts[34]) || 0,
+      price,
+      change,
+      changePct,
+      open: parseFloat(parts[5]) || prevClose,
+      high: parseFloat(parts[33]) || price,
+      low: parseFloat(parts[34]) || price,
       volume: parseFloat(parts[6]) || 0,
       amount: parseFloat(parts[37]) || 0,
       bid: parseFloat(parts[9]) || 0,
@@ -60,7 +111,96 @@ export async function getHKQuote(symbol: string): Promise<RealtimeQuote | null> 
       timestamp: new Date(),
     };
   } catch (error) {
-    logger.error('[Quote] 获取港股行情失败:', error);
+    logger.debug(`[Quote] 腾讯API获取港股${symbol}失败:`, error);
+    return null;
+  }
+}
+
+/**
+ * 新浪API获取港股
+ */
+async function getHKQuoteSina(symbol: string): Promise<RealtimeQuote | null> {
+  try {
+    const hkCode = convertHKCode(symbol);
+    const url = `https://hq.sinajs.cn/list=hk${hkCode}`;
+    
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000)
+    });
+    const text = await response.text();
+    
+    if (!text || text.includes('null')) return null;
+    
+    const match = text.match(/="(.+)"/);
+    if (!match) return null;
+    
+    const parts = match[1].split(',');
+    if (parts.length < 10) return null;
+    
+    const price = parseFloat(parts[1]) || 0;
+    const prevClose = parseFloat(parts[2]) || price;
+    
+    return {
+      symbol,
+      market: 'hk',
+      name: parts[0] || '',
+      price,
+      change: price - prevClose,
+      changePct: prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0,
+      open: parseFloat(parts[3]) || prevClose,
+      high: parseFloat(parts[4]) || price,
+      low: parseFloat(parts[5]) || price,
+      volume: parseFloat(parts[7]) || 0,
+      amount: parseFloat(parts[8]) || 0,
+      bid: 0,
+      ask: 0,
+      timestamp: new Date(),
+    };
+  } catch (error) {
+    logger.debug(`[Quote] 新浪API获取港股${symbol}失败:`, error);
+    return null;
+  }
+}
+
+/**
+ * 东方财富API获取港股
+ */
+async function getHKQuoteEastmoney(symbol: string): Promise<RealtimeQuote | null> {
+  try {
+    const hkCode = convertHKCode(symbol);
+    const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=0.${hkCode}&fields=f43,f44,f45,f46,f47,f50,f51,f52,f57,f58,f59,f60`;
+    
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await response.json() as any;
+    
+    if (!data.data) return null;
+    
+    const d = data.data;
+    const price = d.f43 / 100 || 0;
+    const prevClose = d.f44 / 100 || price;
+    
+    return {
+      symbol,
+      market: 'hk',
+      name: '',
+      price,
+      change: price - prevClose,
+      changePct: prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0,
+      open: d.f45 / 100 || prevClose,
+      high: d.f50 / 100 || price,
+      low: d.f51 / 100 || price,
+      volume: d.f47 || 0,
+      amount: 0,
+      bid: 0,
+      ask: 0,
+      timestamp: new Date(),
+    };
+  } catch (error) {
+    logger.debug(`[Quote] 东方财富API获取港股${symbol}失败:`, error);
     return null;
   }
 }

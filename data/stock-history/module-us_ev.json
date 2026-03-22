@@ -1,0 +1,38 @@
+[
+  {
+    "code": "TSLA",
+    "name": "特斯拉",
+    "market": "us",
+    "moduleId": "us_ev",
+    "price": 367.95999,
+    "momentum": "47.14",
+    "volatility": "63.17",
+    "dataPoints": 365,
+    "high": 498.82999,
+    "low": 212.11
+  },
+  {
+    "code": "RIVN",
+    "name": "Rivian",
+    "market": "us",
+    "moduleId": "us_ev",
+    "price": 14.91,
+    "momentum": "42.82",
+    "volatility": "68.02",
+    "dataPoints": 365,
+    "high": 22.69,
+    "low": 9.5
+  },
+  {
+    "code": "LCID",
+    "name": "Lucid",
+    "market": "us",
+    "moduleId": "us_ev",
+    "price": 10.06,
+    "momentum": "-69.88",
+    "volatility": "76.21",
+    "dataPoints": 365,
+    "high": 36.399,
+    "low": 9.12
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "code": "JPM",
+    "name": "摩根大通",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 286.56,
+    "momentum": "35.67",
+    "volatility": "26.05",
+    "dataPoints": 365,
+    "high": 337.25,
+    "low": 202.16
+  },
+  {
+    "code": "BAC",
+    "name": "美国银行",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 47.16,
+    "momentum": "17.58",
+    "volatility": "26.49",
+    "dataPoints": 365,
+    "high": 57.55,
+    "low": 33.07
+  },
+  {
+    "code": "WFC",
+    "name": "富国银行",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 77.6,
+    "momentum": "36.24",
+    "volatility": "30.42",
+    "dataPoints": 365,
+    "high": 97.76,
+    "low": 55.98
+  },
+  {
+    "code": "GS",
+    "name": "高盛",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 813.53003,
+    "momentum": "64.30",
+    "volatility": "32.28",
+    "dataPoints": 365,
+    "high": 984.70001,
+    "low": 439.38
+  },
+  {
+    "code": "MS",
+    "name": "摩根士丹利",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 161.47,
+    "momentum": "49.68",
+    "volatility": "31.90",
+    "dataPoints": 365,
+    "high": 192.67999,
+    "low": 94.33
+  },
+  {
+    "code": "V",
+    "name": "Visa",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 301.62,
+    "momentum": "8.52",
+    "volatility": "22.09",
+    "dataPoints": 365,
+    "high": 375.51001,
+    "low": 273.23999
+  },
+  {
+    "code": "MA",
+    "name": "万事达",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 496.32001,
+    "momentum": "-0.28",
+    "volatility": "22.30",
+    "dataPoints": 365,
+    "high": 601.77002,
+    "low": 465.59
+  },
+  {
+    "code": "BRK.B",
+    "name": "伯克希尔",
+    "market": "us",
+    "moduleId": "us_finance",
+    "price": 480.94,
+    "momentum": "4.11",
+    "volatility": "18.25",
+    "dataPoints": 365,
+    "high": 542.070007,
+    "low": 437.89999
+  }
+]
