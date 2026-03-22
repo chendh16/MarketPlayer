@@ -32,7 +32,7 @@ export function generateMockData(options: MockOptions): KLine[] {
   let currentPrice = basePrice;
   
   // 遍历每一天
-  let currentDate = new Date(startDate);
+  const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     // 跳过周末
     const dayOfWeek = currentDate.getDay();

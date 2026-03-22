@@ -110,7 +110,7 @@ async function main() {
   }
   
   const modules = getAllModules();
-  let state = loadState();
+  const state = loadState();
   
   let moduleIndex = state.lastModule ? modules.findIndex(m => m.id === state.lastModule) : 0;
   if (moduleIndex < 0) moduleIndex = 0;

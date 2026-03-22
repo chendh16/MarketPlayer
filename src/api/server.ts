@@ -42,7 +42,7 @@ app.use('/js', express.static(path.join(__dirname, '../../public/js')));
 app.use('/api', routes);
 
 // 全局错误处理中间件（必须在路由之后）
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error('Unhandled API error:', err);
   res.status(500).json({ error: 'Internal server error' });

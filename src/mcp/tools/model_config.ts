@@ -163,7 +163,7 @@ export async function recommend_model(params: {
   
   const manager = getLLMManager();
   
-  let options: { preferFast?: boolean; preferCheap?: boolean; preferQuality?: boolean } = {};
+  const options: { preferFast?: boolean; preferCheap?: boolean; preferQuality?: boolean } = {};
   if (prefer === 'fast') options.preferFast = true;
   else if (prefer === 'cheap') options.preferCheap = true;
   else if (prefer === 'quality') options.preferQuality = true;

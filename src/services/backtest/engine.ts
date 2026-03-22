@@ -249,8 +249,8 @@ export class BacktestEngine {
     
     // 胜率
     let wins = 0;
-    let totalProfit = 0;
-    let totalLoss = 0;
+    const totalProfit = 0;
+    const totalLoss = 0;
     
     for (const trade of this.trades) {
       if (trade.direction === 'short') {

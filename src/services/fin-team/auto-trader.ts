@@ -35,7 +35,7 @@ export interface DailyAnalysis {
 
 let dailyAnalysis: DailyAnalysis | null = null;
 let tradeHistory: TradeSignal[] = [];
-let pendingSignals: TradeSignal[] = [];
+const pendingSignals: TradeSignal[] = [];
 
 // ==================== 通知 ====================
 

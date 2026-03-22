@@ -157,13 +157,13 @@ export async function getUSStockDetail(code: string): Promise<USStockDetail | nu
     let price = 0;
     let prevClose = 0;
     let volume = 0;
-    let marketCap = 0;
-    let pe = 0;
-    let eps = 0;
-    let dividend = 0;
+    const marketCap = 0;
+    const pe = 0;
+    const eps = 0;
+    const dividend = 0;
     let high52w = 0;
     let low52w = 0;
-    let name = code;
+    const name = code;
     
     try {
       const dataAny = data as any;
