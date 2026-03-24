@@ -14,7 +14,20 @@
 
 ### 短线策略 (技术形态)
 
-暂无记录
+**参数 (2026-03-22)**
+
+| 参数 | 值 |
+|------|-----|
+| fast_period | 10 |
+| slow_period | 30 |
+| rsi_period | 14 |
+| rsi_low | 35 |
+| rsi_high | 65 |
+| atr_multiplier | 1.5 |
+| min_score | 40 |
+| stop_loss_pct | 5% |
+| profit_target_pct | 18% |
+| max_hold_days | 10 |
 
 ---
 
