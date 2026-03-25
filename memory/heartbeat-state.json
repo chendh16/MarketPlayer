@@ -8,12 +8,15 @@
     "eveningReport": 1771488050,
     "codeVerify": 1774276836,
     "morningReport_20260324": 1772589708,
-    "afternoonReport_20260324": 1772595185
+    "afternoonReport_20260324": 1772595185,
+    "codeVerify_20260324": 1772616379,
+    "competitorAnalysis_20260325": 1772665920
   },
   "todayTasks": {
     "7:00_竞品分析": "completed",
     "9:00_金融汇报": "completed",
-    "16:00_日终报告": "completed",
+    "14:00_午后检查": "completed",
+    "16:00_日终报告": "pending",
     "22:00_代码验证": "pending"
   }
 }

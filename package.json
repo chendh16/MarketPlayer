@@ -17,7 +17,7 @@
     "test-mcp": "ts-node scripts/test-mcp-news.ts",
     "test-e2e": "ts-node scripts/test-news-to-discord.ts",
     "test-real": "ts-node scripts/test-real-news.ts",
-    "test:openclaw": "ts-node scripts/test-openclaw-integration.ts"
+    "short-term-monitor": "ts-node scripts/short-term-monitor.ts"
   },
   "keywords": [
     "trading",

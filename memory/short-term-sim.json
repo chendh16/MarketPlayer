@@ -1,55 +1,67 @@
-# 短线模拟盘状态
-
-## 参数配置（只读，禁止修改）
-- fast_period: 11
-- slow_period: 30
-- rsi_period: 14
-- rsi_low: 35
-- rsi_high: 65
-- atr_multiplier: 1.5
-- min_score: 65
-- stop_loss_pct: 2.0倍ATR（上限6%）
-- profit_target_pct: 12%
-- max_hold_days: 10
-- 持仓第5天规则：盈利 < 8% 提前平仓
-
-## 监控配置
-- 市场代码：US
-- 监控股票池：AAPL、MSFT、TSLA、NVDA、AMZN、GOOGL、META
-- 大盘基准：SPY
-- 监控频率：每个交易日收盘后执行一次
-- 模拟资金：100,000 USD
-- 单股仓位上限：20,000 USD
-- 同时持仓上限：5只
-
-## 当前状态
-- 模拟盘状态：已启动
-- 启动日期：2026-03-24
-- 交易天数：1
-
-## 2026-03-24 大盘状态
-- SPY 收盘价：$655.38
-- SPY MA20：$674.32
-- SPY 当日涨跌：+1.05%
-- 大盘位置：MA20之下
-- 今日判断：禁止开仓（SPY在MA20之下）
-
-## 账户状态
-- 初始资金：$100,000
-- 当前现金：$100,000
-- 持仓市值：$0
-- 总资产：$100,000
-- 累计收益：$0（+0%）
-- 本月胜率：0%（0胜0负）
-- 本月交易次数：0
-
-## 持仓记录
-（当前无持仓）
-
-## 历史交易
-（无记录）
-
-## 预警状态
-- 连续亏损计数：0
-- 单周回撤：0%
-- 连续无信号计数：0
+{
+  "strategy_params": {
+    "fast_period": 11,
+    "slow_period": 30,
+    "rsi_period": 14,
+    "rsi_low": 35,
+    "rsi_high": 65,
+    "atr_multiplier": 1.5,
+    "adx_threshold": 25,
+    "min_score": 65,
+    "stop_loss_pct": "dynamic_atr",
+    "stop_loss_atr_multiplier": 2.0,
+    "stop_loss_cap": 0.06,
+    "profit_target_pct": 0.12,
+    "max_hold_days": 10
+  },
+  "exit_rules": {
+    "day5_rule": "持仓第5天盈利 < 8% 提前平仓",
+    "day5_rule_note": "条件触发，不是无条件平仓",
+    "stop_loss_type": "dynamic_atr"
+  },
+  "market_filter": {
+    "US": "SPY收盘价在MA20之上才允许开仓",
+    "CN": "沪深300在MA20之上才允许开仓",
+    "HK": "恒生指数在MA20之上才允许开仓"
+  },
+  "score_rules": {
+    "breakout_volume": 25,
+    "ma_aligned": 15,
+    "rsi_bounce": 15,
+    "pullback_support": 15,
+    "volume_3days": 10,
+    "market_above_ma20": 10,
+    "min_entry_score": 65
+  },
+  "position_sizing": {
+    "total_capital": 100000,
+    "max_single_position": 20000,
+    "max_concurrent_positions": 5
+  },
+  "hold_days_by_score": {
+    "80+": 5,
+    "70-79": 4,
+    "65-69": 3
+  },
+  "simulation_status": {
+    "is_live": false,
+    "mode": "simulation",
+    "param_version": "v2_optimized_round14"
+  },
+  "运行状态": {
+    "status": "已启动",
+    "start_date": "2026-03-25",
+    "trading_days": 1,
+    "initial_cash": 100000,
+    "current_cash": 100000,
+    "position_value": 0,
+    "total_assets": 100000,
+    "累计收益": 0,
+    "收益比例": 0,
+    "本月胜率": "0%",
+    "本月交易次数": 0,
+    "consecutive_loss_count": 0,
+    "weekly_drawdown": 0,
+    "no_signal_count": 0
+  }
+}

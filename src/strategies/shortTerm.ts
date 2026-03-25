@@ -1,10 +1,13 @@
 /**
  * 短线策略 - 3到5天持股
  * 目标：捕捉技术形态主升浪，严格止损
+ * 
+ * 从记忆文件读取配置，实现参数动态调整
  */
 
 import { getHistoryKLine, KLine } from '../services/market/quote-service';
 import { logger } from '../utils/logger';
+import { loadShortTermConfig } from '../config/short-term-config';
 
 export interface ShortTermSignal {
   symbol: string;
@@ -57,10 +60,31 @@ function analyzePatterns(
   const currentPrice = k.close;
   const volume = k.volume;
   
-  // 计算指标
-  const ma5 = calculateMA(klines, 5);
-  const ma10 = calculateMA(klines, 10);
-  const ma20 = calculateMA(klines, 20);
+  // 读取配置参数
+  const config = loadShortTermConfig();
+  const fastPeriod = config.fast_period || 11;
+  const slowPeriod = config.slow_period || 30;
+  const rsiPeriod = config.rsi_period || 14;
+  const rsiLow = config.rsi_low || 35;
+  const minScore = config.score_rules?.min_entry_score || config.min_score || 65;
+  const profitTargetPct = config.profit_target_pct || 0.12;
+  const maxHoldDays = config.max_hold_days || 10;
+  
+  // 止损参数 - 支持动态ATR
+  const atrMultiplier = config.stop_loss_atr_multiplier || config.atr_multiplier || 2.0;
+  const stopLossCap = config.stop_loss_cap || 0.06;  // 6%上限
+  
+  // 计算ATR（用于动态止损）
+  const atr = calculateATR(klines, rsiPeriod);
+  const atrStopLoss = currentPrice - atr * atrMultiplier;
+  const fixedStopLoss = currentPrice * (1 - stopLossCap);
+  // 动态ATR止损：取较保守的值（价格高），但不超过6%上限
+  const stopLoss = Math.max(atrStopLoss, fixedStopLoss);
+  
+  // 计算指标（使用配置的均线周期）
+  const maFast = calculateMA(klines, fastPeriod);
+  const maSlow = calculateMA(klines, slowPeriod);
+  const ma20 = calculateMA(klines, 20);  // 20日均线固定
   const volumeMA5 = calculateVolumeMA(klines, 5);
   const volumeRatio = volume / volumeMA5;
   
@@ -80,10 +104,10 @@ function analyzePatterns(
     reasons.push(`突破20日高点+放量(${volumeRatio.toFixed(1)}倍)`);
   }
   
-  // 形态2: 均线多头排列 (趋势健康)
-  if (ma5 > ma10 && ma10 > ma20) {
+  // 形态2: 均线多头排列 (使用配置的周期)
+  if (maFast > maSlow && maSlow > ma20) {
     score += 15;
-    reasons.push('均线多头排列');
+    reasons.push(`均线多头排列(MA${fastPeriod}>MA${slowPeriod}>MA20)`);
   }
   
   // 形态3: 连续放量上涨 (资金涌入)
@@ -113,9 +137,9 @@ function analyzePatterns(
     reasons.push(`突破10日整理区间`);
   }
   
-  // 形态6: RSI超卖反弹
-  const rsi = calculateRSI(klines, 14);
-  if (rsi < 35 && changePct > -1) {
+  // 形态6: RSI超卖反弹（使用配置的RSI参数）
+  const rsi = calculateRSI(klines, rsiPeriod);
+  if (rsi < rsiLow && changePct > -1) {
     score += 15;
     pattern = 'RSI超卖';
     reasons.push(`RSI(${rsi.toFixed(0)})超卖待反弹`);
@@ -131,26 +155,27 @@ function analyzePatterns(
   }
   
   // 风险2: 均线死叉
-  if (ma5 < ma10 && ma10 < ma20) {
+  if (maFast < maSlow && maSlow < ma20) {
     score -= 20;
     reasons.push('均线死叉');
   }
   
-  // 确定信号
+  // 确定信号（使用配置中的阈值）
   let signal: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
   let holdDays = 3;
   
-  if (score >= 70) {
+  if (score >= minScore) {
     signal = 'BUY';
-    holdDays = Math.min(5, Math.max(3, Math.floor((high20 - currentPrice) / (currentPrice * 0.02))));
-  } else if (score <= 30) {
+    holdDays = Math.min(maxHoldDays, Math.max(3, Math.floor((high20 - currentPrice) / (currentPrice * 0.02))));
+  } else if (score <= minScore - 40) {
     signal = 'SELL';
     holdDays = 1; // 尽快跑
   }
   
-  // 计算止损止盈
-  const stopLoss = currentPrice * 0.95; // 5%止损
-  const targetPrice = currentPrice * 1.08; // 8%止盈
+  // 止盈（使用配置中的参数）
+  const targetPrice = currentPrice * (1 + profitTargetPct);
+  
+  logger.info(`[ShortTerm] ${symbol} 使用配置: min_score=${minScore}, max_hold=${maxHoldDays}天, 止盈=${(profitTargetPct*100).toFixed(0)}%, 止损=动态ATR(2.0x,上限6%), ATR=${atr.toFixed(2)}, 均线=MA${fastPeriod}/MA${slowPeriod}`);
   
   return {
     symbol,
@@ -222,6 +247,29 @@ function calculateRSI(klines: KLine[], period: number): number {
   
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
+}
+
+/**
+ * 计算ATR (Average True Range)
+ */
+function calculateATR(klines: KLine[], period: number): number {
+  if (klines.length < period + 1) return 0;
+  
+  let trSum = 0;
+  for (let i = klines.length - period; i < klines.length; i++) {
+    const high = klines[i].high;
+    const low = klines[i].low;
+    const prevClose = klines[i - 1]?.close || klines[i].open;
+    
+    const tr = Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    );
+    trSum += tr;
+  }
+  
+  return trSum / period;
 }
 
 /**
