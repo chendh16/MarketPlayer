@@ -1,0 +1,26 @@
+{
+  "code": "600519",
+  "name": "贵州茅台",
+  "market": "CN",
+  "last_updated": "2026-03-25",
+  "quote": {
+    "close": 1410.27,
+    "change_pct": 2.94,
+    "volume": 577
+  },
+  "valuation": {
+    "pe": null,
+    "pb": null,
+    "ps": null
+  },
+  "profitability": {
+    "roe": 24.64,
+    "gross_margin": 2.1,
+    "net_margin": 12.0
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {}
+}

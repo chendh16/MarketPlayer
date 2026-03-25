@@ -1,0 +1,26 @@
+{
+  "code": "300750",
+  "name": "宁德时代",
+  "market": "CN",
+  "last_updated": "2026-03-25",
+  "quote": {
+    "close": 397.81,
+    "change_pct": 0.82,
+    "volume": 1089
+  },
+  "valuation": {
+    "pe": null,
+    "pb": null,
+    "ps": null
+  },
+  "profitability": {
+    "roe": 24.91,
+    "gross_margin": 2.1,
+    "net_margin": 32.0
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {}
+}

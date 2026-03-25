@@ -1,0 +1,26 @@
+{
+  "code": "000858",
+  "name": "五粮液",
+  "market": "CN",
+  "last_updated": "2026-03-25",
+  "quote": {
+    "close": 102.45,
+    "change_pct": 1.11,
+    "volume": 1089
+  },
+  "valuation": {
+    "pe": null,
+    "pb": null,
+    "ps": null
+  },
+  "profitability": {
+    "roe": 15.37,
+    "gross_margin": 11.0,
+    "net_margin": 16.8
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {}
+}

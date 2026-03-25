@@ -1,0 +1,26 @@
+{
+  "code": "601318",
+  "name": "中国平安",
+  "market": "CN",
+  "last_updated": "2026-03-25",
+  "quote": {
+    "close": 58.79,
+    "change_pct": 0.67,
+    "volume": 577
+  },
+  "valuation": {
+    "pe": null,
+    "pb": null,
+    "ps": null
+  },
+  "profitability": {
+    "roe": 13.7,
+    "gross_margin": 11.5,
+    "net_margin": 16.2
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {}
+}
