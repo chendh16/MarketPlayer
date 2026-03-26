@@ -1,0 +1,29 @@
+{
+  "code": "02318",
+  "name": "中国平安",
+  "market": "HK",
+  "last_updated": "2026-03-26",
+  "quote": {
+    "close": 604.5,
+    "change_pct": 9.5
+  },
+  "valuation": {
+    "pe": null,
+    "pb": 1.01,
+    "ps": 7.29
+  },
+  "profitability": {
+    "roe": 13.88,
+    "gross_margin": null,
+    "net_profit_growth_3y": null,
+    "revenue_growth_3y": null
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {
+    "rd_ratio": null,
+    "revenue_cagr_3y": null
+  }
+}

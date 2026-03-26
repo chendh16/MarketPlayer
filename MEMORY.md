@@ -102,4 +102,36 @@
 
 ---
 
+## 长线Agent数据源 (2026-03-25)
+
+### 数据获取状态
+
+**A股**: ✅ 已完成
+- 600519 贵州茅台: PE=20.5, PB=6.87, ROE=24.64%
+- 000858 五粮液: PE=13.86, PB=2.79, ROE=15.37%
+- 300750 宁德时代: PE=25.15, PB=5.39, ROE=24.91%
+- 601318 中国平安: PE=6.01, PB=1.08, ROE=13.7%
+- 000333 美的集团: PE=11.26, PB=2.61, ROE=16.79%
+
+**港股**: ❌ Yahoo Finance限流 (待重试)
+**美股**: ❌ Yahoo Finance限流 (待重试)
+
+### 数据文件
+```
+data/fundamental/{code}_financial.json
+```
+
+### data_sources 标志 (长线Agent启动开关)
+```json
+{
+  "cn_financial": true,
+  "hk_financial": false,
+  "us_financial": false,
+  "industry_valuation": false,
+  "last_data_update": "2026-03-25"
+}
+```
+
+---
+
 持续更新中...

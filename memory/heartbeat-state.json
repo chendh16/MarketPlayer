@@ -5,18 +5,25 @@
     "weather": null,
     "competitorAnalysis": 1771454640,
     "morningReport": 1771471200,
-    "eveningReport": 1771488050,
+    "eveningReport": 1774526307184,
     "codeVerify": 1774452045,
     "morningReport_20260324": 1772589708,
     "afternoonReport_20260324": 1772595185,
     "codeVerify_20260324": 1772616379,
-    "competitorAnalysis_20260325": 1772665920
+    "competitorAnalysis_20260325": 1772665920,
+    "competitorAnalysis_20260326": 1774487070080,
+    "morningReport_20260326": 1774487070080,
+    "afternoonCheck_20260326": 1774497511758,
+    "afternoonReport_20260326": 1774506492537,
+    "eveningReport_20260326": 1774519086992,
+    "eveningCheck_20260326": 1774524501996
   },
   "todayTasks": {
     "7:00_竞品分析": "completed",
     "9:00_金融汇报": "completed",
+    "10:57_上午检查": "completed",
     "14:00_午后检查": "completed",
     "16:00_日终报告": "completed",
-    "22:00_代码验证": "completed"
+    "22:00_代码验证": "pending"
   }
 }

@@ -1,0 +1,29 @@
+{
+  "code": "09988",
+  "name": "阿里巴巴-W",
+  "market": "HK",
+  "last_updated": "2026-03-26",
+  "quote": {
+    "close": 1289.0,
+    "change_pct": 57.0
+  },
+  "valuation": {
+    "pe": null,
+    "pb": 2.12,
+    "ps": 24.51
+  },
+  "profitability": {
+    "roe": 7.54,
+    "gross_margin": null,
+    "net_profit_growth_3y": null,
+    "revenue_growth_3y": null
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {
+    "rd_ratio": null,
+    "revenue_cagr_3y": null
+  }
+}

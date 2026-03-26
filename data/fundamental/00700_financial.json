@@ -1,0 +1,29 @@
+{
+  "code": "00700",
+  "name": "腾讯控股",
+  "market": "HK",
+  "last_updated": "2026-03-26",
+  "quote": {
+    "close": 5055.0,
+    "change_pct": -85.0
+  },
+  "valuation": {
+    "pe": null,
+    "pb": 3.61,
+    "ps": 18.53
+  },
+  "profitability": {
+    "roe": 21.13,
+    "gross_margin": null,
+    "net_profit_growth_3y": null,
+    "revenue_growth_3y": null
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {
+    "rd_ratio": null,
+    "revenue_cagr_3y": null
+  }
+}

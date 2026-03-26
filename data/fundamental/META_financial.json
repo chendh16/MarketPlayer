@@ -1,0 +1,28 @@
+{
+  "code": "META",
+  "name": "META",
+  "market": "US",
+  "last_updated": "2026-03-26",
+  "quote": {
+    "close": 598.72,
+    "change_pct": -2.75
+  },
+  "valuation": {
+    "pe": null,
+    "pb": null,
+    "ps": null
+  },
+  "profitability": {
+    "roe": null,
+    "gross_margin": null,
+    "revenue_growth_3y": null
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {
+    "rd_ratio": null,
+    "revenue_cagr_3y": null
+  }
+}

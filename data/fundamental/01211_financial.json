@@ -1,0 +1,29 @@
+{
+  "code": "01211",
+  "name": "比亚迪股份",
+  "market": "HK",
+  "last_updated": "2026-03-26",
+  "quote": {
+    "close": 1064.0,
+    "change_pct": -6.0
+  },
+  "valuation": {
+    "pe": null,
+    "pb": 4.03,
+    "ps": 23.64
+  },
+  "profitability": {
+    "roe": 10.83,
+    "gross_margin": null,
+    "net_profit_growth_3y": null,
+    "revenue_growth_3y": null
+  },
+  "dividend": {
+    "yield": null,
+    "payout_ratio": null
+  },
+  "growth": {
+    "rd_ratio": null,
+    "revenue_cagr_3y": null
+  }
+}

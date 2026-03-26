@@ -9,9 +9,9 @@
     "volume": 1089
   },
   "valuation": {
-    "pe": null,
-    "pb": null,
-    "ps": null
+    "pe": 13.86,
+    "pb": 2.79,
+    "ps": 13.99
   },
   "profitability": {
     "roe": 15.37,
