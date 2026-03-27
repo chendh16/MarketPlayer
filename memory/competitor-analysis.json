@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Azure-Samples/Agentic-AI-Investment-Analysis-Sample",
+    "stars": 106,
+    "desc": "Sample App using Agent Framework for analysis of investment opportunities.",
+    "url": "https://github.com/Azure-Samples/Agentic-AI-Investment-Analysis-Sample"
+  },
+  {
+    "name": "lazy-dinosaur/ccxt-mcp",
+    "stars": 76,
+    "desc": "CCXT MCP Server bridges the gap between AI models and cryptocurrency trading by providing a standardized interface through the Model Context Protocol. Created to empower automated trading strategies, this tool allows AI assistants like Claude and GPT to directly interact with over 100 cryptocurrency exchanges without requiring users to write comple",
+    "url": "https://github.com/lazy-dinosaur/ccxt-mcp"
+  },
+  {
+    "name": "cameronking4/shadcn-openai-plaid-dashboard",
+    "stars": 49,
+    "desc": "🚀💰 The best open source personal finance dashboard on GitHub!  Unlock rich insights into your spending and transactions using OpenAI and Plaid. 🌐✨ Connect your bank accounts, credit cards, and investment accounts. 📊📈 Fetch balances, browse transactions, and analyze with AI! 🤖🔍 Link to a custom GPT or Twilio SMS & export transactions to CSV",
+    "url": "https://github.com/cameronking4/shadcn-openai-plaid-dashboard"
+  },
+  {
+    "name": "Hainrixz/maia-skill",
+    "stars": 30,
+    "desc": "A Claude Code skill that spawns 5 specialized AI research agents to analyze investment opportunities across crypto, stocks, forex, and commodities. Adapts to your risk profile, tracks historical accuracy, and generates an interactive Next.js dashboard with full Spanish/English support.",
+    "url": "https://github.com/Hainrixz/maia-skill"
+  },
+  {
+    "name": "openclaw-trade/openclaw-trading-assistant",
+    "stars": 28,
+    "desc": "openclaw trading assistant| openclaw trading skill | nof1.ai & openclaw [moltbot] collaboration | We get the best practices from alpha arena trading seasons and bring it to clawdbot All top AI agents, realtime monitoring and news research, gather info from private insiders and many other! Using Hyperliquid API.",
+    "url": "https://github.com/openclaw-trade/openclaw-trading-assistant"
+  },
+  {
+    "name": "ethancod1ng/binance-mcp-server",
+    "stars": 27,
+    "desc": "A Model Context Protocol (MCP) server for integrating AI assistants with Binance cryptocurrency exchange APIs, enabling automated trading, market data access, and account management.",
+    "url": "https://github.com/ethancod1ng/binance-mcp-server"
+  },
+  {
+    "name": "TrendTechVista/polymarket-finance-bot",
+    "stars": 19,
+    "desc": "polymarket finance bot polymarket finance bot polymarket finance bot polymarket finance bot polymarket finance bot polymarket finance bot polymarket finance prediction bot finance trading bot polymarket polymarket stock prediction bot crypto market prediction polymarket financial markets polymarket bot",
+    "url": "https://github.com/TrendTechVista/polymarket-finance-bot"
+  },
+  {
+    "name": "aws-solutions-library-samples/guidance-for-investment-analysis-using-amazon-bedrock",
+    "stars": 19,
+    "desc": "This Guidance demonstrates how Amazon Bedrock, with offers a range of large language models (LLMs), can perform generative AI-powered analysis on structured and unstructured data sets to support investment analysts.",
+    "url": "https://github.com/aws-solutions-library-samples/guidance-for-investment-analysis-using-amazon-bedrock"
+  },
+  {
+    "name": "tahmid-saj/fin-tracker",
+    "stars": 14,
+    "desc": "Finance planner app to track and calculate finance info from expenses, banking, investments, savings, insurance and get advice from AI features. Developed with MERN, Firebase, Go, GraphQL, Redis, Postgresql, and ML based APIs.",
+    "url": "https://github.com/tahmid-saj/fin-tracker"
+  },
+  {
+    "name": "jaiashwinisatish/VoucherX",
+    "stars": 13,
+    "desc": "VoucherX is a modern web application that enables users to trade, buy, and sell vouchers before they expire. Built with React, TypeScript, and Supabase, it features an AI-powered assistant that helps users optimize their voucher portfolio and make smart trading decisions.",
+    "url": "https://github.com/jaiashwinisatish/VoucherX"
+  }
+]
