@@ -1,20 +1,21 @@
 import nodemailer from 'nodemailer';
 import { fetch_position_review } from './src/mcp/tools/position-review';
 
-// 获取复盘数据
-const data = await fetch_position_review({ broker: 'futu', forceRefresh: false });
-const report = data.snapshot;
+async function main() {
+  // 获取复盘数据
+  const data = await fetch_position_review({ broker: 'futu', forceRefresh: false });
+  const report = data.snapshot;
 
-// 创建邮件传输器
-const transporter = nodemailer.createTransport({
-  host: 'smtp.qq.com',
-  port: 465,
-  secure: true,
-  auth: { user: '845567595@qq.com', pass: 'umhmlopcatfmbdga' },
-});
+  // 创建邮件传输器
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.qq.com',
+    port: 465,
+    secure: true,
+    auth: { user: '845567595@qq.com', pass: 'umhmlopcatfmbdga' },
+  });
 
-// 生成HTML报告
-const html = `
+  // 生成HTML报告
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -105,12 +106,15 @@ const html = `
 </html>
 `;
 
-// 发送邮件
-const info = await transporter.sendMail({
-  from: 'MarketPlayer <845567595@qq.com>',
-  to: '845567595@qq.com',
-  subject: `📊 每日持仓复盘 - ${new Date().toLocaleDateString('zh-CN')}`,
-  html
-});
+  // 发送邮件
+  const info = await transporter.sendMail({
+    from: 'MarketPlayer <845567595@qq.com>',
+    to: '845567595@qq.com',
+    subject: `📊 每日持仓复盘 - ${new Date().toLocaleDateString('zh-CN')}`,
+    html
+  });
 
-console.log('✅ 邮件已发送:', info.messageId);
+  console.log('✅ 邮件已发送:', info.messageId);
+}
+
+main().catch(console.error);
