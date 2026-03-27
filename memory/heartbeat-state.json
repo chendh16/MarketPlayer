@@ -7,6 +7,10 @@
     "morningReport": 1774471200,
     "eveningReport": 1774526307184,
     "codeVerify": 1774452045,
+    "morningReport_20260324": 1772589708,
+    "afternoonReport_20260324": 1772595185,
+    "codeVerify_20260324": 1772616379,
+    "competitorAnalysis_20260325": 1772665920,
     "competitorAnalysis_20260326": 1774487070080,
     "morningReport_20260326": 1774487070080,
     "afternoonCheck_20260326": 1774497511758,
@@ -14,22 +18,15 @@
     "eveningReport_20260326": 1774519086992,
     "eveningCheck_20260326": 1774524501996,
     "codeVerify_20260326": 1774533514086,
-    "competitorAnalysis_20260327": 1774556400,
     "morningReport_20260327": 1774575002,
-    "afternoonCheck_20260327": 1774600275,
-    "afternoonReport_20260327": 1774608702,
-    "eveningCheck_20260327": 1774603873,
-    "eveningReport_20260327": 1774605661,
-    "codeVerify_20260327": 1774611095
+    "afternoonReport_20260327": 1774605661,
+    "codeVerify_20260327": 1774611095,
+    "eveningCheck_20260327": 1774620051
   },
   "todayTasks": {
     "7:00_竞品分析": "completed",
     "9:00_金融汇报": "completed",
-    "12:00_午间检查": "completed",
-    "14:00_午后检查": "completed",
-    "15:30_PB估值监控": "completed",
-    "16:30_午后报告": "completed",
-    "17:30_傍晚检查": "completed",
+    "15:30_PB估值": "completed",
     "22:00_代码验证": "completed"
   }
 }
