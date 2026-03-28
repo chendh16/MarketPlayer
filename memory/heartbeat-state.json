@@ -6,7 +6,7 @@
     "competitorAnalysis": 1771454640,
     "morningReport": 1774471200,
     "eveningReport": 1774526307184,
-    "codeVerify": 1774452045,
+    "codeVerify": 1774575002,
     "morningReport_20260324": 1772589708,
     "afternoonReport_20260324": 1772595185,
     "codeVerify_20260324": 1772616379,
@@ -19,14 +19,11 @@
     "eveningCheck_20260326": 1774524501996,
     "codeVerify_20260326": 1774533514086,
     "morningReport_20260327": 1774575002,
-    "afternoonReport_20260327": 1774605661,
-    "codeVerify_20260327": 1774611095,
-    "eveningCheck_20260327": 1774620051
+    "codeVerify_20260327": 1774603202
   },
   "todayTasks": {
     "7:00_竞品分析": "completed",
     "9:00_金融汇报": "completed",
-    "15:30_PB估值": "completed",
     "22:00_代码验证": "completed"
   }
 }
