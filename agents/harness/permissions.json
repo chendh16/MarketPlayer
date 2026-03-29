@@ -1,0 +1,44 @@
+{
+  "quant-agent": {
+    "read": ["intel", "历史策略", "回测结果"],
+    "propose": ["signal", "params", "hypothesis"],
+    "approve": [],
+    "execute": []
+  },
+  "value-agent": {
+    "read": ["估值数据", "历史区间"],
+    "propose": ["valuation_conclusion"],
+    "approve": [],
+    "execute": []
+  },
+  "backtest-agent": {
+    "read": ["strategy_version", "历史数据"],
+    "propose": ["backtest_result"],
+    "approve": [],
+    "execute": ["执行回测任务"]
+  },
+  "risk-agent": {
+    "read": ["candidate", "持仓", "drawdown"],
+    "propose": ["position_hint", "stop_rule"],
+    "approve": ["risk_pass", "risk_fail"],
+    "execute": []
+  },
+  "fin-commander": {
+    "read": ["金融链路全量结果"],
+    "propose": ["final_instruction"],
+    "approve": ["team_level_dispatch"],
+    "execute": []
+  },
+  "strategy-learning-agent": {
+    "read": ["评估结果", "memory"],
+    "propose": ["hypothesis", "参数优化建议"],
+    "approve": [],
+    "execute": []
+  },
+  "commander": {
+    "read": ["全局"],
+    "propose": ["override"],
+    "approve": ["high_risk", "override"],
+    "execute": ["最终批准"]
+  }
+}

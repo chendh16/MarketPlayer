@@ -19,6 +19,7 @@ const configSchema = z.object({
   // 飞书 Feishu/Lark
   FEISHU_APP_ID: z.string().optional(),
   FEISHU_APP_SECRET: z.string().optional(),
+  FEISHU_CHAT_ID: z.string().optional(),
   FEISHU_ENCRYPT_KEY: z.string().optional(),
   FEISHU_VERIFICATION_TOKEN: z.string().optional(),
 

@@ -1,0 +1,72 @@
+{
+  "summary": {
+    "backtests_evaluated": 3,
+    "candidates_live": 0,
+    "candidates_paper": 0,
+    "keep": 0,
+    "discard": 3
+  },
+  "evaluations": [
+    {
+      "eval_id": "eval_1774767424903_AAPL",
+      "strategy_version_id": "v2_ma_rsi_atr",
+      "run_id": "bt_1774767384035_AAPL",
+      "symbol": "AAPL",
+      "sharpe": -11.682220373854484,
+      "win_rate": 0,
+      "max_drawdown": 0.049231255249990793,
+      "annual_return": -0.35618687677602684,
+      "profit_factor": 0,
+      "score": 25,
+      "verdict": "discard",
+      "reasons": [
+        "Sharpe为负",
+        "胜率不足",
+        "回撤小(<10%)",
+        "负收益"
+      ],
+      "timestamp": "2026-03-29T06:57:04.903Z"
+    },
+    {
+      "eval_id": "eval_1774767424904_TSLA",
+      "strategy_version_id": "v2_ma_rsi_atr",
+      "run_id": "bt_1774767384039_TSLA",
+      "symbol": "TSLA",
+      "sharpe": -7.975136709833923,
+      "win_rate": 0,
+      "max_drawdown": 0.05952161603499641,
+      "annual_return": -1.0378615465008991,
+      "profit_factor": 0,
+      "score": 25,
+      "verdict": "discard",
+      "reasons": [
+        "Sharpe为负",
+        "胜率不足",
+        "回撤小(<10%)",
+        "负收益"
+      ],
+      "timestamp": "2026-03-29T06:57:04.904Z"
+    },
+    {
+      "eval_id": "eval_1774767424904_META",
+      "strategy_version_id": "v2_ma_rsi_atr",
+      "run_id": "bt_1774767384041_META",
+      "symbol": "META",
+      "sharpe": -7.662348458122699,
+      "win_rate": 0,
+      "max_drawdown": 0.028252550793986114,
+      "annual_return": -0.43073034920634884,
+      "profit_factor": 0,
+      "score": 25,
+      "verdict": "discard",
+      "reasons": [
+        "Sharpe为负",
+        "胜率不足",
+        "回撤小(<10%)",
+        "负收益"
+      ],
+      "timestamp": "2026-03-29T06:57:04.904Z"
+    }
+  ],
+  "timestamp": "2026-03-29T06:57:04.904Z"
+}

@@ -1,0 +1,249 @@
+{
+  "market_data": {
+    "type": "market_data",
+    "market": "美股",
+    "data_type": "price",
+    "symbols": [
+      "AAPL",
+      "MSFT",
+      "TSLA",
+      "NVDA",
+      "AMZN",
+      "GOOGL",
+      "META"
+    ],
+    "data": {
+      "AAPL": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 247.99001,
+          "open": 247.98,
+          "high": 249.2,
+          "low": 246,
+          "volume": 88268000,
+          "ma5": 250.788006,
+          "ma10": 254.13400100000004,
+          "ma20": 259.9880005,
+          "rsi": 23.603667909014774,
+          "priceChange": -0.9699999999999989,
+          "priceChangePct": -0.003896208069721715,
+          "volumeChange": 1.5317733714623352
+        }
+      },
+      "MSFT": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 381.87,
+          "open": 386.79001,
+          "high": 387,
+          "low": 380.12,
+          "volume": 50771400,
+          "ma5": 392.40800179999997,
+          "ma10": 397.94999989999997,
+          "ma20": 398.76749845000006,
+          "rsi": 33.530831821848565,
+          "priceChange": -7.149989000000005,
+          "priceChangePct": -0.01837949000610353,
+          "volumeChange": 1.0196429423838846
+        }
+      },
+      "TSLA": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 367.95999,
+          "open": 379.85001,
+          "high": 379.89001,
+          "low": 364.45999,
+          "volume": 78299700,
+          "ma5": 387.173994,
+          "ma10": 392.78199799999993,
+          "ma20": 398.4744980000001,
+          "rsi": 32.442889771598814,
+          "priceChange": -12.339999999999975,
+          "priceChangePct": -0.03244806816850028,
+          "volumeChange": 0.16728807975157392
+        }
+      },
+      "NVDA": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 172.7,
+          "open": 178,
+          "high": 178.25999,
+          "low": 171.72,
+          "volume": 239998000,
+          "ma5": 179.361996,
+          "ma10": 181.3649969,
+          "ma20": 183.12099924999995,
+          "rsi": 37.37085863595149,
+          "priceChange": -5.860000000000014,
+          "priceChangePct": -0.032818100358423016,
+          "volumeChange": 0.4037556625928168
+        }
+      },
+      "AMZN": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 205.37,
+          "open": 207.39999,
+          "high": 207.53999,
+          "low": 204.32001,
+          "volume": 63627600,
+          "ma5": 210.18800000000002,
+          "ma10": 210.86100000000002,
+          "ma20": 210.85450099999997,
+          "rsi": 46.35441639517935,
+          "priceChange": -3.389989999999983,
+          "priceChangePct": -0.016238695930192292,
+          "volumeChange": 0.7460634566939074
+        }
+      },
+      "GOOGL": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 301,
+          "open": 305.45999,
+          "high": 306,
+          "low": 298.26999,
+          "volume": 44330600,
+          "ma5": 306.460002,
+          "ma10": 306.0230009,
+          "ma20": 306.36449795,
+          "rsi": 43.60520898377087,
+          "priceChange": -6.1299999999999955,
+          "priceChangePct": -0.019958975026861576,
+          "volumeChange": 0.7678638368466809
+        }
+      },
+      "META": {
+        "kline_count": 3000,
+        "latest": {
+          "timestamp": "2026-03-20",
+          "close": 593.65997,
+          "open": 603.53003,
+          "high": 603.96002,
+          "low": 587.25,
+          "volume": 21163900,
+          "ma5": 613.22999,
+          "ma10": 627.4359966999999,
+          "ma20": 639.5794977000003,
+          "rsi": 27.93249217488041,
+          "priceChange": -13.040039999999976,
+          "priceChangePct": -0.021493390118783706,
+          "volumeChange": 0.5975527827471938
+        }
+      }
+    },
+    "quality_flag": "ok",
+    "timestamp": "2026-03-29T06:54:55.579Z"
+  },
+  "candidates": [
+    {
+      "signal_id": "sc_1774767295583_AAPL_67sz8",
+      "symbol": "AAPL",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.3,
+      "reason_tags": [
+        "放量",
+        "RSI超卖"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.583Z"
+    },
+    {
+      "signal_id": "sc_1774767295588_MSFT_rk3i7",
+      "symbol": "MSFT",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.3,
+      "reason_tags": [
+        "放量",
+        "RSI超卖"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.588Z"
+    },
+    {
+      "signal_id": "sc_1774767295591_TSLA_2ofur",
+      "symbol": "TSLA",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.35,
+      "reason_tags": [
+        "RSI超卖",
+        "大跌反弹"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.591Z"
+    },
+    {
+      "signal_id": "sc_1774767295594_NVDA_1lib8",
+      "symbol": "NVDA",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.2,
+      "reason_tags": [
+        "大跌反弹"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.594Z"
+    },
+    {
+      "signal_id": "sc_1774767295597_AMZN_blldo",
+      "symbol": "AMZN",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.15,
+      "reason_tags": [
+        "放量"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.597Z"
+    },
+    {
+      "signal_id": "sc_1774767295600_GOOGL_qlckr",
+      "symbol": "GOOGL",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.15,
+      "reason_tags": [
+        "放量"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.600Z"
+    },
+    {
+      "signal_id": "sc_1774767295604_META_je1q8",
+      "symbol": "META",
+      "market": "美股",
+      "direction": "put",
+      "confidence": 0.3,
+      "reason_tags": [
+        "放量",
+        "RSI超卖"
+      ],
+      "current_status": "intel_collected",
+      "created_by": "data-agent",
+      "created_at": "2026-03-29T06:54:55.604Z"
+    }
+  ],
+  "summary": {
+    "total_symbols": 7,
+    "loaded": 7,
+    "errors": 0,
+    "candidates_generated": 7
+  }
+}

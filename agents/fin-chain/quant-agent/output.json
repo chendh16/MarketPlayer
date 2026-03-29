@@ -1,0 +1,88 @@
+{
+  "input_summary": {
+    "market": "美股",
+    "symbols_processed": 7,
+    "signals_generated": 3
+  },
+  "signals": [
+    {
+      "type": "quant_signal",
+      "strategy_version": "v2_ma_rsi_atr",
+      "symbol": "AAPL",
+      "market": "美股",
+      "direction": "long",
+      "signal_strength": 0.45,
+      "entry_rule": {
+        "ma_fast": "254.44",
+        "ma_slow": "262.42",
+        "ma20": "259.99",
+        "rsi": "23.60",
+        "atr": "5.52"
+      },
+      "exit_rule": {
+        "stop_loss_pct": 0.04454671955766048,
+        "profit_target_pct": 0.12,
+        "max_hold_days": 10
+      },
+      "confidence": 0.45,
+      "reason_tags": [
+        "RSI超卖",
+        "放量"
+      ],
+      "timestamp": "2026-03-29T06:56:01.140Z"
+    },
+    {
+      "type": "quant_signal",
+      "strategy_version": "v2_ma_rsi_atr",
+      "symbol": "TSLA",
+      "market": "美股",
+      "direction": "long",
+      "signal_strength": 0.5,
+      "entry_rule": {
+        "ma_fast": "393.14",
+        "ma_slow": "404.38",
+        "ma20": "398.47",
+        "rsi": "32.44",
+        "atr": "14.29"
+      },
+      "exit_rule": {
+        "stop_loss_pct": 0.06,
+        "profit_target_pct": 0.12,
+        "max_hold_days": 10
+      },
+      "confidence": 0.5,
+      "reason_tags": [
+        "RSI超卖",
+        "大跌反弹"
+      ],
+      "timestamp": "2026-03-29T06:56:01.147Z"
+    },
+    {
+      "type": "quant_signal",
+      "strategy_version": "v2_ma_rsi_atr",
+      "symbol": "META",
+      "market": "美股",
+      "direction": "long",
+      "signal_strength": 0.45,
+      "entry_rule": {
+        "ma_fast": "629.02",
+        "ma_slow": "644.74",
+        "ma20": "639.58",
+        "rsi": "27.93",
+        "atr": "19.73"
+      },
+      "exit_rule": {
+        "stop_loss_pct": 0.06,
+        "profit_target_pct": 0.12,
+        "max_hold_days": 10
+      },
+      "confidence": 0.45,
+      "reason_tags": [
+        "RSI超卖",
+        "放量"
+      ],
+      "timestamp": "2026-03-29T06:56:01.156Z"
+    }
+  ],
+  "timestamp": "2026-03-29T06:56:01.156Z"
+}

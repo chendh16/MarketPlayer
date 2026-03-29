@@ -1,0 +1,26 @@
+[
+  {
+    "level": 3,
+    "source_agent": "risk-agent",
+    "event_type": "risk_fail",
+    "content": "信号 AAPL 被拒绝，原因：Sharpe=-11.68 低于阈值 0.5",
+    "risk_level": "high",
+    "timestamp": "2026-03-29T07:13:51.193Z"
+  },
+  {
+    "level": 3,
+    "source_agent": "risk-agent",
+    "event_type": "risk_fail",
+    "content": "信号 TSLA 被拒绝，原因：Sharpe=-7.98 低于阈值 0.5",
+    "risk_level": "high",
+    "timestamp": "2026-03-29T07:13:51.194Z"
+  },
+  {
+    "level": 3,
+    "source_agent": "risk-agent",
+    "event_type": "risk_fail",
+    "content": "信号 META 被拒绝，原因：Sharpe=-7.66 低于阈值 0.5",
+    "risk_level": "high",
+    "timestamp": "2026-03-29T07:13:51.194Z"
+  }
+]

@@ -1,17 +1,14 @@
-# USER.md - About Your Human
+name: neo
+role: commander / 系统总指挥
+project: MarketPlayer
+markets: A股 / 港股 / 美股
+goal: 构建全自动化 multi-agent 金融量化系统，
+      策略研究到学习迭代完全闭环，
+      本人只处理异常和高风险审批
 
-_Learn about the person you're helping. Update this as you go._
+working_style:
+  - 目标驱动，分阶段交付
+  - 需要结构化输出，不要自然语言传递核心数据
+  - 异常才通知，日常不打扰
 
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
-
-## Context
-
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
-
----
-
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+current_phase: Phase 1

@@ -1,0 +1,49 @@
+{
+  "summary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3
+  },
+  "results": [
+    {
+      "type": "risk_result",
+      "result": "fail",
+      "reason": "Sharpe=-11.68 低于阈值 0.5",
+      "risk_level": "high",
+      "position_hint": null,
+      "stop_loss_rule": null,
+      "override_required": true,
+      "timestamp": "2026-03-29T06:57:23.707Z",
+      "symbol": "AAPL",
+      "eval_id": "eval_1774767424903_AAPL",
+      "run_id": "bt_1774767384035_AAPL"
+    },
+    {
+      "type": "risk_result",
+      "result": "fail",
+      "reason": "Sharpe=-7.98 低于阈值 0.5",
+      "risk_level": "high",
+      "position_hint": null,
+      "stop_loss_rule": null,
+      "override_required": true,
+      "timestamp": "2026-03-29T06:57:23.709Z",
+      "symbol": "TSLA",
+      "eval_id": "eval_1774767424904_TSLA",
+      "run_id": "bt_1774767384039_TSLA"
+    },
+    {
+      "type": "risk_result",
+      "result": "fail",
+      "reason": "Sharpe=-7.66 低于阈值 0.5",
+      "risk_level": "high",
+      "position_hint": null,
+      "stop_loss_rule": null,
+      "override_required": true,
+      "timestamp": "2026-03-29T06:57:23.709Z",
+      "symbol": "META",
+      "eval_id": "eval_1774767424904_META",
+      "run_id": "bt_1774767384041_META"
+    }
+  ],
+  "timestamp": "2026-03-29T06:57:23.709Z"
+}

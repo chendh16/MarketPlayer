@@ -95,6 +95,57 @@ export async function sendMessageToUser(
 }
 
 /**
+ * 发送消息给飞书群聊
+ * @param chatId 群聊 ID
+ * @param message 消息内容（支持文本或卡片）
+ * @returns 消息ID，失败返回 null
+ */
+export async function sendMessageToChat(
+  chatId: string,
+  message: { text?: string; card?: any }
+): Promise<{ messageId: string } | null> {
+  try {
+    const token = await getTenantAccessToken();
+
+    const body: any = {
+      receive_id: chatId,
+      msg_type: message.card ? 'interactive' : 'text',
+    };
+
+    if (message.card) {
+      body.content = JSON.stringify(message.card);
+    } else if (message.text) {
+      body.content = JSON.stringify({ text: message.text });
+    } else {
+      throw new Error('Message must have either text or card');
+    }
+
+    const response = await fetch('https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const data = await response.json() as FeishuMessageResponse;
+
+    if (data.code !== 0 || !data.data?.message_id) {
+      logger.error(`Failed to send Feishu message to chat ${chatId}: ${data.msg}`);
+      return null;
+    }
+
+    logger.info(`Feishu message sent to chat ${chatId}: ${data.data.message_id}`);
+    return { messageId: data.data.message_id };
+  } catch (error) {
+    logger.error(`Error sending Feishu message to chat ${chatId}:`, error);
+    return null;
+  }
+}
+
+/**
  * 更新已发送的消息卡片
  * @param messageId 消息ID
  * @param card 新的卡片内容

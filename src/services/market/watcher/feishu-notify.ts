@@ -5,10 +5,11 @@
 
 import { WatchAlert } from './detector';
 import { logger } from '../../../utils/logger';
-import { sendMessageToUser } from '../../feishu/bot';
+import { sendMessageToUser, sendMessageToChat } from '../../feishu/bot';
 
-// 用户飞书 open_id (从环境变量或配置获取)
+// 从配置获取飞书参数
 const FEISHU_USER_OPEN_ID = process.env.FEISHU_USER_OPEN_ID;
+const FEISHU_CHAT_ID = process.env.FEISHU_CHAT_ID;
 
 interface FeishuCard {
   config: { wide_screen_mode: boolean };
@@ -21,21 +22,35 @@ interface FeishuCard {
 
 /**
  * 发送飞书告警通知
+ * 优先发送到群聊，其次发送到用户
  */
 export async function sendFeishuAlert(alert: WatchAlert): Promise<boolean> {
   // 构建卡片消息
   const card = buildAlertCard(alert);
   
-  // 如果配置了用户 open_id，直接发送
+  // 优先发送到群聊
+  if (FEISHU_CHAT_ID) {
+    try {
+      const result = await sendMessageToChat(FEISHU_CHAT_ID, { card });
+      if (result) {
+        logger.info(`[Feishu] 群聊告警发送成功: ${alert.symbol} ${alert.type}`);
+        return true;
+      }
+    } catch (error) {
+      logger.error('[Feishu] 群聊发送失败:', error);
+    }
+  }
+  
+  // 其次发送到用户
   if (FEISHU_USER_OPEN_ID) {
     try {
       const result = await sendMessageToUser(FEISHU_USER_OPEN_ID, { card });
       if (result) {
-        logger.info(`[Feishu] 告警发送成功: ${alert.symbol} ${alert.type}`);
+        logger.info(`[Feishu] 用户告警发送成功: ${alert.symbol} ${alert.type}`);
         return true;
       }
     } catch (error) {
-      logger.error('[Feishu] 发送失败:', error);
+      logger.error('[Feishu] 用户发送失败:', error);
     }
   }
   
@@ -114,18 +129,33 @@ function buildAlertCard(alert: WatchAlert): FeishuCard {
 
 /**
  * 发送文本消息
+ * 优先发送到群聊，其次发送到用户
  */
 export async function sendFeishuText(text: string): Promise<boolean> {
-  if (!FEISHU_USER_OPEN_ID) {
-    logger.info(`[Feishu] 文本消息 (未发送): ${text}`);
-    return false;
+  let success = false;
+  
+  // 优先发送到群聊
+  if (FEISHU_CHAT_ID) {
+    try {
+      const result = await sendMessageToChat(FEISHU_CHAT_ID, { text });
+      success = !!result;
+    } catch (error) {
+      logger.error('[Feishu] 群聊发送文本失败:', error);
+    }
   }
   
-  try {
-    const result = await sendMessageToUser(FEISHU_USER_OPEN_ID, { text });
-    return !!result;
-  } catch (error) {
-    logger.error('[Feishu] 发送文本失败:', error);
-    return false;
+  // 其次发送到用户
+  if (!success && FEISHU_USER_OPEN_ID) {
+    try {
+      const result = await sendMessageToUser(FEISHU_USER_OPEN_ID, { text });
+      success = !!result;
+    } catch (error) {
+      logger.error('[Feishu] 用户发送文本失败:', error);
+    }
   }
+  
+  if (!success) {
+    logger.info(`[Feishu] 文本消息 (未发送): ${text}`);
+  }
+  return success;
 }
