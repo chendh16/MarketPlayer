@@ -3,8 +3,8 @@
     "email": null,
     "calendar": null,
     "weather": null,
-    "competitorAnalysis": 1771454640,
-    "morningReport": 1774471200,
+    "competitorAnalysis": 1774850208776,
+    "morningReport": 1774850208776,
     "eveningReport": 1774526307184,
     "codeVerify": 1774575002,
     "morningReport_20260324": 1772589708,
@@ -22,8 +22,9 @@
     "codeVerify_20260327": 1774603202
   },
   "todayTasks": {
-    "7:00_竞品分析": "completed",
-    "9:00_金融汇报": "completed",
-    "22:00_代码验证": "completed"
+    "7:00_竞品分析": "done",
+    "9:00_金融汇报": "done",
+    "13:00_下午行情": "done",
+    "22:00_代码验证": "pending"
   }
 }
