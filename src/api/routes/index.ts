@@ -430,4 +430,119 @@ router.post('/admin/token', async (req: Request, res: Response): Promise<void> =
   }
 });
 
+// ─── 富途模拟盘 API ──────────────────────────────────────────────────────────────
+
+import { spawn } from 'child_process';
+
+// 获取富途模拟盘实时持仓
+router.get('/futu/positions', async (_req: Request, res: Response) => {
+  return new Promise((resolve) => {
+    const pythonCode = `
+from futu import OpenSecTradeContext, TrdEnv, TrdMarket
+import json
+with OpenSecTradeContext(host='127.0.0.1', port=11111, filter_trdmarket=TrdMarket.US) as ctx:
+    ret, data = ctx.position_list_query(trd_env=TrdEnv.SIMULATE, acc_id=9132532)
+    if ret == 0 and len(data) > 0:
+        cols = ['code', 'stock_name', 'qty', 'cost_price', 'market_val', 'pl_ratio', 'pl_val']
+        existing = [c for c in cols if c in data.columns]
+        print(data[existing].to_json(orient='records'))
+    else:
+        print('[]')
+`;
+
+    const child = spawn('python3', ['-c', pythonCode], {
+      env: { ...process.env, PYTHONPATH: '/Users/zhengzefeng/Library/Python/3.9/lib/python3.9/site-packages' }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    child.on('close', (code) => {
+      logger.info(`[futu/positions] stdout_len=${stdout.length}, stderr_len=${stderr.length}`);
+      if (code === 0) {
+        try {
+          // 提取 JSON 数组：找到第一个 [ 开头的那行，提取该行及之后的内容
+          const lines = stdout.split('\n');
+          let jsonLine = '';
+          
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+              jsonLine = trimmed;
+              break;
+            }
+          }
+          
+          if (jsonLine) {
+            const data = JSON.parse(jsonLine);
+            res.json({ success: true, data });
+          } else {
+            res.json({ success: true, data: [] });
+          }
+        } catch (e: unknown) {
+          logger.error(`[futu/positions] parse error: ${(e as Error).message}, stdout=${stdout.substring(0, 300)}`);
+          res.json({ success: true, data: [] });
+        }
+      } else {
+        res.status(500).json({ success: false, error: stderr || stdout });
+      }
+    });
+
+    child.on('error', (err) => {
+      logger.error(`[futu/positions] error=${err.message}`);
+      res.status(500).json({ success: false, error: err.message });
+    });
+  });
+});
+
+// 获取富途模拟盘最近订单
+router.get('/futu/orders', async (_req: Request, res: Response) => {
+  return new Promise((resolve) => {
+    const pythonCode = `
+from futu import OpenSecTradeContext, TrdEnv, TrdMarket
+import json
+with OpenSecTradeContext(host='127.0.0.1', port=11111, filter_trdmarket=TrdMarket.US) as ctx:
+    ret, data = ctx.order_list_query(trd_env=TrdEnv.SIMULATE, acc_id=9132532)
+    if ret == 0 and len(data) > 0:
+        cols = ['order_id', 'code', 'stock_name', 'trd_side', 'qty', 'dealt_qty', 'price', 'order_status', 'create_time']
+        existing = [c for c in cols if c in data.columns]
+        print(data[existing].tail(20).to_json(orient='records'))
+    else:
+        print('[]')
+`;
+
+    const child = spawn('python3', ['-c', pythonCode], {
+      env: { ...process.env, PYTHONPATH: '/Users/zhengzefeng/Library/Python/3.9/lib/python3.9/site-packages' }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    child.on('close', (code) => {
+      logger.info(`[futu/orders] stdout=${stdout.substring(0, 200)}, stderr=${stderr.substring(0, 100)}`);
+      if (code === 0) {
+        try {
+          const data = JSON.parse(stdout.trim());
+          res.json({ success: true, data });
+        } catch {
+          res.json({ success: true, data: [] });
+        }
+      } else {
+        res.status(500).json({ success: false, error: stderr || stdout });
+      }
+    });
+
+    child.on('error', (err) => {
+      logger.error(`[futu/orders] error=${err.message}`);
+      res.status(500).json({ success: false, error: err.message });
+    });
+  });
+});
+
 export default router;

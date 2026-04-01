@@ -34,6 +34,9 @@ app.use((req, res, next) => {
 });
 
 // Dashboard 静态文件服务（__dirname 编译后为 dist/api/，../../public 指向项目根目录）
+// 根路径静态文件服务（直接访问 panel-orders.html 等）
+app.use(express.static(path.join(__dirname, '../../public')));
+// /dashboard 路径
 app.use('/dashboard', express.static(path.join(__dirname, '../../public')));
 // 共享前端 JS 模块（dashboard.html 中绝对路径 /js/ 引用）
 app.use('/js', express.static(path.join(__dirname, '../../public/js')));

@@ -134,4 +134,37 @@ data/fundamental/{code}_financial.json
 
 ---
 
-持续更新中...
+## 富途模拟盘对接 (2026-04-02)
+
+### 已完成
+- evaluator-agent/run.js 新增 placeFutuOrderPython()
+  用 spawn python3 调用 FutuAPI 自动下单
+- 信号 verdict=candidate_paper 或 candidate_live 时自动触发
+- 下单固定参数：trd_env=SIMULATE, qty=100股
+
+### 关键配置
+- FUTU_ORDER_MODE=PYTHON（.env）
+- FUTU_TRD_ENV=SIMULATE（.env）
+- OpenD 地址：127.0.0.1:11111
+- 账户配置见 .env 文件
+
+### 新增 API 路由
+- GET /api/futu/positions → 实时查询模拟盘持仓
+- GET /api/futu/orders → 查询最近20笔订单
+
+### 前端
+- public/panel-orders.html 顶部新增「富途模拟盘持仓」区块
+- 30秒自动刷新
+- 访问：http://localhost:3000/panel-orders.html
+
+### 测试成功的订单
+- 2026-04-01 AAPL 100股 order_id=6772201 (FILLED_ALL)
+
+### 已知问题
+- panel-orders.html 订单列表 HTTP 401（认证问题，待处理）
+- 手机富途 App 模拟盘不同步（OpenD模拟盘与App融资融券模拟账户是两套系统）
+- A股下单暂未实现
+
+### 下次对话优先级
+1. 修复订单列表 401 认证
+2. 考虑 ngrok 内网穿透，手机访问 dashboard

@@ -1,4 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/refresh-scheduler.js"></script>
+  <script src="/js/circuit-breaker.js"></script>
+  <script>
+    // Admin Token Management (from dashboard.html)
+    function getAdminToken() {
+      var token = sessionStorage.getItem('mp_admin_token') || localStorage.getItem('mp_admin_token') || '';
+      if (token && !sessionStorage.getItem('mp_admin_token')) {
+        sessionStorage.setItem('mp_admin_token', token);
+      }
+      if (!token) {
+        var devToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMDI4NTA5MTQyMTEwOTc4MDg5Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyODEzNDg5LCJleHAiOjE3NzM0MTgyODl9.-YLGs2xXBZhaNhYSsWoxjGaVpAq2sh8Gw7DZUHTCexs';
+        sessionStorage.setItem('mp_admin_token', devToken);
+        localStorage.setItem('mp_admin_token', devToken);
+        token = devToken;
+      }
+      return token;
+    }
+
+    window.dashboardFetch = async function (url) {
+      var token = getAdminToken();
+      var headers = {};
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+      var res = await fetch(url, { headers: headers });
+      if (!res.ok) {
+        var errorText = await res.text();
+        throw new Error('HTTP ' + res.status + ': ' + errorText);
+      }
+      return res.json();
+    };
+  </script>
+</head>
+<body>
 <div id="orders-panel-root" class="p-6">
+
+  <!-- 富途模拟盘持仓区块 -->
+  <div id="futu-positions-section" class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-800">富途模拟盘持仓 (acc: 9132532)</h2>
+      <span id="futu-positions-refresh" class="text-xs text-gray-400 hidden">Refreshing...</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">代码</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">名称</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">数量</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">成本价</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">市值</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">盈亏%</th>
+            </tr>
+          </thead>
+          <tbody id="futu-positions-table">
+            <tr>
+              <td colspan="6" class="text-center text-gray-400 py-8 text-sm">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="futu-positions-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"></div>
+  </div>
 
   <!-- Top stat bar -->
   <div id="orders-stats-bar" class="grid grid-cols-4 gap-4 mb-6">
@@ -230,6 +302,56 @@
     renderTable(_ordersData);
   }
 
+  // ── 富途持仓加载 ─────────────────────────────────────────────────────────────
+  let _futuPositionsTimer = null;
+  
+  async function loadFutuPositions() {
+    const tableEl = document.getElementById('futu-positions-table');
+    const errorEl = document.getElementById('futu-positions-error');
+    const indicator = document.getElementById('futu-positions-refresh');
+    
+    if (indicator) indicator.classList.remove('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    
+    try {
+      const resp = await window.dashboardFetch('/api/futu/positions');
+      if (resp.success && resp.data && resp.data.length > 0) {
+        let html = '';
+        for (const pos of resp.data) {
+          const plRatio = parseFloat(pos.pl_ratio) || 0;
+          const plClass = plRatio >= 0 ? 'text-green-600' : 'text-red-500';
+          const plVal = parseFloat(pos.pl_val) || 0;
+          const marketVal = parseFloat(pos.market_val) || 0;
+          html += `<tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-800">${pos.code}</td>
+            <td class="px-4 py-3 text-gray-600">${pos.stock_name || ''}</td>
+            <td class="px-4 py-3 text-right text-gray-800">${pos.qty}</td>
+            <td class="px-4 py-3 text-right text-gray-600">${parseFloat(pos.cost_price || 0).toFixed(2)}</td>
+            <td class="px-4 py-3 text-right text-gray-800">$${marketVal.toFixed(2)}</td>
+            <td class="px-4 py-3 text-right font-medium ${plClass}">${plRatio.toFixed(2)}%</td>
+          </tr>`;
+        }
+        if (tableEl) tableEl.innerHTML = html;
+      } else {
+        if (tableEl) tableEl.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8 text-sm">暂无持仓</td></tr>';
+      }
+    } catch (err) {
+      console.error('[futu positions]', err);
+      if (errorEl) {
+        errorEl.textContent = `加载失败: ${err.message || 'Unknown error'}`;
+        errorEl.classList.remove('hidden');
+      }
+    } finally {
+      if (indicator) indicator.classList.add('hidden');
+    }
+  }
+  
+  function startFutuPositionsAutoRefresh() {
+    loadFutuPositions();
+    if (_futuPositionsTimer) clearInterval(_futuPositionsTimer);
+    _futuPositionsTimer = setInterval(loadFutuPositions, 30000);
+  }
+
   // ── Main fetch ─────────────────────────────────────────────────────────────
   async function loadOrdersPanel() {
     const indicator = document.getElementById('orders-refresh-indicator');
@@ -269,5 +391,6 @@
   // ── Init ───────────────────────────────────────────────────────────────────
   loadOrdersPanel();
   startOrdersAutoRefresh();
+  startFutuPositionsAutoRefresh();
 })();
 </script>

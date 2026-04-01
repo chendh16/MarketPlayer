@@ -56,7 +56,7 @@ const configSchema = z.object({
   // 富途
   FUTU_API_HOST: z.string().default('127.0.0.1'),
   FUTU_API_PORT: z.coerce.number().default(11111),
-  FUTU_ORDER_MODE: z.enum(['A', 'B', 'C']).default('B'),
+  FUTU_ORDER_MODE: z.enum(['A', 'B', 'C', 'PYTHON']).default('B'),
   FUTU_TRD_ENV: z.enum(['SIMULATE', 'REAL']).default('SIMULATE'),
   FUTU_TRADE_ACC_ID: z.preprocess(
     (v) => (v === '' || v === null ? undefined : v),

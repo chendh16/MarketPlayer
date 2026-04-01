@@ -9,6 +9,78 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
+
+// 飞书用户 open_id
+const FEISHU_USER_OPEN_ID = 'ou_3d8c36452b5a0ca480873393ad876e12';
+
+// 富途Python API下单
+async function placeFutuOrderPython(symbol, market, direction, quantity, price, trdEnv) {
+  return new Promise((resolve) => {
+    const code = symbol.includes('.') ? symbol : `${market}.${symbol}`;
+    const side = direction === 'buy' ? 'TrdSide.BUY' : 'TrdSide.SELL';
+    
+    const pythonCode = `
+from futu import *
+trd_ctx = OpenSecTradeContext(
+    filter_trdmarket=TrdMarket.US,
+    host='127.0.0.1',
+    port=11111,
+    security_firm=SecurityFirm.FUTUSECURITIES
+)
+ret, data = trd_ctx.place_order(
+    price=0,
+    qty=${quantity},
+    code='${code}',
+    trd_side=${side},
+    order_type=OrderType.MARKET,
+    trd_env=TrdEnv.SIMULATE
+)
+print('RESULT:', ret, '|', 'SUCCESS' if ret == 0 else str(data))
+if ret == 0:
+    print('ORDER_ID:', data['order_id'].iloc[0])
+trd_ctx.close()
+`;
+    
+    const child = spawn('python3', ['-c', pythonCode], {
+      env: { ...process.env, PYTHONPATH: '/Users/zhengzefeng/Library/Python/3.9/lib/python3.9/site-packages' }
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+    
+    child.on('close', (code) => {
+      if (code === 0) {
+        const match = stdout.match(/RESULT: (.+)/);
+        if (match) {
+          const parts = match[1].split('|');
+          const ret = parseInt(parts[0]);
+          
+          // 提取真实 order_id
+          const orderIdMatch = stdout.match(/ORDER_ID:\s*(\S+)/);
+          const orderId = (ret === 0 && orderIdMatch) ? orderIdMatch[1] : null;
+          
+          resolve({
+            success: ret === 0,
+            orderId: orderId,
+            message: parts[1]?.trim() || 'unknown'
+          });
+        } else {
+          resolve({ success: false, message: stdout });
+        }
+      } else {
+        resolve({ success: false, message: stderr || stdout });
+      }
+    });
+    
+    child.on('error', (err) => {
+      resolve({ success: false, message: err.message });
+    });
+  });
+}
 
 const INPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/backtest-agent/output.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/evaluator-agent/output.json');
@@ -112,6 +184,8 @@ function evaluateResult(btResult) {
     strategy_version_id: s.strategy_version,
     run_id: s.run_id,
     symbol: s.symbol,
+    market: s.market || '美股',  // 添加 market 字段
+    direction: s.direction || 'call',  // 添加 direction 字段
     sharpe: s.sharpe,
     win_rate: s.win_rate,
     max_drawdown: s.max_drawdown,
@@ -161,6 +235,17 @@ async function main() {
   
   console.log(`[evaluator-agent] 结果已写入 ${OUTPUT_FILE}`);
   
+  // 富途模拟盘下单（双轨并行，失败不阻断主流程）
+  for (const evalResult of evaluations) {
+    if (evalResult.verdict === 'candidate_paper' || evalResult.verdict === 'candidate_live') {
+      try {
+        await placeFutuPaperOrder(evalResult);
+      } catch (e) {
+        console.error(`[futu] 下单异常:`, e.message);
+      }
+    }
+  }
+  
   // 输出 JSON 到 stdout
   console.log('\n---OUTPUT---');
   console.log(JSON.stringify({
@@ -176,6 +261,66 @@ async function main() {
     })),
     timestamp: new Date().toISOString()
   }, null, 2));
+}
+
+// 富途模拟盘下单函数
+async function placeFutuPaperOrder(signal) {
+  // A股暂不下单
+  if (signal.market === 'A股') {
+    console.log(`[futu] 跳过 A股 ${signal.symbol}，暂不支持`);
+    return;
+  }
+
+  // 市场映射
+  const marketMap = { '美股': 'US', '港股': 'HK' };
+  const market = marketMap[signal.market];
+
+  // 方向映射 (evaluator 返回的 direction 可能是 'long'/'short')
+  const direction = signal.direction === 'call' || signal.direction === 'long' ? 'buy' : 'sell';
+
+  try {
+    console.log(`[futu] 正在下单 ${signal.symbol} ${market} ${direction} 100股...`);
+    
+    const result = await placeFutuOrderPython(
+      signal.symbol, // code
+      market, // 'US' | 'HK'
+      direction, // 'buy' | 'sell'
+      100, // quantity，固定100股
+      0, // price，市价单传0
+      'SIMULATE' // trdEnv
+    );
+
+    if (result.success) {
+      console.log(`[futu] 下单成功 ${signal.symbol} orderId=${result.orderId}`);
+      
+      // 飞书成功通知
+      try {
+        const { sendMessageToUser } = require('../../../dist/services/feishu/bot');
+        await sendMessageToUser(FEISHU_USER_OPEN_ID, { 
+          text: `✅ 富途模拟盘下单成功 ${signal.symbol} ${direction === 'buy' ? 'call' : 'put'} 100股 order_id=${result.orderId}` 
+        });
+        console.log(`[futu] 飞书通知已发送`);
+      } catch (e) {
+        console.log(`[futu] 飞书通知失败:`, e.message);
+      }
+    } else {
+      console.error(`[futu] 下单失败 ${signal.symbol}: ${result.message}`);
+      
+      // 飞书失败通知
+      try {
+        const { sendMessageToUser } = require('../../../dist/services/feishu/bot');
+        await sendMessageToUser(FEISHU_USER_OPEN_ID, { 
+          text: `⚠️ 富途模拟盘下单失败 ${signal.symbol} ${result.message}` 
+        });
+        console.log(`[futu] 飞书通知已发送`);
+      } catch (e) {
+        console.log(`[futu] 飞书通知失败:`, e.message);
+      }
+    }
+
+  } catch (err) {
+    console.error(`[futu] 下单异常 ${signal.symbol}:`, err.message);
+  }
 }
 
 main().catch(err => {

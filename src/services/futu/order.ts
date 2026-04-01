@@ -7,10 +7,11 @@ import {
   getFutuConnection,
 } from './connection';
 import { logger } from '../../utils/logger';
+import { spawn } from 'child_process';
 
 export interface FutuOrderResult {
   success: boolean;
-  mode: 'A' | 'B' | 'C';
+  mode: 'A' | 'B' | 'C' | 'PYTHON';
   brokerOrderId?: string;
   executedPrice?: number;
   executedQty?: number;
@@ -37,6 +38,8 @@ export async function executeFutuOrder(user: User, order: Order): Promise<FutuOr
     }
     case 'C':
       return executeFutuOrderPlanC(order);
+    case 'PYTHON':
+      return await executeFutuOrderPython(order);
     case 'B':
     default:
       return executeFutuOrderPlanB(order);
@@ -73,6 +76,110 @@ export async function executeFutuOrderPlanC(order: Order): Promise<FutuOrderResu
     orderStatus: 'submitted',
     brokerOrderId: `MANUAL-${Date.now()}`,
   };
+}
+
+// 方案PYTHON：使用 spawn python3 调用富途 API 自动下单
+export async function executeFutuOrderPython(order: Order): Promise<FutuOrderResult> {
+  return new Promise((resolve) => {
+    // 映射市场代码
+    const marketMap: Record<string, string> = {
+      us: 'US',
+      US: 'US',
+      hk: 'HK',
+      HK: 'HK',
+      a: 'SH',
+      A: 'SH',
+    };
+    const market = marketMap[order.market] || 'US';
+    
+    // 映射买卖方向
+    const side = order.direction === 'buy' ? 'TrdSide.BUY' : 'TrdSide.SELL';
+    
+    // 富途股票代码格式: US.AAPL
+    let code = order.symbol;
+    if (!code.includes('.')) {
+      code = `${market}.${code}`;
+    }
+    
+    const quantity = Math.floor(order.quantity);
+    const price = order.referencePrice || 0;
+    const trdEnv = 'TrdEnv.SIMULATE';
+    const accId = 9132532; // 硬编码美股模拟账户
+    
+    const pythonCode = `
+from futu import *
+import pandas as pd
+
+trd_ctx = OpenSecTradeContext(
+    filter_trdmarket=TrdMarket.US,
+    host='127.0.0.1',
+    port=11111,
+    security_firm=SecurityFirm.FUTUSECURITIES
+)
+
+# 不需要设置账户，OpenSecTradeContext 默认连接第一个账户
+
+ret, data = trd_ctx.place_order(
+    price=${price},
+    qty=${quantity},
+    code='${code}',
+    trd_side=${side},
+    order_type=OrderType.MARKET,
+    trd_env=TrdEnv.SIMULATE
+)
+
+print('RESULT:', ret, '|', 'SUCCESS' if ret == 0 else str(data))
+if ret == 0:
+    print('ORDER_ID:', data['order_id'].iloc[0])
+    print('ORDER_STATUS:', data['order_status'].iloc[0])
+trd_ctx.close()
+`;
+
+    const child = spawn('python3', ['-c', pythonCode], {
+      env: { ...process.env, PYTHONPATH: '/Users/zhengzefeng/Library/Python/3.9/lib/python3.9/site-packages' }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    child.on('close', (code) => {
+      logger.info(`[Python下单] stdout=${stdout}, stderr=${stderr}`);
+      
+      if (code === 0) {
+        const match = stdout.match(/RESULT: (.+)/);
+        if (match) {
+          const parts = match[1].split('|');
+          const ret = parseInt(parts[0]);
+
+          // 提取真实 order_id
+          const orderIdMatch = stdout.match(/ORDER_ID:\s*(\S+)/);
+          const statusMatch = stdout.match(/ORDER_STATUS:\s*(\S+)/);
+          const orderId = (ret === 0 && orderIdMatch) ? orderIdMatch[1] : null;
+          const orderStatus = statusMatch ? statusMatch[1] : 'unknown';
+
+          resolve({
+            success: ret === 0,
+            mode: 'PYTHON',
+            brokerOrderId: orderId || undefined,
+            orderStatus: ret === 0 ? 'submitted' : 'failed',
+            failureMessage: ret !== 0 ? parts[1]?.trim() : undefined,
+          });
+        } else {
+          resolve({ success: false, mode: 'PYTHON', orderStatus: 'failed', failureMessage: stdout });
+        }
+      } else {
+        resolve({ success: false, mode: 'PYTHON', orderStatus: 'failed', failureMessage: stderr || stdout });
+      }
+    });
+
+    child.on('error', (err) => {
+      logger.error(`[Python下单] error=${err.message}`);
+      resolve({ success: false, mode: 'PYTHON', orderStatus: 'failed', failureMessage: err.message });
+    });
+  });
 }
 
 function mapMarketToFutuCode(market: string): string {
