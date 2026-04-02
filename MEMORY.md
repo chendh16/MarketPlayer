@@ -338,3 +338,60 @@ tail -20 logs/cron.log
 4. 报告最新 backtest_runs 的 win_rate 和 Sharpe
 5. 如有新 learning_actions，汇报 hypothesis 内容
 6. 距离模拟盘到期（2026-04-26）还有多少天
+
+---
+
+## 长线策略数据源 (2026-04-03)
+
+### 数据源
+SEC EDGAR（官方财报，完全免费）
+User-Agent: MarketPlayer admin@marketplayer.com
+请求间隔：1秒/次
+
+### CIK 对照表
+| 股票 | CIK |
+|------|-----|
+| AAPL | 0000320193 |
+| MSFT | 0000789019 |
+| GOOGL | 0001652044 |
+| AMZN | 0001018724 |
+| META | 0001326801 |
+| TSLA | 0001318605 |
+| NVDA | 0001045810 |
+
+### 数据路径
+- 原始数据：`data/sec/{symbol}_raw.json`
+- 标准化：`data/fundamental/{symbol}_fundamental.json`
+
+### 关键字段解析
+- 净利润：`facts.us-gaap.NetIncomeLoss`（取最近4季度年化）
+- 股东权益：`facts.us-gaap.StockholdersEquity`
+- 自由现金流：经营现金流 - 资本支出
+- PE：最新收盘价 / EPS（EPS = 年度净利润 / 稀释股数）
+- ROE：净利润 / 股东权益
+
+### PE/ROE 数据（2026-04-03）
+| 股票 | PE | ROE | 备注 |
+|------|-----|-----|------|
+| AAPL | 38.4 | 254.1% | ROE虚高（权益低） |
+| MSFT | 31.4 | 55.6% | |
+| GOOGL | 16.6 | 64.7% | |
+| AMZN | 30.2 | 64.0% | |
+| META | 25.7 | 60.2% | |
+| TSLA | 117.7 | 12.1% | 高PE |
+| NVDA | 7.2 | 122.0% | 低PE |
+
+### 已知数据问题
+- AAPL ROE=254%：技术上正确，但因股东权益极低导致虚高
+  → 长线筛选时 ROE 上限设为 100%
+- NVDA PE=7.2：可能因SEC数据异常，使用了估算净利润
+
+### 更新频率
+每季度财报后更新一次
+crontab：每月1日 09:00（已配置）
+
+### 放弃的数据源
+- Yahoo Finance：限流
+- Alpha Vantage：25次/天不够用
+- Financial Modeling Prep：需要注册
+- **SEC EDGAR**：✅ 选定方案

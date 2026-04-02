@@ -1,0 +1,14 @@
+{
+  "symbol": "AMZN",
+  "name": "AMZN",
+  "pe": 30.2,
+  "peg": 0.47,
+  "roe": 0.6396,
+  "net_income_growth": null,
+  "free_cash_flow": 479656000000,
+  "debt_ratio": 0.4975,
+  "dividend_yield": null,
+  "price_used": 205.37,
+  "ni_used": 70000000000,
+  "updated_at": "2026-04-02"
+}

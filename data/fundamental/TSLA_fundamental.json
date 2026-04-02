@@ -1,0 +1,14 @@
+{
+  "symbol": "TSLA",
+  "name": "TSLA",
+  "pe": 117.7,
+  "peg": 9.76,
+  "roe": 0.1206,
+  "net_income_growth": null,
+  "free_cash_flow": 12494000000,
+  "debt_ratio": 0.404,
+  "dividend_yield": null,
+  "price_used": 367.95999,
+  "ni_used": 10000000000,
+  "updated_at": "2026-04-02"
+}
