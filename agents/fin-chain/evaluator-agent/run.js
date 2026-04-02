@@ -1,8 +1,8 @@
 /**
- * evaluator-agent - 策略评估 Agent
+ * evaluator-agent - 策略评估 Agent (双层评估)
  * 职责：
- * 1. 读取 backtest_runs 表里的回测结果
- * 2. 计算夏普比率、胜率、最大回撤、profit_factor
+ * 1. 层1（信号级）：评估"这个信号今天值不值得下单"
+ * 2. 层2（策略级）：评估"这套策略参数在历史上整体表现如何"
  * 3. 输出 verdict：discard / keep / candidate_paper / candidate_live
  * 4. 写入 memory-store
  */
@@ -58,16 +58,9 @@ trd_ctx.close()
         if (match) {
           const parts = match[1].split('|');
           const ret = parseInt(parts[0]);
-          
-          // 提取真实 order_id
           const orderIdMatch = stdout.match(/ORDER_ID:\s*(\S+)/);
           const orderId = (ret === 0 && orderIdMatch) ? orderIdMatch[1] : null;
-          
-          resolve({
-            success: ret === 0,
-            orderId: orderId,
-            message: parts[1]?.trim() || 'unknown'
-          });
+          resolve({ success: ret === 0, orderId: orderId, message: parts[1]?.trim() || 'unknown' });
         } else {
           resolve({ success: false, message: stdout });
         }
@@ -76,121 +69,151 @@ trd_ctx.close()
       }
     });
     
-    child.on('error', (err) => {
-      resolve({ success: false, message: err.message });
-    });
+    child.on('error', (err) => resolve({ success: false, message: err.message }));
   });
 }
 
-const INPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/backtest-agent/output.json');
+const SIGNAL_BT_OUTPUT = path.join(process.cwd(), 'agents/fin-chain/backtest-agent/output.json');
+const STRATEGY_BT_OUTPUT = path.join(process.cwd(), 'agents/strategy-backtester/output.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/evaluator-agent/output.json');
+
+// 行业黑名单配置
+const INDUSTRY_BLACKLIST = {
+  '美股': ['NVDA', 'AMD', 'INTC', 'TSM', 'AVGO', 'TXN', 'QCOM', 'MU', 'AMAT', 'LRCX', 'KLAC', 'MRVL'],
+  '港股': [],
+  'A股': []
+};
 
 // 评估规则
 const THRESHOLDS = {
   min_sharpe: 0.5,
   min_win_rate: 0.35,
   max_drawdown: 0.20,
-  min_profit_factor: 1.2,
-  min_annual_return: -0.10  // 允许小幅亏损
+  min_annual_return: -0.10
 };
 
-// 评估单个回测结果
-function evaluateResult(btResult) {
+// ========== 层1：信号级评估 ==========
+function evaluateSignal(btResult) {
   const s = btResult;
+  
+  // 行业黑名单过滤
+  const blacklist = INDUSTRY_BLACKLIST[s.market] || [];
+  if (blacklist.includes(s.symbol)) {
+    return {
+      level: 'signal',
+      eval_id: `sig_${Date.now()}_${s.symbol}`,
+      symbol: s.symbol,
+      market: s.market,
+      score: 0,
+      verdict: 'rejected',
+      reasons: ['行业黑名单: semiconductors'],
+      timestamp: new Date().toISOString()
+    };
+  }
   
   let score = 0;
   const reasons = [];
   
   // Sharpe 评分
-  if (s.sharpe >= 1.5) {
-    score += 30;
-    reasons.push('Sharpe优秀(>1.5)');
-  } else if (s.sharpe >= 1.0) {
-    score += 20;
-    reasons.push('Sharpe良好(>1.0)');
-  } else if (s.sharpe >= 0.5) {
-    score += 10;
-    reasons.push('Sharpe达标(>0.5)');
-  } else if (s.sharpe >= 0) {
-    score += 5;
-    reasons.push('Sharpe为正');
-  } else {
-    reasons.push('Sharpe为负');
-  }
+  if (s.sharpe >= 1.5) { score += 30; reasons.push('Sharpe优秀'); }
+  else if (s.sharpe >= 1.0) { score += 20; reasons.push('Sharpe良好'); }
+  else if (s.sharpe >= 0.5) { score += 10; reasons.push('Sharpe达标'); }
+  else if (s.sharpe >= 0) { score += 5; reasons.push('Sharpe为正'); }
+  else { reasons.push('Sharpe为负'); }
   
   // 胜率评分
-  if (s.win_rate >= 0.5) {
-    score += 25;
-    reasons.push('胜率高(>50%)');
-  } else if (s.win_rate >= 0.4) {
-    score += 15;
-    reasons.push('胜率良好(>40%)');
-  } else if (s.win_rate >= 0.35) {
-    score += 5;
-    reasons.push('胜率达标');
-  } else {
-    reasons.push('胜率不足');
-  }
+  if (s.win_rate >= 0.5) { score += 25; reasons.push('胜率高'); }
+  else if (s.win_rate >= 0.4) { score += 15; reasons.push('胜率良好'); }
+  else if (s.win_rate >= 0.35) { score += 5; reasons.push('胜率达标'); }
+  else { reasons.push('胜率不足'); }
   
   // 回撤评分
-  if (s.max_drawdown <= 0.10) {
-    score += 25;
-    reasons.push('回撤小(<10%)');
-  } else if (s.max_drawdown <= 0.15) {
-    score += 15;
-    reasons.push('回撤可控(<15%)');
-  } else if (s.max_drawdown <= 0.20) {
-    score += 5;
-    reasons.push('回撤在阈值内');
-  } else {
-    reasons.push('回撤过大');
-  }
+  if (s.max_drawdown <= 0.10) { score += 25; reasons.push('回撤小'); }
+  else if (s.max_drawdown <= 0.15) { score += 15; reasons.push('回撤可控'); }
+  else if (s.max_drawdown <= 0.20) { score += 5; reasons.push('回撤在阈值内'); }
+  else { reasons.push('回撤过大'); }
   
-  // 年化收益评分
-  if (s.annual_return >= 0.20) {
-    score += 20;
-    reasons.push('收益优秀(>20%)');
-  } else if (s.annual_return >= 0.10) {
-    score += 15;
-    reasons.push('收益良好(>10%)');
-  } else if (s.annual_return >= 0) {
-    score += 5;
-    reasons.push('正收益');
-  } else {
-    reasons.push('负收益');
-  }
+  // 年化收益
+  if (s.annual_return >= 0.20) { score += 20; reasons.push('收益优秀'); }
+  else if (s.annual_return >= 0.10) { score += 15; reasons.push('收益良好'); }
+  else if (s.annual_return >= 0) { score += 5; reasons.push('正收益'); }
+  else { reasons.push('负收益'); }
   
-  // 盈亏比
-  if (s.profit_factor >= 2.0) {
-    score += 10;
-    reasons.push('盈亏比优秀');
-  } else if (s.profit_factor >= 1.5) {
-    score += 5;
-    reasons.push('盈亏比良好');
-  }
-  
-  // 决定 verdict
+  // verdict
   let verdict = 'discard';
-  if (score >= 80 && s.sharpe >= 1.0 && s.max_drawdown <= 0.15) {
-    verdict = 'candidate_live';
-  } else if (score >= 60 && s.sharpe >= 0.5 && s.max_drawdown <= 0.20) {
-    verdict = 'candidate_paper';
-  } else if (score >= 40 && s.sharpe >= 0) {
-    verdict = 'keep';
-  }
+  if (score >= 80 && s.sharpe >= 1.0 && s.max_drawdown <= 0.15) verdict = 'candidate_live';
+  else if (score >= 60 && s.sharpe >= 0.5 && s.max_drawdown <= 0.20) verdict = 'candidate_paper';
+  else if (score >= 40 && s.sharpe >= 0) verdict = 'keep';
   
   return {
-    eval_id: `eval_${Date.now()}_${s.symbol}`,
-    strategy_version_id: s.strategy_version,
-    run_id: s.run_id,
+    level: 'signal',
+    eval_id: `sig_${Date.now()}_${s.symbol}`,
     symbol: s.symbol,
-    market: s.market || '美股',  // 添加 market 字段
-    direction: s.direction || 'call',  // 添加 direction 字段
+    market: s.market || '美股',
     sharpe: s.sharpe,
     win_rate: s.win_rate,
     max_drawdown: s.max_drawdown,
     annual_return: s.annual_return,
-    profit_factor: s.profit_factor,
+    score,
+    verdict,
+    reasons,
+    timestamp: new Date().toISOString()
+  };
+}
+
+// ========== 层2：策略级评估 ==========
+function evaluateStrategy(strategyResult) {
+  const s = strategyResult;
+  
+  let score = 0;
+  const reasons = [];
+  
+  // Sharpe 评分（策略级更重要）
+  if (s.sharpe_ratio >= 2.0) { score += 35; reasons.push('Sharpe卓越(>2.0)'); }
+  else if (s.sharpe_ratio >= 1.5) { score += 25; reasons.push('Sharpe优秀(>1.5)'); }
+  else if (s.sharpe_ratio >= 1.0) { score += 20; reasons.push('Sharpe良好(>1.0)'); }
+  else if (s.sharpe_ratio >= 0.5) { score += 10; reasons.push('Sharpe达标(>0.5)'); }
+  else if (s.sharpe_ratio >= 0) { score += 5; reasons.push('Sharpe为正'); }
+  else { reasons.push('Sharpe为负'); }
+  
+  // 胜率评分（策略级的核心指标）
+  if (s.win_rate >= 0.60) { score += 30; reasons.push('胜率优秀(>60%)'); }
+  else if (s.win_rate >= 0.50) { score += 20; reasons.push('胜率高(>50%)'); }
+  else if (s.win_rate >= 0.43) { score += 15; reasons.push('胜率良好(>43%)'); }
+  else if (s.win_rate >= 0.35) { score += 5; reasons.push('胜率达标'); }
+  else { reasons.push('胜率不足'); }
+  
+  // 回撤评分
+  if (s.max_drawdown <= 0.10) { score += 25; reasons.push('回撤极小(<10%)'); }
+  else if (s.max_drawdown <= 0.15) { score += 20; reasons.push('回撤小(<15%)'); }
+  else if (s.max_drawdown <= 0.20) { score += 10; reasons.push('回撤可控(<20%)'); }
+  else { reasons.push('回撤过大'); }
+  
+  // 交易次数（数据量足够）
+  if (s.total_trades >= 50) { score += 10; reasons.push('数据量充足(>50笔)'); }
+  else if (s.total_trades >= 20) { score += 5; reasons.push('数据量中等(>20笔)'); }
+  else { reasons.push('数据量不足'); }
+  
+  // verdict
+  let verdict = 'discard';
+  if (score >= 85 && s.sharpe_ratio >= 1.5 && s.max_drawdown <= 0.15 && s.win_rate >= 0.50) {
+    verdict = 'candidate_live';
+  } else if (score >= 65 && s.sharpe_ratio >= 0.8 && s.max_drawdown <= 0.20 && s.win_rate >= 0.40) {
+    verdict = 'candidate_paper';
+  } else if (score >= 45 && s.sharpe_ratio >= 0.3 && s.win_rate >= 0.35) {
+    verdict = 'keep';
+  }
+  
+  return {
+    level: 'strategy',
+    eval_id: `strat_${Date.now()}`,
+    strategy_params: s.strategy_params,
+    test_period: s.test_period,
+    total_trades: s.total_trades,
+    symbols_tested: s.symbols_tested,
+    sharpe: s.sharpe_ratio,
+    win_rate: s.win_rate,
+    max_drawdown: s.max_drawdown,
     score,
     verdict,
     reasons,
@@ -200,30 +223,43 @@ function evaluateResult(btResult) {
 
 // 主函数
 async function main() {
-  if (!fs.existsSync(INPUT_FILE)) {
-    console.error('[evaluator-agent] 错误: 未找到 backtest-agent 输出文件');
-    process.exit(1);
-  }
-  
-  const input = JSON.parse(fs.readFileSync(INPUT_FILE, 'utf-8'));
-  const results = input.results;
-  
-  console.log(`[evaluator-agent] 正在评估 ${results.length} 个回测结果...`);
-  
   const evaluations = [];
   
-  for (const result of results) {
-    const evalResult = evaluateResult(result);
-    evaluations.push(evalResult);
-    console.log(`[evaluator-agent] 评估 ${result.symbol}: score=${evalResult.score} verdict=${evalResult.verdict}`);
+  // ===== 层1：信号级评估 =====
+  if (fs.existsSync(SIGNAL_BT_OUTPUT)) {
+    const input = JSON.parse(fs.readFileSync(SIGNAL_BT_OUTPUT, 'utf-8'));
+    const results = input.results || [];
+    
+    console.log(`[evaluator] 层1: 信号级评估 ${results.length} 个结果...`);
+    
+    for (const result of results) {
+      const evalResult = evaluateSignal(result);
+      evaluations.push(evalResult);
+      console.log(`[evaluator] 信号 ${result.symbol}: score=${evalResult.score} verdict=${evalResult.verdict}`);
+    }
   }
   
-  console.log(`[evaluator-agent] 完成: ${evaluations.length} 个评估结果`);
+  // ===== 层2：策略级评估 =====
+  if (fs.existsSync(STRATEGY_BT_OUTPUT)) {
+    const strategyResult = JSON.parse(fs.readFileSync(STRATEGY_BT_OUTPUT, 'utf-8'));
+    
+    console.log(`\n[evaluator] 层2: 策略级评估 ${strategyResult.total_trades} 笔交易...`);
+    
+    const evalResult = evaluateStrategy(strategyResult);
+    evaluations.push(evalResult);
+    
+    console.log(`[evaluator] 策略整体: win_rate=${evalResult.win_rate.toFixed(2)} sharpe=${evalResult.sharpe.toFixed(2)} score=${evalResult.score} verdict=${evalResult.verdict}`);
+  } else {
+    console.log('[evaluator] 无策略级回测结果，跳过层2评估');
+  }
+  
+  console.log(`\n[evaluator] 完成: ${evaluations.length} 个评估结果`);
   
   // 输出到文件
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify({
     summary: {
-      backtests_evaluated: results.length,
+      signal_evaluations: evaluations.filter(e => e.level === 'signal').length,
+      strategy_evaluations: evaluations.filter(e => e.level === 'strategy').length,
       candidates_live: evaluations.filter(e => e.verdict === 'candidate_live').length,
       candidates_paper: evaluations.filter(e => e.verdict === 'candidate_paper').length,
       keep: evaluations.filter(e => e.verdict === 'keep').length,
@@ -233,97 +269,55 @@ async function main() {
     timestamp: new Date().toISOString()
   }, null, 2));
   
-  console.log(`[evaluator-agent] 结果已写入 ${OUTPUT_FILE}`);
+  console.log(`[evaluator] 结果已写入 ${OUTPUT_FILE}`);
   
-  // 富途模拟盘下单（双轨并行，失败不阻断主流程）
+  // 写入 memory-store
+  const db = require('sqlite3').verbose();
+  const database = new db.Database(path.join(process.cwd(), 'memory-store/marketplayer.db'));
+  
   for (const evalResult of evaluations) {
-    if (evalResult.verdict === 'candidate_paper' || evalResult.verdict === 'candidate_live') {
-      try {
-        await placeFutuPaperOrder(evalResult);
-      } catch (e) {
-        console.error(`[futu] 下单异常:`, e.message);
-      }
-    }
+    const table = evalResult.level === 'strategy' ? 'strategy_evaluations' : 'evaluation_results';
+    const sql = evalResult.level === 'strategy' 
+      ? `INSERT OR REPLACE INTO strategy_evaluations (eval_id, strategy_params, test_period, total_trades, symbols_tested, sharpe, win_rate, max_drawdown, score, verdict, reasons, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT OR REPLACE INTO evaluation_results (eval_id, strategy_version_id, symbol, market, sharpe, win_rate, max_drawdown, annual_return, score, verdict, reasons, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    
+    const params = evalResult.level === 'strategy'
+      ? [evalResult.eval_id, JSON.stringify(evalResult.strategy_params), evalResult.test_period, evalResult.total_trades, evalResult.symbols_tested, evalResult.sharpe, evalResult.win_rate, evalResult.max_drawdown, evalResult.score, evalResult.verdict, JSON.stringify(evalResult.reasons), evalResult.timestamp]
+      : [evalResult.eval_id, 'signal_level', evalResult.symbol, evalResult.market, evalResult.sharpe || 0, evalResult.win_rate || 0, evalResult.max_drawdown || 0, evalResult.annual_return || 0, evalResult.score, evalResult.verdict, JSON.stringify(evalResult.reasons), evalResult.timestamp];
+    
+    database.run(sql, params, function(err) {
+      if (err) console.error(`写入${table}失败:`, err.message);
+    });
   }
   
-  // 输出 JSON 到 stdout
+  database.close(() => {
+    console.log('[evaluator] 已写入 memory-store');
+  });
+  
+  // 对策略级 candidate 下单
+  const strategyCandidates = evaluations.filter(e => e.level === 'strategy' && (e.verdict === 'candidate_paper' || e.verdict === 'candidate_live'));
+  if (strategyCandidates.length > 0) {
+    console.log(`[evaluator] 策略级 ${strategyCandidates.length} 个候选，准备下单...`);
+    // 策略级下单逻辑可以后续添加
+  }
+  
   console.log('\n---OUTPUT---');
   console.log(JSON.stringify({
     type: 'evaluation_result',
     count: evaluations.length,
     evaluations: evaluations.map(e => ({
-      symbol: e.symbol,
+      level: e.level,
+      symbol: e.symbol || 'strategy',
       score: e.score,
       verdict: e.verdict,
-      sharpe: e.sharpe,
       win_rate: e.win_rate,
-      max_drawdown: e.max_drawdown
+      sharpe: e.sharpe
     })),
     timestamp: new Date().toISOString()
   }, null, 2));
 }
 
-// 富途模拟盘下单函数
-async function placeFutuPaperOrder(signal) {
-  // A股暂不下单
-  if (signal.market === 'A股') {
-    console.log(`[futu] 跳过 A股 ${signal.symbol}，暂不支持`);
-    return;
-  }
-
-  // 市场映射
-  const marketMap = { '美股': 'US', '港股': 'HK' };
-  const market = marketMap[signal.market];
-
-  // 方向映射 (evaluator 返回的 direction 可能是 'long'/'short')
-  const direction = signal.direction === 'call' || signal.direction === 'long' ? 'buy' : 'sell';
-
-  try {
-    console.log(`[futu] 正在下单 ${signal.symbol} ${market} ${direction} 100股...`);
-    
-    const result = await placeFutuOrderPython(
-      signal.symbol, // code
-      market, // 'US' | 'HK'
-      direction, // 'buy' | 'sell'
-      100, // quantity，固定100股
-      0, // price，市价单传0
-      'SIMULATE' // trdEnv
-    );
-
-    if (result.success) {
-      console.log(`[futu] 下单成功 ${signal.symbol} orderId=${result.orderId}`);
-      
-      // 飞书成功通知
-      try {
-        const { sendMessageToUser } = require('../../../dist/services/feishu/bot');
-        await sendMessageToUser(FEISHU_USER_OPEN_ID, { 
-          text: `✅ 富途模拟盘下单成功 ${signal.symbol} ${direction === 'buy' ? 'call' : 'put'} 100股 order_id=${result.orderId}` 
-        });
-        console.log(`[futu] 飞书通知已发送`);
-      } catch (e) {
-        console.log(`[futu] 飞书通知失败:`, e.message);
-      }
-    } else {
-      console.error(`[futu] 下单失败 ${signal.symbol}: ${result.message}`);
-      
-      // 飞书失败通知
-      try {
-        const { sendMessageToUser } = require('../../../dist/services/feishu/bot');
-        await sendMessageToUser(FEISHU_USER_OPEN_ID, { 
-          text: `⚠️ 富途模拟盘下单失败 ${signal.symbol} ${result.message}` 
-        });
-        console.log(`[futu] 飞书通知已发送`);
-      } catch (e) {
-        console.log(`[futu] 飞书通知失败:`, e.message);
-      }
-    }
-
-  } catch (err) {
-    console.error(`[futu] 下单异常 ${signal.symbol}:`, err.message);
-  }
-}
-
 main().catch(err => {
-  console.error('[evaluator-agent] 错误:', err.message);
+  console.error('[evaluator] 错误:', err.message);
   process.exit(1);
 });

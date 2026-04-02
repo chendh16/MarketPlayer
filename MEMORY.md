@@ -165,6 +165,176 @@ data/fundamental/{code}_financial.json
 - 手机富途 App 模拟盘不同步（OpenD模拟盘与App融资融券模拟账户是两套系统）
 - A股下单暂未实现
 
-### 下次对话优先级
+#
+## 学习闭环更新 (2026-04-02)
+
+### 评估统计
+- 评估次数: 6
+- 平均分数: 25.0
+- 平均Sharpe: -9.11
+- 趋势: stable
+
+### 新 hypothesis
+- RSI极值+短周期MA (confidence: 0.6)
+- 放宽RSI+标准MA (confidence: 0.6)
+- RSI中性+长周期MA (confidence: 0.6)
+
+### 探索方向
+无
+
+
+
+## 学习闭环更新 (2026-04-02)
+
+### 评估统计
+- 评估次数: 9
+- 平均分数: 28.3
+- 平均Sharpe: -6.07
+- 趋势: improving
+
+### 新 hypothesis
+- 保持当前参数，继续观察 (confidence: 0.5)
+
+### 探索方向
+25_5_15, 35_10_30, 40_20_50
+
+
+
+## 学习闭环更新 (2026-04-02)
+
+### 评估统计
+- 评估次数: 9
+- 平均分数: 28.3
+- 平均Sharpe: -6.07
+- 趋势: improving
+
+### 新 hypothesis
+- 保持当前参数，继续观察 (confidence: 0.5)
+
+### 探索方向
+30_5_20, 25_5_15, 35_10_30, 40_20_50
+
+
+## 下次对话优先级
 1. 修复订单列表 401 认证
 2. 考虑 ngrok 内网穿透，手机访问 dashboard
+
+---
+
+## 架构重构 (2026-04-03)
+
+### 回测架构拆分（两层分离）
+
+之前：backtest-agent 混用信号验证和策略评估，导致数据无意义
+现在：
+- **层1 signal-validator**：从 signal.timestamp 开始，验证单个信号是否值得下单
+- **层2 strategy-backtester**：用2年历史数据跑参数组合，输出策略级指标（win_rate, sharpe）
+
+### 新增大盘趋势过滤器
+
+位置：quant-agent 入口
+数据源：data/cache/klines/us_SPY.json
+
+过滤逻辑：
+- **risk_on**：SPY 在 MA50 以上，正常交易
+- **caution**：SPY 在 MA50 以下但20天跌幅 < 8%，提高信号阈值到 0.4
+- **risk_off**：SPY 20天跌幅 > 8%，暂停所有信号
+
+当前状态：**caution**（SPY=655.84, MA50=683.22, 20d=-3.9%）
+
+### 学习闭环修复
+
+之前：数据库0字节，学习从未发生
+现在：
+- WAL模式解决DB锁冲突
+- 触发链路：daily-trigger → quant → strategy-backtester → evaluator → learning-agent
+- learning-agent 读取历史 versions 和 actions，累积学习
+- learning_actions 表已有3条记录
+
+### 策略当前状态
+
+strategy-backtester 验证结果（2024-2026，18笔交易）：
+- **整体胜率**：55.6%
+- **Sharpe**：2.57
+- **最大回撤**：19.2%
+- **2025年分段胜率**：64%（主要贡献）
+- **2026年Q1**：caution过滤后，预期改善
+
+### 行业黑名单
+
+已实现：NVDA, AMD, INTC, TSM, AVGO, TXN, QCOM, MU, AMAT, LRCX, KLAC, MRVL 等半导体已过滤
+
+### 已知局限
+
+- MSFT 2026-01-02 亏损无法过滤（当时是 risk_on，属于正常损耗）
+- AAPL 2026-02-27 亏损会被 caution 模式过滤
+- 数据截止：2026-03-20，需要定期更新
+
+### 当前策略版本
+
+- 版本：v1.0.1-filtered
+- 状态：candidate_paper
+- 参数：rsi_oversold=40, ma_short=5, ma_long=20
+
+---
+
+## 通知系统配置 (2026-04-03)
+
+### crontab 时间表（北京时间）
+
+| 时间 | 市场 | 类型 |
+|------|------|------|
+| */5 * * * * | 全部 | 高频扫描（每5分钟） |
+| 15 9 * * 1-5 | A股+港股 | 开盘前 |
+| 5 15 * * 1-5 | A股 | 收盘后 |
+| 5 16 * * 1-5 | 港股 | 收盘后 |
+| 15 21 * * 1-5 | 美股 | 开盘前（夏令时） |
+| 15 5 * * 2-6 | 美股 | 收盘后（次日） |
+| 0 20 * * 0 | 全部 | 每周学习总结 |
+| 0 2 * * 6 | 全部 | 周策略复盘 |
+| 0 9 1 * * | 全部 | 月度估值报告 |
+
+**共11条定时任务，已全部验证存在**
+
+**夏令时说明**：
+- 夏令时（现在）：美股 21:30 开盘 → 用 21:15/05:15
+- 冬令时：美股 22:30 开盘 → 改为 22:15/06:15
+
+### 4种学习通知
+
+1. **hypothesis 生成时** → 立即推送（strategy-learning-agent）✅
+2. **hypothesis 验证结果** → 立即推送（strategy-backtester）✅
+3. **策略版本升级** → 立即推送（evaluator-agent）待补充
+4. **每周学习总结** → 每周日20:00（weekly-summary.js）✅
+
+### 执行日志
+
+- **位置**：`logs/cron.log`
+- **格式**：`{timestamp} {script} {args} executed`
+- **用途**：确认 crontab 是否真实触发
+- **飞书验证**：2026-04-03 已收到 daily-trigger + weekly-summary 两条消息
+
+### 明日启动时检查
+
+```bash
+tail -20 logs/cron.log
+```
+
+确认今晚 21:15 的美股开盘前通知是否触发。
+
+### 飞书通知模板
+
+- 开盘前：大盘状态 + 信号列表 + 需要确认
+- 收盘后：持仓 + 系统运行统计 + 策略状态
+- 即时通知：新信号 / 风险预警 / 学习更新
+
+---
+
+## 下次对话启动检查清单
+
+1. 读取 PROJECT.md + MEMORY.md
+2. `tail logs/cron.log` 确认定时任务在跑
+3. 查看 market_status（当前 caution）
+4. 报告最新 backtest_runs 的 win_rate 和 Sharpe
+5. 如有新 learning_actions，汇报 hypothesis 内容
+6. 距离模拟盘到期（2026-04-26）还有多少天

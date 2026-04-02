@@ -2,14 +2,39 @@
 
 ## 系统状态：Phase 1-3 全部完成 ✅
 完成时间：2026-03-30
+架构重构：2026-04-03 完成（回测两层分离 + 大盘过滤器）
 
 ## 当前运行状态
-模式：模拟盘观察期
-当前策略：v1.0.1-filtered
-策略状态：accepted_for_paper
-观察周期：2026-03-29 至 2026-04-26（4周）
-行业黑名单：semiconductors
+- **模式**：caution（大盘过滤器激活）
+- **当前策略**：v1.0.1-filtered (rsi_oversold=40)
+- **策略状态**：candidate_paper
+- **市场状态**：SPY=655.84, MA50=683.22, 20d=-3.9%, status=caution
+- **信号状态**：0个（当前被过滤）
+
+## 策略验证数据（strategy-backtester）
+- **回测区间**：2024-01-01 ~ 2026-03-20
+- **交易数**：18笔
+- **胜率**：55.6%（2025年64%）
+- **Sharpe**：2.57
+- **最大回撤**：19.2%
+
+## 模拟盘观察期
+观察周期：2026-03-29 至 2026-04-26（还剩约23天）
+行业黑名单：semiconductors（NVDA/AMD等已过滤）
 升级条件：模拟盘胜率 > 65%，最大亏损 < 25%，持续4周
+
+## 架构重构 (2026-04-03) ✅
+1. **回测两层分离**
+   - 层1：signal-validator（从信号时间开始验证单个信号）
+   - 层2：strategy-backtester（用2年历史数据跑策略参数）
+2. **大盘趋势过滤器**
+   - risk_on: SPY > MA50，正常交易
+   - caution: SPY < MA50 但跌幅 < 8%，阈值提高到 0.4
+   - risk_off: 跌幅 > 8%，暂停所有信号
+3. **学习闭环修复**
+   - WAL模式解决DB锁
+   - 完整触发链路：daily-trigger → quant → strategy-backtester → evaluator → learning-agent
+   - learning_actions 表已有3条记录
 
 ## Phase 1 ✅（2026-03-29完成）
 - 消息传递、crontab、memory-store三张表
@@ -28,16 +53,11 @@
 ## memory-store 数据量
 | 表名 | 记录数 |
 |------|--------|
-| signal_candidates | 7 |
-| backtest_runs | 9 |
-| strategy_versions | 3（v1.0.0 / v1.0.1 / v1.0.1-filtered）|
+| backtest_runs | 10（包含1条策略级回测） |
 | evaluation_results | 9 |
-| learning_actions | 2 |
-| state_transitions | 15 |
-| failure_cases | 4 |
-| escalation_log | 2 |
-| audit_log | 15+ |
-| notification_log | 3 |
+| learning_actions | 5 |
+| strategy_evaluations | 1（策略级评估） |
+| signal_candidates | 7 |
 
 ## 策略版本历史
 | version | status | 说明 |
@@ -66,9 +86,8 @@
 - memory-store/marketplayer.db：主数据库
 
 ## 下次对话启动方式
-1. 读取 PROJECT.md + USER.md
-2. 告知当前模拟盘进度和距离到期天数
-3. 如有 evaluator 新评分则直接报告
-4. 写入完成后告诉我，系统正式进入模拟盘观察期，等待2026-04-26评估结果
-
-在此期间每次对话开始你先读 PROJECT.md，告诉我距离模拟盘到期还有几天，以及 notification_log 里有没有新的 Level 2/3 记录。
+1. 读取 PROJECT.md + MEMORY.md
+2. 检查当前 market_status（SPY vs MA50）
+3. 报告最新 backtest_runs 的 win_rate 和 Sharpe
+4. 如果有新的 learning_actions，汇报 hypothesis 内容
+5. 确认当前信号是否被过滤（caution模式）

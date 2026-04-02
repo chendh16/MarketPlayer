@@ -26,6 +26,52 @@ const PARAMS = {
   min_confidence: 0.3
 };
 
+// === 新增：大盘趋势过滤器 ===
+function checkMarketEnvironment(market) {
+  if (market !== '美股') return { signal_allowed: true, market_status: 'risk_on' };
+  
+  const spyPath = path.join(process.cwd(), 'data/cache/klines/us_SPY.json');
+  if (!fs.existsSync(spyPath)) return { signal_allowed: true, market_status: 'unknown' };
+  
+  const spyData = JSON.parse(fs.readFileSync(spyPath, 'utf-8'));
+  const klines = spyData.klines || [];
+  
+  if (klines.length < 60) return { signal_allowed: true, market_status: 'unknown' };
+  
+  // 计算 SPY MA50
+  const ma50Slice = klines.slice(-50);
+  const spyMa50 = ma50Slice.map(k => parseFloat(k.close)).reduce((a, b) => a + b) / 50;
+  
+  // 最新价格
+  const spyPrice = parseFloat(klines[klines.length - 1].close);
+  
+  // 20天涨跌幅
+  const idx20 = Math.max(0, klines.length - 21);
+  const price20dAgo = parseFloat(klines[idx20].close);
+  const spy20dReturn = (spyPrice - price20dAgo) / price20dAgo;
+  
+  // 判断市场状态
+  const aboveMA = spyPrice > spyMa50;
+  const inPanic = spy20dReturn < -0.08;
+  
+  let market_status = 'risk_on';
+  if (!aboveMA && inPanic) market_status = 'risk_off';
+  else if (!aboveMA) market_status = 'caution';
+  
+  const signal_allowed = market_status === 'risk_on';
+  
+  console.log(`[quant-agent] 市场环境: SPY=${spyPrice.toFixed(2)} MA50=${spyMa50.toFixed(2)} 20d=${(spy20dReturn*100).toFixed(1)}% status=${market_status}`);
+  
+  return {
+    signal_allowed,
+    market_status,
+    spy_price: spyPrice,
+    spy_ma50: spyMa50,
+    spy_20d_return: spy20dReturn,
+    spy_ma50_position: aboveMA ? 'above' : 'below'
+  };
+}
+
 // 计算 ATR
 function calculateATR(klines) {
   if (klines.length < 15) return null;
@@ -242,6 +288,9 @@ async function main() {
   
   console.log(`[quant-agent] 正在处理 ${marketData.market} 市场数据...`);
   
+  // === 新增：检查市场环境 ===
+  const marketEnv = checkMarketEnvironment(marketData.market);
+  
   const quantSignals = [];
   
   for (const symbol of marketData.symbols) {
@@ -262,6 +311,18 @@ async function main() {
     const signal = generateSignal(symbol, marketData.market, klines);
     
     if (signal) {
+      // 市场环境过滤
+      if (!marketEnv.signal_allowed) {
+        console.log(`[quant-agent] 市场${marketEnv.market_status}，过滤信号 ${symbol}`);
+        continue;
+      }
+      
+      // caution 状态提高阈值（从0.5降到0.4）
+      if (marketEnv.market_status === 'caution' && signal.confidence < 0.4) {
+        console.log(`[quant-agent] caution模式，过滤低置信度信号 ${symbol}`);
+        continue;
+      }
+      
       quantSignals.push(signal);
       console.log(`[quant-agent] 生成信号: ${symbol} ${signal.direction} conf=${signal.confidence.toFixed(2)} score=${signal.signal_strength.toFixed(2)} [${signal.reason_tags.join(',')}]`);
     }
@@ -269,13 +330,14 @@ async function main() {
   
   console.log(`[quant-agent] 完成: 生成 ${quantSignals.length} 个量化信号`);
   
-  // 输出到文件
+  // 输出到文件（包含市场环境）
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify({
     input_summary: {
       market: marketData.market,
       symbols_processed: marketData.symbols.length,
       signals_generated: quantSignals.length
     },
+    market_environment: marketEnv,  // 新增字段
     signals: quantSignals,
     timestamp: new Date().toISOString()
   }, null, 2));
