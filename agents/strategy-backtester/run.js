@@ -1,19 +1,17 @@
 /**
  * strategy-backtester - 策略级回测 Agent
- * 职责：
- * 1. 输入：一组策略参数（ma_short, ma_long, rsi_oversold 等）
- * 2. 对多只股票、多年的历史数据进行完整回测
- * 3. 输出：策略整体的 win_rate, sharpe, max_drawdown
- * 4. 写入 backtest_runs 表，供 learning-agent 使用
+ * 读取 config/system.config.js 获取参数
  */
-
 const fs = require('fs');
 const path = require('path');
+
+// 加载配置
+const { backtest } = require('../../config/system.config');
 
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/strategy-backtester/output.json');
 const DATA_DIR = path.join(process.cwd(), 'data/cache/klines');
 
-// 默认策略参数（从 learning-actions 获取）
+// 默认策略参数（从配置文件或 learning-actions 获取）
 const DEFAULT_PARAMS = {
   ma_short: 5,
   ma_long: 20,
@@ -27,9 +25,9 @@ const DEFAULT_PARAMS = {
   max_hold_days: 10
 };
 
-// 回测时间范围
-const BACKTEST_START = '2024-01-01';
-const BACKTEST_END = '2026-03-20';
+// 回测时间范围（从配置文件读取）
+const BACKTEST_START = backtest.start_date;
+const BACKTEST_END = backtest.end_date;
 
 // 要测试的股票列表
 const TEST_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA'];

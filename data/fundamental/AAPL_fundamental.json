@@ -1,14 +1,14 @@
 {
   "symbol": "AAPL",
   "name": "AAPL",
-  "pe": 38.4,
-  "peg": 0.15,
+  "pe": 17.2,
+  "peg": 87.99,
   "roe": 2.5409,
-  "net_income_growth": null,
+  "net_income_growth": 0.195,
   "free_cash_flow": 270476000000,
   "debt_ratio": 0.7675,
   "dividend_yield": null,
   "price_used": 247.99001,
-  "ni_used": 100000000000,
-  "updated_at": "2026-04-02"
+  "ni_used": 224081000000,
+  "updated_at": "2026-04-06"
 }

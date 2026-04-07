@@ -1,239 +1,224 @@
-<div id="system-panel-root" class="space-y-6">
-
-  <!-- KPI Cards Row -->
-  <div class="grid grid-cols-3 gap-4">
-    <!-- Today Cost -->
-    <div id="sys-kpi-today-cost" class="rounded-xl border p-5 bg-green-50 border-green-200 transition-colors">
-      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">今日花费</div>
-      <div id="sys-val-today-cost" class="text-3xl font-bold text-gray-800">--</div>
-      <div class="text-xs text-gray-500 mt-1">USD</div>
-    </div>
-
-    <!-- Today Call Count -->
-    <div class="rounded-xl border border-gray-200 p-5 bg-white">
-      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">今日调用次数</div>
-      <div id="sys-val-today-calls" class="text-3xl font-bold text-gray-800">--</div>
-      <div class="text-xs text-gray-500 mt-1">次</div>
-    </div>
-
-    <!-- Month Cost -->
-    <div class="rounded-xl border border-gray-200 p-5 bg-white">
-      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">本月花费</div>
-      <div id="sys-val-month-cost" class="text-3xl font-bold text-gray-800">--</div>
-      <div class="text-xs text-gray-500 mt-1">USD（<span id="sys-val-month-calls">--</span> 次调用）</div>
-    </div>
-  </div>
-
-  <!-- Call Type Breakdown -->
-  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-700">今日调用类型明细</h3>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">类型</th>
-            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">次数</th>
-            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">花费</th>
-          </tr>
-        </thead>
-        <tbody id="sys-calltype-body">
-          <tr>
-            <td colspan="3" class="px-5 py-6 text-center text-gray-400 text-sm">加载中...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- System Health -->
-  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-    <div class="px-5 py-3 border-b border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-700">系统状态</h3>
-    </div>
-    <div class="p-5 grid grid-cols-2 gap-4">
-      <div class="flex items-start gap-3">
-        <div id="sys-health-dot" class="mt-0.5 w-3 h-3 rounded-full bg-gray-300 flex-shrink-0"></div>
-        <div>
-          <div class="text-sm font-medium text-gray-700">API 状态</div>
-          <div id="sys-health-label" class="text-xs text-gray-500 mt-0.5">检测中...</div>
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-gray-500 mb-1">最后检查时间</div>
-        <div id="sys-health-check-time" class="text-sm font-medium text-gray-700">--</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="flex items-center justify-between text-xs text-gray-500">
-    <span>最后刷新：<span id="sys-last-refresh">--</span></span>
-    <button
-      onclick="window.loadSystemPanel()"
-      class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs font-medium"
-    >刷新</button>
-  </div>
-
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPlayer · 系统状态</title>
+  <style>
+    .mini-nav { background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; gap: 16px; font-size: 12px; }
+    .mini-nav a { color: var(--text-secondary); text-decoration: none; padding: 4px 8px; border-radius: 4px; }
+    .mini-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+    .mini-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.1); }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-blue: #58a6ff;
+      --accent-yellow: #d29922;
+    }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+      font-size: 13px;
+      margin: 0;
+    }
+    .panel-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .live-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+    .live-dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+      background: var(--border-color);
+    }
+    .stat-card { background: var(--bg-secondary); padding: 16px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+    .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .section { padding: 12px; }
+    .section-title {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .logs-list { display: flex; flex-direction: column; gap: 6px; }
+    .log-row {
+      display: grid;
+      grid-template-columns: 140px 80px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+    }
+    .log-time { font-size: 11px; color: var(--text-muted); }
+    .agent-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 10px; font-weight: 500;
+      background: rgba(110,118,129,0.2); color: var(--text-secondary);
+    }
+    .agent-system { background: rgba(88,166,255,0.2); color: var(--accent-blue); }
+    .log-detail { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cron-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    }
+    .cron-item {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: 6px; padding: 12px;
+    }
+    .cron-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .cron-schedule { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .loading { text-align: center; color: var(--text-muted); padding: 20px; }
+  </style>
+</head>
+<body>
+<div class="mini-nav">
+  <a href="/">概览</a>
+  <a href="/panel-orders.html">持仓</a>
+  <a href="/panel-signals.html">信号</a>
+  <a href="/panel-news.html">新闻</a>
+  <a href="/panel-system.html" class="active">系统</a>
 </div>
-
+<div id="panel-root">
+  <div class="panel-header">
+    <div class="panel-title">MarketPlayer · 系统状态</div>
+    <div class="live-indicator">
+      <span class="live-dot"></span><span>LIVE</span>
+      <span id="countdown" style="margin-left: 8px; color: var(--text-muted);">30s</span>
+    </div>
+  </div>
+  
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-signals">--</div>
+      <div class="stat-label">总信号</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-today-signals">--</div>
+      <div class="stat-label">今日信号</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-news">--</div>
+      <div class="stat-label">今日新闻</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color: var(--accent-green);">●</div>
+      <div class="stat-label">运行中</div>
+    </div>
+  </div>
+  
+  <!-- Agent Logs -->
+  <div class="section">
+    <div class="section-title">Agent 运行日志</div>
+    <div class="logs-list" id="logs-list">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+  
+  <!-- Crontab -->
+  <div class="section">
+    <div class="section-title">定时任务</div>
+    <div class="cron-grid">
+      <div class="cron-item">
+        <div class="cron-name">📡 事件扫描</div>
+        <div class="cron-schedule">每5分钟执行</div>
+      </div>
+      <div class="cron-item">
+        <div class="cron-name">📈 A股收盘触发</div>
+        <div class="cron-schedule">工作日 15:30 CST</div>
+      </div>
+      <div class="cron-item">
+        <div class="cron-name">📈 港股收盘触发</div>
+        <div class="cron-schedule">工作日 16:00 HKT</div>
+      </div>
+      <div class="cron-item">
+        <div class="cron-name">📈 美股收盘触发</div>
+        <div class="cron-schedule">工作日 21:00 EST</div>
+      </div>
+      <div class="cron-item">
+        <div class="cron-name">📊 周报复盘</div>
+        <div class="cron-schedule">每周六 02:00 UTC</div>
+      </div>
+      <div class="cron-item">
+        <div class="cron-name">📊 月度估值</div>
+        <div class="cron-schedule">每月1日 01:00 UTC</div>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
-(function () {
-  /* ── 工具函数 ── */
-  function fmtTime(iso) {
-    if (!iso) return '--';
-    const d = new Date(iso);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const HH = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return mm + '-' + dd + ' ' + HH + ':' + min;
+(function() { if (window.self !== window.top) { document.querySelector(".mini-nav").style.display = "none"; } })();
+
+(function() {
+  var countdown = 30;
+  var countdownEl = document.getElementById('countdown');
+  
+  async function loadStats() {
+    try {
+      var resp = await fetch('/api/dashboard/stats');
+      var json = await resp.json();
+      if (json.success) {
+        document.getElementById('stat-signals').textContent = json.data.totalSignals || 0;
+        document.getElementById('stat-today-signals').textContent = json.data.todaySignals || 0;
+        document.getElementById('stat-news').textContent = json.data.todayNews || 0;
+      }
+    } catch(e) { console.error(e); }
   }
-
-  function fmtCost(val) {
-    const n = parseFloat(val) || 0;
-    return '$' + n.toFixed(4);
+  
+  async function loadLogs() {
+    try {
+      var resp = await fetch('/api/dashboard/system');
+      var json = await resp.json();
+      if (json.success) renderLogs(json.data);
+    } catch(e) { console.error(e); }
   }
-
-  function escHtml(str) {
-    return String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  /* ── KPI 卡片颜色 ── */
-  function todayCostClass(usd) {
-    const n = parseFloat(usd) || 0;
-    if (n >= 5) return { bg: 'bg-red-50', border: 'border-red-200' };
-    if (n >= 1) return { bg: 'bg-yellow-50', border: 'border-yellow-200' };
-    return { bg: 'bg-green-50', border: 'border-green-200' };
-  }
-
-  /* ── 渲染成本数据 ── */
-  function renderCosts(data) {
-    const today = data.today || {};
-    const month = data.thisMonth || {};
-    const byType = Array.isArray(data.byCallType) ? data.byCallType : [];
-
-    const todayCost = today.total_cost_usd || '0';
-    const todayCalls = today.call_count || 0;
-    const monthCost = month.total_cost_usd || '0';
-    const monthCalls = month.call_count || 0;
-
-    /* KPI values */
-    document.getElementById('sys-val-today-cost').textContent = fmtCost(todayCost);
-    document.getElementById('sys-val-today-calls').textContent = todayCalls;
-    document.getElementById('sys-val-month-cost').textContent = fmtCost(monthCost);
-    document.getElementById('sys-val-month-calls').textContent = monthCalls;
-
-    /* KPI card background */
-    const cls = todayCostClass(todayCost);
-    const card = document.getElementById('sys-kpi-today-cost');
-    card.className = 'rounded-xl border p-5 transition-colors ' + cls.bg + ' ' + cls.border;
-
-    /* Call type table */
-    const tbody = document.getElementById('sys-calltype-body');
-    if (!byType.length) {
-      tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-gray-400 text-sm">今日暂无调用记录</td></tr>';
+  
+  function renderLogs(data) {
+    if (!data || data.length === 0) {
+      document.getElementById('logs-list').innerHTML = '<div class="loading">No logs</div>';
       return;
     }
-
-    const rows = byType.map(function (row) {
-      const typeLabel = {
-        analysis: '资讯分析',
-        signal: '信号生成',
-      }[row.call_type] || escHtml(row.call_type);
-
-      return '<tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">'
-        + '<td class="px-5 py-3 text-gray-700 font-medium">' + typeLabel + '</td>'
-        + '<td class="px-5 py-3 text-right text-gray-600">' + (row.call_count || 0) + '</td>'
-        + '<td class="px-5 py-3 text-right font-mono text-gray-700">' + fmtCost(row.total_cost_usd) + '</td>'
-        + '</tr>';
-    });
-
-    tbody.innerHTML = rows.join('');
-  }
-
-  /* ── 渲染健康状态 ── */
-  function renderHealth(ok, checkTime) {
-    const dot = document.getElementById('sys-health-dot');
-    const label = document.getElementById('sys-health-label');
-    const checkEl = document.getElementById('sys-health-check-time');
-
-    if (ok) {
-      dot.className = 'mt-0.5 w-3 h-3 rounded-full bg-green-500 flex-shrink-0';
-      label.className = 'text-xs text-green-600 mt-0.5 font-medium';
-      label.textContent = '在线';
-    } else {
-      dot.className = 'mt-0.5 w-3 h-3 rounded-full bg-red-500 flex-shrink-0';
-      label.className = 'text-xs text-red-600 mt-0.5 font-medium';
-      label.textContent = '离线';
+    var html = '';
+    for (var i = 0; i < data.length; i++) {
+      var log = data[i];
+      var time = log.timestamp ? log.timestamp.substring(0, 16).replace('T', ' ') : '--';
+      var agentClass = log.agent_id === 'system' ? 'agent-system' : '';
+      html += '<div class="log-row">' +
+        '<div class="log-time">'+time+'</div>' +
+        '<div><span class="agent-tag '+agentClass+'">'+(log.agent_id || 'system')+'</span></div>' +
+        '<div class="log-detail">'+(log.input_summary || log.output_summary || '-')+'</div>' +
+      '</div>';
     }
-
-    checkEl.textContent = checkTime ? fmtTime(checkTime) : fmtTime(new Date().toISOString());
+    document.getElementById('logs-list').innerHTML = html;
   }
-
-  /* ── 渲染成本区域错误 ── */
-  function renderCostError(msg) {
-    const tbody = document.getElementById('sys-calltype-body');
-    tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-4 text-center">'
-      + '<div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">'
-      + '<span class="font-semibold">加载失败：</span>' + escHtml(msg)
-      + '</div>'
-      + '</td></tr>';
-    document.getElementById('sys-val-today-cost').textContent = '--';
-    document.getElementById('sys-val-today-calls').textContent = '--';
-    document.getElementById('sys-val-month-cost').textContent = '--';
-    document.getElementById('sys-val-month-calls').textContent = '--';
-  }
-
-  /* ── 主加载函数 ── */
-  window.loadSystemPanel = async function () {
-    /* Fetch cost and health in parallel */
-    const [costsResult, healthResult] = await Promise.allSettled([
-      (async function () {
-        return await window.dashboardFetch('/api/admin/costs');
-      })(),
-      (async function () {
-        const resp = await fetch('/api/health');
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        return await resp.json();
-      })(),
-    ]);
-
-    /* Render costs */
-    if (costsResult.status === 'fulfilled') {
-      renderCosts(costsResult.value);
-    } else {
-      const errMsg = costsResult.reason && costsResult.reason.message
-        ? costsResult.reason.message
-        : '未知错误';
-      renderCostError(errMsg);
-    }
-
-    /* Render health */
-    if (healthResult.status === 'fulfilled') {
-      const h = healthResult.value;
-      renderHealth(h.status === 'ok', h.timestamp);
-    } else {
-      renderHealth(false, new Date().toISOString());
-    }
-
-    /* Last refresh timestamp */
-    document.getElementById('sys-last-refresh').textContent = fmtTime(new Date().toISOString());
-  };
-
-  /* ── 自动刷新（60s）── */
-  (function startAutoRefresh() {
-    setInterval(function () {
-      window.loadSystemPanel();
-    }, 60000);
-  })();
-
-  /* ── 初始化 ── */
-  window.loadSystemPanel();
+  
+  setInterval(function() {
+    countdown--;
+    if (countdown <= 0) { countdown = 30; loadStats(); loadLogs(); }
+    if (countdownEl) countdownEl.textContent = countdown+'s';
+  }, 1000);
+  
+  loadStats();
+  loadLogs();
 })();
 </script>
+</body>
+</html>

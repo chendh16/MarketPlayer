@@ -3,12 +3,13 @@
  * 职责：
  * 1. 读取 quant-agent 的信号输出
  * 2. 用历史数据跑回测（从信号产生时间点开始）
- * 3. 输出回测结果写入 backtest_runs 表
+ * 3. 输出回测结果写入 backtest_runs 表 (PostgreSQL)
  * 4. 把结果传给 evaluator-agent
  */
 
 const fs = require('fs');
 const path = require('path');
+const { insert, query } = require('../../harness/utils/pg');
 
 const INPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/quant-agent/output.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/backtest-agent/output.json');
@@ -23,7 +24,6 @@ const PARAMS = {
 function runBacktest(symbol, klines, signal) {
   if (klines.length < 100) return null;
   
-  // 找到信号产生的时间点
   let signalDateStr = new Date().toISOString().split('T')[0];
   if (signal.timestamp) {
     signalDateStr = new Date(signal.timestamp).toISOString().split('T')[0];
@@ -106,23 +106,15 @@ function runBacktest(symbol, klines, signal) {
   const profitFactor = avgLoss > 0 ? avgWin / avgLoss : 0;
   
   return {
-    run_id: `bt_${Date.now()}_${symbol}`,
-    strategy_version: signal.strategy_version,
-    symbol,
-    market: signal.market,
-    start_date: entryDate,
-    end_date: klines[endIdx].date || klines[endIdx].time,
-    initial_capital: PARAMS.initial_capital,
-    final_capital: finalCapital,
-    annual_return: annualReturn,
-    sharpe,
-    max_drawdown: maxDrawdown,
+    id: `bt_${Date.now()}_${symbol}`,
+    strategy_params: JSON.stringify({ version: signal.strategy_version }),
+    symbols_tested: [signal.symbol],
     win_rate: winRate,
-    profit_factor: profitFactor,
+    sharpe_ratio: sharpe,
+    max_drawdown: maxDrawdown,
     trade_count: trades.length,
-    trades,
-    signal_valid: trades.length > 0,
-    timestamp: new Date().toISOString()
+    test_period: `${entryDate} - ${klines[endIdx].date || klines[endIdx].time}`,
+    created_at: new Date()
   };
 }
 
@@ -161,11 +153,21 @@ async function main() {
     
     if (result) {
       backtestResults.push(result);
-      console.log(`[backtest-agent] 回测 ${signal.symbol}: return=${(result.annual_return*100).toFixed(1)}% sharpe=${result.sharpe.toFixed(2)} dd=${(result.max_drawdown*100).toFixed(1)}% win=${(result.win_rate*100).toFixed(0)}%`);
+      console.log(`[backtest-agent] 回测 ${signal.symbol}: win=${(result.win_rate*100).toFixed(0)}% sharpe=${result.sharpe_ratio.toFixed(2)}`);
     }
   }
   
   console.log(`[backtest-agent] 完成: ${backtestResults.length} 个回测结果`);
+  
+  // 写入 PostgreSQL
+  for (const result of backtestResults) {
+    try {
+      await insert('backtest_runs', result);
+      console.log(`[backtest-agent] 已写入 PostgreSQL: ${result.id}`);
+    } catch (err) {
+      console.error(`[backtest-agent] 写入失败: ${err.message}`);
+    }
+  }
   
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify({
     summary: {
@@ -177,39 +179,15 @@ async function main() {
   }, null, 2));
   
   console.log(`[backtest-agent] 结果已写入 ${OUTPUT_FILE}`);
-  
-  // 写入 memory-store
-  const db = require('sqlite3').verbose();
-  const database = new db.Database(path.join(process.cwd(), 'memory-store/marketplayer.db'));
-  
-  for (const result of backtestResults) {
-    database.run(`
-      INSERT INTO backtest_runs 
-      (run_id, strategy_version_id, symbol, market, start_date, end_date, initial_capital, final_capital, annual_return, sharpe, max_drawdown, win_rate, profit_factor, trade_count, created_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      result.run_id, result.strategy_version, result.symbol, result.market,
-      result.start_date, result.end_date, result.initial_capital, result.final_capital,
-      result.annual_return, result.sharpe, result.max_drawdown, result.win_rate,
-      result.profit_factor, result.trade_count, 'backtest-agent', result.timestamp
-    ], function(err) {
-      if (err) console.error('写入失败:', err.message);
-    });
-  }
-  
-  database.close(() => {
-    console.log('[backtest-agent] 已写入 memory-store');
-    console.log('\n---OUTPUT---');
-    console.log(JSON.stringify({
-      type: 'backtest_result',
-      count: backtestResults.length,
-      results: backtestResults.map(r => ({
-        symbol: r.symbol, annual_return: r.annual_return, sharpe: r.sharpe, 
-        max_drawdown: r.max_drawdown, win_rate: r.win_rate, signal_valid: r.signal_valid
-      })),
-      timestamp: new Date().toISOString()
-    }, null, 2));
-  });
+  console.log('\n---OUTPUT---');
+  console.log(JSON.stringify({
+    type: 'backtest_result',
+    count: backtestResults.length,
+    results: backtestResults.map(r => ({
+      symbol: r.symbols_tested?.[0], win_rate: r.win_rate, sharpe: r.sharpe_ratio
+    })),
+    timestamp: new Date().toISOString()
+  }, null, 2));
 }
 
 main().catch(err => {

@@ -75,6 +75,10 @@ const key = `${workflow}_${market}_${hourKey}`;
             chain = ['test-agent', 'ops-agent', 'deploy-hook'];
             log(`dev_sync -> ${chain.join(' -> ')}`);
             break;
+        case 'scan_events':
+            chain = ['data-agent', 'quant-agent', 'market-agent'];
+            log(`scan_events -> ${chain.join(' -> ')}`);
+            break;
         default:
             return { decision: 'reject', reason: 'unknown_workflow' };
     }

@@ -1,15 +1,13 @@
 /**
  * evaluator-agent - 策略评估 Agent (双层评估)
- * 职责：
- * 1. 层1（信号级）：评估"这个信号今天值不值得下单"
- * 2. 层2（策略级）：评估"这套策略参数在历史上整体表现如何"
- * 3. 输出 verdict：discard / keep / candidate_paper / candidate_live
- * 4. 写入 memory-store
+ * 读取 config/system.config.js 获取参数
  */
-
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+
+// 加载配置
+const config = require('../../config/system.config');
 
 // 飞书用户 open_id
 const FEISHU_USER_OPEN_ID = 'ou_3d8c36452b5a0ca480873393ad876e12';
@@ -77,18 +75,18 @@ const SIGNAL_BT_OUTPUT = path.join(process.cwd(), 'agents/fin-chain/backtest-age
 const STRATEGY_BT_OUTPUT = path.join(process.cwd(), 'agents/strategy-backtester/output.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/evaluator-agent/output.json');
 
-// 行业黑名单配置
+// 行业黑名单配置（从配置文件读取）
 const INDUSTRY_BLACKLIST = {
-  '美股': ['NVDA', 'AMD', 'INTC', 'TSM', 'AVGO', 'TXN', 'QCOM', 'MU', 'AMAT', 'LRCX', 'KLAC', 'MRVL'],
+  '美股': config.blacklist.symbols,
   '港股': [],
   'A股': []
 };
 
-// 评估规则
+// 评估规则（从配置文件读取）
 const THRESHOLDS = {
-  min_sharpe: 0.5,
-  min_win_rate: 0.35,
-  max_drawdown: 0.20,
+  min_sharpe: config.benchmark.sharpe * 0.5,
+  min_win_rate: config.benchmark.win_rate * 0.6,
+  max_drawdown: config.benchmark.max_drawdown * 1.1,
   min_annual_return: -0.10
 };
 

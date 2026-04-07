@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPlayer 股票池管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header h1 { font-size: 24px; color: #333; }
+    .stats { display: flex; gap: 20px; margin-top: 15px; }
+    .stat { background: #e8f4fd; padding: 10px 20px; border-radius: 6px; }
+    .stat-label { font-size: 12px; color: #666; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #0066ff; }
+    .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .section h2 { font-size: 18px; color: #333; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f9f9f9; font-weight: 600; color: #666; font-size: 12px; }
+    tr:hover { background: #f9f9f9; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-us { background: #e3f2fd; color: #1976d2; }
+    .badge-hk { background: #fff3e0; color: #f57c00; }
+    .badge-a { background: #ffebee; color: #c62828; }
+    .btn { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .btn-pause { background: #fff3e0; color: #f57c00; }
+    .btn-delete { background: #ffebee; color: #c62828; }
+    .form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .form input, .form select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
+    .form button { padding: 8px 16px; background: #0066ff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .form button:hover { background: #0052cc; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📋 MarketPlayer 股票池管理</h1>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">美股</div>
+        <div class="stat-value" id="us-count">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">港股</div>
+        <div class="stat-value" id="hk-count">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">A股</div>
+        <div class="stat-value" id="a-count">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>添加股票</h2>
+    <div class="form">
+      <input type="text" id="symbol" placeholder="股票代码" />
+      <input type="text" id="name" placeholder="名称" />
+      <select id="market">
+        <option value="us">美股</option>
+        <option value="hk">港股</option>
+        <option value="a">A股</option>
+      </select>
+      <select id="sector">
+        <option value="科技">科技</option>
+        <option value="金融">金融</option>
+        <option value="消费">消费</option>
+        <option value="医疗">医疗</option>
+        <option value="能源">能源</option>
+        <option value="半导体">半导体</option>
+        <option value="新能源">新能源</option>
+        <option value="工业">工业</option>
+        <option value="基准">基准</option>
+      </select>
+      <input type="number" id="rank" placeholder="排名" value="1" style="width: 60px;" />
+      <label><input type="checkbox" id="tradeable" checked /> 可交易</label>
+      <button onclick="addStock()">添加</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 id="table-title">股票列表</h2>
+    <table id="stock-table">
+      <thead>
+        <tr>
+          <th>代码</th>
+          <th>名称</th>
+          <th>市场</th>
+          <th>行业</th>
+          <th>排名</th>
+          <th>可交易</th>
+          <th>添加时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="stock-list"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let stocks = [];
+    
+    async function loadWatchlist() {
+      try {
+        const resp = await fetch('/api/watchlist');
+        stocks = await resp.json();
+        render();
+      } catch(e) {
+        console.error(e);
+      }
+    }
+    
+    function render() {
+      const us = stocks.filter(s => s.market === 'us');
+      const hk = stocks.filter(s => s.market === 'hk');
+      const a = stocks.filter(s => s.market === 'a');
+      
+      document.getElementById('us-count').textContent = us.length;
+      document.getElementById('hk-count').textContent = hk.length;
+      document.getElementById('a-count').textContent = a.length;
+      
+      const tbody = document.getElementById('stock-list');
+      if(stocks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty">暂无数据</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = stocks.map(s => {
+        const badgeClass = s.market === 'us' ? 'badge-us' : s.market === 'hk' ? 'badge-hk' : 'badge-a';
+        return \`
+          <tr>
+            <td><strong>\${s.symbol}</strong></td>
+            <td>\${s.name || '-'}</td>
+            <td><span class="badge \${badgeClass}">\${s.market.toUpperCase()}</span></td>
+            <td>\${s.sector || '-'}</td>
+            <td>\${s.sector_rank || '-'}</td>
+            <td>\${s.is_tradeable ? '✅' : '❌'}</td>
+            <td>\${s.created_at ? s.created_at.split('T')[0] : '-'}</td>
+            <td>
+              <button class="btn btn-pause" onclick="toggleStock('\${s.symbol}', \${s.is_active})">
+                \${s.is_active ? '暂停' : '恢复'}
+              </button>
+              <button class="btn btn-delete" onclick="deleteStock('\${s.symbol}')">删除</button>
+            </td>
+          </tr>
+        \`;
+      }).join('');
+    }
+    
+    async function addStock() {
+      const data = {
+        symbol: document.getElementById('symbol').value.toUpperCase(),
+        name: document.getElementById('name').value,
+        market: document.getElementById('market').value,
+        sector: document.getElementById('sector').value,
+        sector_rank: parseInt(document.getElementById('rank').value),
+        is_tradeable: document.getElementById('tradeable').checked
+      };
+      
+      if(!data.symbol || !data.market) {
+        alert('请填写股票代码和市场');
+        return;
+      }
+      
+      try {
+        const resp = await fetch('/api/watchlist', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data)
+        });
+        if(resp.ok) {
+          loadWatchlist();
+          // 清空表单
+          document.getElementById('symbol').value = '';
+          document.getElementById('name').value = '';
+        } else {
+          alert('添加失败');
+        }
+      } catch(e) {
+        alert(e.message);
+      }
+    }
+    
+    async function toggleStock(symbol, isActive) {
+      try {
+        await fetch(\`/api/watchlist/\${symbol}\`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({is_active: !isActive})
+        });
+        loadWatchlist();
+      } catch(e) {
+        alert(e.message);
+      }
+    }
+    
+    async function deleteStock(symbol) {
+      if(!confirm(\`确定删除 \${symbol}？\`)) return;
+      try {
+        await fetch(\`/api/watchlist/\${symbol}\`, {method: 'DELETE'});
+        loadWatchlist();
+      } catch(e) {
+        alert(e.message);
+      }
+    }
+    
+    loadWatchlist();
+    setInterval(loadWatchlist, 30000);
+  </script>
+</body>
+</html>

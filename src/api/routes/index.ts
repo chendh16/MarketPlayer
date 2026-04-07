@@ -5,12 +5,14 @@ import { getUserByDiscordId, createUser, getManualPositions } from '../../db/que
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
 import { handleFeishuEvent } from '../../services/feishu/handler';
+import portfolioRoutes from './portfolio';
 import technicalRoutes from './technical';
 
 const router = express.Router();
 
 // 挂载技术指标路由
 router.use('/technical', technicalRoutes);
+router.use('/portfolio', portfolioRoutes);
 
 // ─── JWT 认证中间件 ────────────────────────────────────────────────────────────
 
@@ -525,12 +527,29 @@ with OpenSecTradeContext(host='127.0.0.1', port=11111, filter_trdmarket=TrdMarke
     child.stderr.on('data', (data) => { stderr += data.toString(); });
 
     child.on('close', (code) => {
-      logger.info(`[futu/orders] stdout=${stdout.substring(0, 200)}, stderr=${stderr.substring(0, 100)}`);
+      logger.info(`[futu/orders] stdout_len=${stdout.length}, stderr_len=${stderr.length}`);
       if (code === 0) {
         try {
-          const data = JSON.parse(stdout.trim());
-          res.json({ success: true, data });
-        } catch {
+          // 提取 JSON 数组：找到第一个 [ 开头的那行
+          const lines = stdout.split('\n');
+          let jsonLine = '';
+          
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+              jsonLine = trimmed;
+              break;
+            }
+          }
+          
+          if (jsonLine) {
+            const data = JSON.parse(jsonLine);
+            res.json({ success: true, data });
+          } else {
+            res.json({ success: true, data: [] });
+          }
+        } catch (e: unknown) {
+          logger.error(`[futu/orders] parse error: ${(e as Error).message}, stdout=${stdout.substring(0, 300)}`);
           res.json({ success: true, data: [] });
         }
       } else {
@@ -543,6 +562,202 @@ with OpenSecTradeContext(host='127.0.0.1', port=11111, filter_trdmarket=TrdMarke
       res.status(500).json({ success: false, error: err.message });
     });
   });
+});
+
+// ─── Dashboard 只读路由（无需认证）───────────────────────────────────────────
+
+// 获取信号列表
+router.get('/dashboard/signals', async (_req: Request, res: Response) => {
+  try {
+    const signals = await query(`
+      SELECT s.id, s.symbol, s.market, s.direction, s.confidence, 
+             s.status, s.created_at
+      FROM signals s
+      ORDER BY s.created_at DESC
+      LIMIT 20
+    `);
+    res.json({ success: true, data: signals });
+  } catch (error) {
+    logger.error('Error fetching signals:', error);
+    res.json({ success: false, error: 'Database error' });
+  }
+});
+
+// 获取新闻列表
+router.get('/dashboard/news', async (_req: Request, res: Response) => {
+  try {
+    // 优先从 news_status 表读取（新闻监控系统）
+    const newsStatus = await query(`
+      SELECT
+        title,
+        source,
+        published_at,
+        summary as ai_summary,
+        symbols as related_symbols,
+        sentiment,
+        alert_level,
+        category
+      FROM news_status
+      ORDER BY published_at DESC
+      LIMIT 100
+    `);
+
+    // 如果 news_status 表有数据，使用新系统
+    if (newsStatus && newsStatus.length > 0) {
+      res.json({ success: true, data: newsStatus });
+      return;
+    }
+
+    // 降级到旧系统（news_items 表）
+    const news = await query(`
+      SELECT id, title, source, symbols as related_symbols,
+             published_at, ai_processed, ai_summary
+      FROM news_items
+      ORDER BY published_at DESC
+      LIMIT 30
+    `);
+    res.json({ success: true, data: news });
+  } catch (error) {
+    logger.error('Error fetching news:', error);
+    res.json({ success: false, error: 'Database error' });
+  }
+});
+
+// 获取聚合统计
+router.get('/dashboard/stats', async (_req: Request, res: Response) => {
+  try {
+    const [signalsTotal, signalsToday, signalsGenerated, signalsSent, newsToday] = await Promise.all([
+      queryOne(`SELECT COUNT(*)::int as count FROM signals`),
+      queryOne(`SELECT COUNT(*)::int as count FROM signals WHERE created_at >= CURRENT_DATE`),
+      queryOne(`SELECT COUNT(*)::int as count FROM signals WHERE status = 'generated'`),
+      queryOne(`SELECT COUNT(*)::int as count FROM signals WHERE status = 'sent'`),
+      queryOne(`SELECT COUNT(*)::int as count FROM news_items WHERE created_at >= CURRENT_DATE`),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalSignals: signalsTotal?.count || 0,
+        todaySignals: signalsToday?.count || 0,
+        generatedSignals: signalsGenerated?.count || 0,
+        sentSignals: signalsSent?.count || 0,
+        todayNews: newsToday?.count || 0,
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching stats:', error);
+    res.json({ success: false, error: 'Database error' });
+  }
+});
+
+// 获取系统日志（从日志文件读取）
+router.get('/dashboard/system', async (_req: Request, res: Response) => {
+  try {
+    // 从日志目录读取最近的日志
+    const fs = await import('fs');
+    const path = await import('path');
+    const logPath = path.join(process.cwd(), 'logs/combined.log');
+    
+    if (fs.existsSync(logPath)) {
+      const content = fs.readFileSync(logPath, 'utf-8');
+      const lines = content.split('\n').filter(l => l.includes('info')).slice(-10);
+      const logs = lines.map((line, i) => {
+        try {
+          const obj = JSON.parse(line);
+          return {
+            id: `log_${i}`,
+            agent_id: 'system',
+            input_summary: obj.message || '-',
+            output_summary: obj.level || '-',
+            status: 'success',
+            timestamp: obj.timestamp || new Date().toISOString()
+          };
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+      res.json({ success: true, data: logs });
+    } else {
+      res.json({ success: true, data: [] });
+    }
+  } catch (error) {
+    logger.error('Error fetching system logs:', error);
+    res.json({ success: false, error: 'System error' });
+  }
+});
+
+// ==================== Watchlist API ====================
+router.get('/watchlist', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const market = req.query.market as string;
+    const sql = market 
+      ? 'SELECT symbol, name, market, sector, sector_rank, is_active, is_tradeable, created_at FROM watchlist WHERE market = $1 AND is_active = true ORDER BY sector_rank'
+      : 'SELECT symbol, name, market, sector, sector_rank, is_active, is_tradeable, created_at FROM watchlist ORDER BY market, sector, sector_rank';
+    const params = market ? [market] : [];
+    const result = await query(sql, params);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error('watchlist error:', error);
+    res.json({ success: false, error: String(error) });
+  }
+});
+
+router.post('/watchlist', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { symbol, name, market, sector, sector_rank, is_tradeable } = req.body;
+    await query(
+      `INSERT INTO watchlist (symbol, name, market, sector, sector_rank, is_tradeable, added_by, added_reason)
+       VALUES ($1, $2, $3, $4, $5, $6, 'manual', 'API添加')
+       ON CONFLICT DO NOTHING`,
+      [symbol, name || symbol, market, sector || '未分类', sector_rank || 99, is_tradeable ?? true]
+    );
+    await query(
+      `INSERT INTO watchlist_history (symbol, market, action, reason, operator) VALUES ($1, $2, 'added', $3, 'manual')`,
+      [symbol, market, 'API添加']
+    );
+    res.json({ success: true, message: `${symbol} 已添加` });
+  } catch (error) {
+    logger.error('watchlist add error:', error);
+    res.json({ success: false, error: String(error) });
+  }
+});
+
+router.put('/watchlist/:symbol', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { symbol } = req.params;
+    const { is_active, market } = req.body;
+    await query(
+      `UPDATE watchlist SET is_active = $1, updated_at = NOW() WHERE symbol = $2 AND market = $3`,
+      [is_active ?? true, symbol, market]
+    );
+    await query(
+      `INSERT INTO watchlist_history (symbol, market, action, reason, operator) VALUES ($1, $2, $3, $4, 'manual')`,
+      [symbol, market, is_active ? 'resumed' : 'paused', 'API操作']
+    );
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('watchlist update error:', error);
+    res.json({ success: false, error: String(error) });
+  }
+});
+
+router.delete('/watchlist/:symbol', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { symbol } = req.params;
+    const { market } = req.body;
+    await query(
+      `UPDATE watchlist SET is_active = false, removed_at = NOW(), removed_reason = 'API删除' WHERE symbol = $1 AND market = $2`,
+      [symbol, market]
+    );
+    await query(
+      `INSERT INTO watchlist_history (symbol, market, action, reason, operator) VALUES ($1, $2, 'removed', $3, 'manual')`,
+      [symbol, market, 'API删除']
+    );
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('watchlist delete error:', error);
+    res.json({ success: false, error: String(error) });
+  }
 });
 
 export default router;

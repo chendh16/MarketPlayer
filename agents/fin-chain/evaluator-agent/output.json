@@ -1,72 +1,44 @@
 {
   "summary": {
-    "backtests_evaluated": 3,
+    "signal_evaluations": 0,
+    "strategy_evaluations": 1,
     "candidates_live": 0,
-    "candidates_paper": 0,
+    "candidates_paper": 1,
     "keep": 0,
-    "discard": 3
+    "discard": 0
   },
   "evaluations": [
     {
-      "eval_id": "eval_1774767424903_AAPL",
-      "strategy_version_id": "v2_ma_rsi_atr",
-      "run_id": "bt_1774767384035_AAPL",
-      "symbol": "AAPL",
-      "sharpe": -11.682220373854484,
-      "win_rate": 0,
-      "max_drawdown": 0.049231255249990793,
-      "annual_return": -0.35618687677602684,
-      "profit_factor": 0,
-      "score": 25,
-      "verdict": "discard",
+      "level": "strategy",
+      "eval_id": "strat_1775146830414",
+      "strategy_params": {
+        "ma_short": 5,
+        "ma_long": 20,
+        "rsi_period": 14,
+        "rsi_oversold": 40,
+        "rsi_overbought": 70,
+        "atr_period": 14,
+        "atr_multiplier": 2,
+        "stop_loss_pct": 0.05,
+        "profit_target_pct": 0.12,
+        "max_hold_days": 10
+      },
+      "test_period": "2024-01-01 ~ 2026-03-20",
+      "total_trades": 18,
+      "symbols_tested": 7,
+      "sharpe": 2.5739485668023794,
+      "win_rate": 0.5555555555555556,
+      "max_drawdown": 0.19185759040771128,
+      "score": 65,
+      "verdict": "candidate_paper",
       "reasons": [
-        "Sharpe为负",
-        "胜率不足",
-        "回撤小(<10%)",
-        "负收益"
+        "Sharpe卓越(>2.0)",
+        "胜率高(>50%)",
+        "回撤可控(<20%)",
+        "数据量不足"
       ],
-      "timestamp": "2026-03-29T06:57:04.903Z"
-    },
-    {
-      "eval_id": "eval_1774767424904_TSLA",
-      "strategy_version_id": "v2_ma_rsi_atr",
-      "run_id": "bt_1774767384039_TSLA",
-      "symbol": "TSLA",
-      "sharpe": -7.975136709833923,
-      "win_rate": 0,
-      "max_drawdown": 0.05952161603499641,
-      "annual_return": -1.0378615465008991,
-      "profit_factor": 0,
-      "score": 25,
-      "verdict": "discard",
-      "reasons": [
-        "Sharpe为负",
-        "胜率不足",
-        "回撤小(<10%)",
-        "负收益"
-      ],
-      "timestamp": "2026-03-29T06:57:04.904Z"
-    },
-    {
-      "eval_id": "eval_1774767424904_META",
-      "strategy_version_id": "v2_ma_rsi_atr",
-      "run_id": "bt_1774767384041_META",
-      "symbol": "META",
-      "sharpe": -7.662348458122699,
-      "win_rate": 0,
-      "max_drawdown": 0.028252550793986114,
-      "annual_return": -0.43073034920634884,
-      "profit_factor": 0,
-      "score": 25,
-      "verdict": "discard",
-      "reasons": [
-        "Sharpe为负",
-        "胜率不足",
-        "回撤小(<10%)",
-        "负收益"
-      ],
-      "timestamp": "2026-03-29T06:57:04.904Z"
+      "timestamp": "2026-04-02T16:20:30.414Z"
     }
   ],
-  "timestamp": "2026-03-29T06:57:04.904Z"
+  "timestamp": "2026-04-02T16:20:30.414Z"
 }

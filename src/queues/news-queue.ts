@@ -129,6 +129,17 @@ export async function processSignal(
       return existing.id;
     }
 
+    // 跳过 BTC/crypto 信号（暂时禁用）
+    if (newsItem.market === 'btc') {
+      logger.info(`BTC信号已禁用，跳过 newsItem=${newsItemId}`);
+      return null;
+    }
+    
+    // A股信号标记为仅供参考（下单未实现）
+    if (newsItem.market === 'a') {
+      logger.info(`A股信号已标记为仅供参考，跳过下单 newsItem=${newsItemId}`);
+    }
+
     // 构建信号理由
     let reasoning = finalSignal.reasoning;
     if (industryResult && industryResult.chainStocks.length > 0) {

@@ -1,41 +1,99 @@
 {
   "action_type": "learning_action",
   "stats": {
-    "total": 3,
-    "discard": 3,
+    "total": 9,
+    "discard": 9,
     "keep": 0,
-    "avg_score": 25.0
+    "candidate_paper": 0,
+    "candidate_live": 0,
+    "avg_score": 28.333333333333332,
+    "avg_sharpe": -6.071045675958024,
+    "avg_win_rate": 0,
+    "trend": "improving"
   },
+  "history": {
+    "total_attempts": 4,
+    "param_updates": 3,
+    "explored_directions": {
+      "30_5_20": {
+        "count": 1,
+        "params": {
+          "ma_short": 5,
+          "ma_long": 20,
+          "rsi_period": 14,
+          "rsi_oversold": 30,
+          "rsi_overbought": 70,
+          "atr_period": 14,
+          "atr_multiplier": 2
+        }
+      },
+      "25_5_15": {
+        "count": 1,
+        "params": {
+          "ma_short": 5,
+          "ma_long": 15,
+          "rsi_period": 14,
+          "rsi_oversold": 25,
+          "rsi_overbought": 70,
+          "atr_period": 14,
+          "atr_multiplier": 2,
+          "name": "RSI极值+短周期MA"
+        }
+      },
+      "35_10_30": {
+        "count": 1,
+        "params": {
+          "ma_short": 10,
+          "ma_long": 30,
+          "rsi_period": 14,
+          "rsi_oversold": 35,
+          "rsi_overbought": 70,
+          "atr_period": 14,
+          "atr_multiplier": 2,
+          "name": "放宽RSI+标准MA"
+        }
+      },
+      "40_20_50": {
+        "count": 1,
+        "params": {
+          "ma_short": 20,
+          "ma_long": 50,
+          "rsi_period": 14,
+          "rsi_oversold": 40,
+          "rsi_overbought": 70,
+          "atr_period": 14,
+          "atr_multiplier": 2,
+          "name": "RSI中性+长周期MA"
+        }
+      }
+    },
+    "failed_directions": []
+  },
+  "versions": [],
   "hypotheses": [
     {
-      "action_id": "la_1000000000000",
-      "action_type": "param_update",
-      "base_version_id": "v1.0.0",
-      "hypothesis": "RSI extreme oversold entry",
-      "new_params": {
-        "ma_short": 5,
-        "ma_long": 15,
-        "rsi_period": 14,
-        "rsi_oversold": 25
-      },
-      "confidence": 0.6,
-      "reason": "All discard - adjust RSI threshold"
-    },
-    {
-      "action_id": "la_1000000000000_2",
-      "action_type": "param_update",
-      "base_version_id": "v1.0.0",
-      "hypothesis": "Wait for MA20 confirmation",
+      "action_id": "la_1775146832489_default",
+      "action_type": "new_hypothesis",
+      "based_on_versions": [],
+      "based_on_evaluations": 9,
+      "hypothesis": "保持当前参数，继续观察",
       "new_params": {
         "ma_short": 5,
         "ma_long": 20,
         "rsi_period": 14,
         "rsi_oversold": 30,
-        "entry_ma_cross": true
+        "rsi_overbought": 70,
+        "atr_period": 14,
+        "atr_multiplier": 2
       },
       "confidence": 0.5,
-      "reason": "Add trend confirmation"
+      "reasoning": "无明显优化方向，维持现状",
+      "previous_attempts": [
+        "30_5_20",
+        "25_5_15",
+        "35_10_30"
+      ]
     }
   ],
-  "timestamp": "2026-03-29T16:11:08.883497"
+  "timestamp": "2026-04-02T16:20:32.489Z"
 }

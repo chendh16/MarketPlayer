@@ -215,23 +215,17 @@ ${Object.keys(result.history.explored_directions || {}).join(', ') || '无'}
 
 // Main
 async function main() {
-  const db = require('sqlite3').verbose();
-  const database = new db.Database(path.join(process.cwd(), 'memory-store/marketplayer.db'));
+  const { query, insert } = require('../../../harness/utils/pg');
   
-  // 1. 读取历史评估
-  const evaluations = [];
-  database.each("SELECT * FROM evaluation_results ORDER BY timestamp ASC", (err, row) => {
-    if (err) { console.error('Error:', err.message); return; }
-    evaluations.push({
-      eval_id: row.eval_id,
-      strategy_version_id: row.strategy_version_id,
-      symbol: row.symbol,
-      sharpe: row.sharpe,
-      win_rate: row.win_rate,
-      score: row.score,
-      verdict: row.verdict,
-      timestamp: row.timestamp
-    });
+  // 1. 读取历史评估（从PostgreSQL）
+  let evaluations = [];
+  try {
+    evaluations = await query("SELECT id, symbol, score, verdict, sharpe_ratio as sharpe, win_rate, created_at FROM evaluation_results ORDER BY created_at ASC");
+  } catch (e) {
+    console.log('[strategy-learning] 暂无评估数据');
+  }
+  
+  console.log(`[strategy-learning] 读取了 ${evaluations.length} 条评估记录`);
   }, () => {
     console.log('[strategy-learning] 读取 ' + evaluations.length + ' 条评估记录');
     
@@ -302,22 +296,25 @@ async function main() {
         fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2));
         console.log('[strategy-learning] 写入 ' + OUTPUT_FILE);
         
-        // 写入数据库
+        // 写入 PostgreSQL
         for (const h of hypotheses) {
-          const sql = `INSERT INTO learning_actions 
-            (action_id, base_version_id, action_type, new_params, hypothesis, confidence, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`;
-          database.run(sql, [
-            h.action_id,
-            (h.based_on_versions || []).join(','),
-            h.action_type,
-            JSON.stringify(h.new_params),
-            h.hypothesis + ' | ' + (h.reasoning || ''),
-            h.confidence,
-            result.timestamp
-          ], function(err) {
-            if (err) console.error('DB写入失败:', err.message);
-          });
+          const data = {
+            id: h.action_id,
+            hypothesis: h.hypothesis + ' | ' + (h.reasoning || ''),
+            confidence: h.confidence,
+            reasoning: h.reasoning || '',
+            new_params: JSON.stringify(h.new_params || {}),
+            based_on_versions: JSON.stringify(h.based_on_versions || []),
+            previous_attempts: JSON.stringify([]),
+            created_at: new Date()
+          };
+          
+          try {
+            await insert('learning_actions', data);
+            console.log(`[strategy-learning] 已写入 learning_actions: ${h.action_id}`);
+          } catch (err) {
+            console.error(`[strategy-learning] 写入失败: ${err.message}`);
+          }
         }
         
         // 更新 MEMORY.md

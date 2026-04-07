@@ -1,14 +1,14 @@
 {
   "symbol": "NVDA",
   "name": "NVDA",
-  "pe": 7.2,
-  "peg": 0.06,
+  "pe": 2.3,
+  "peg": 3.48,
   "roe": 1.2198,
-  "net_income_growth": null,
+  "net_income_growth": 0.6475,
   "free_cash_flow": 238329000000,
   "debt_ratio": 0.2394,
   "dividend_yield": null,
   "price_used": 172.7,
-  "ni_used": 60000000000,
-  "updated_at": "2026-04-02"
+  "ni_used": 191868000000,
+  "updated_at": "2026-04-06"
 }

@@ -4,6 +4,14 @@
     "symbols_processed": 7,
     "signals_generated": 3
   },
+  "market_environment": {
+    "signal_allowed": true,
+    "market_status": "caution",
+    "spy_price": 655.84,
+    "spy_ma50": 683.2173968400003,
+    "spy_20d_return": -0.03890738377016969,
+    "spy_ma50_position": "below"
+  },
   "signals": [
     {
       "type": "quant_signal",
@@ -29,7 +37,7 @@
         "RSI超卖",
         "放量"
       ],
-      "timestamp": "2026-03-29T06:56:01.140Z"
+      "timestamp": "2026-04-04T14:12:03.967Z"
     },
     {
       "type": "quant_signal",
@@ -55,7 +63,7 @@
         "RSI超卖",
         "大跌反弹"
       ],
-      "timestamp": "2026-03-29T06:56:01.147Z"
+      "timestamp": "2026-04-04T14:12:03.970Z"
     },
     {
       "type": "quant_signal",
@@ -81,8 +89,8 @@
         "RSI超卖",
         "放量"
       ],
-      "timestamp": "2026-03-29T06:56:01.156Z"
+      "timestamp": "2026-04-04T14:12:03.975Z"
     }
   ],
-  "timestamp": "2026-03-29T06:56:01.156Z"
+  "timestamp": "2026-04-04T14:12:03.975Z"
 }

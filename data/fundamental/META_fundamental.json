@@ -1,14 +1,14 @@
 {
   "symbol": "META",
   "name": "META",
-  "pe": 25.7,
-  "peg": 0.43,
+  "pe": 11.8,
+  "peg": -386.79,
   "roe": 0.6023,
-  "net_income_growth": null,
+  "net_income_growth": -0.0305,
   "free_cash_flow": 108580000000,
   "debt_ratio": 0.4065,
   "dividend_yield": null,
   "price_used": 593.65997,
-  "ni_used": 60000000000,
-  "updated_at": "2026-04-02"
+  "ni_used": 130837000000,
+  "updated_at": "2026-04-06"
 }

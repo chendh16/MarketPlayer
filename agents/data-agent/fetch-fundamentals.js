@@ -29,7 +29,7 @@ const OUTPUT_DIR = path.join(process.cwd(), 'data/fundamental');
 const KLINES_DIR = path.join(process.cwd(), 'data/cache/klines');
 
 const USER_AGENT = 'MarketPlayer admin@marketplayer.com';
-const DELAY_MS = 1000; // 每次请求间隔1秒，避免限流
+const DELAY_MS = 1000;
 
 // 命令行参数
 const args = process.argv.slice(2);
@@ -90,74 +90,104 @@ function fetchFromSEC(symbol) {
   });
 }
 
-// 估算的年度净利润（SEC数据异常时的备选，基于公开市场数据）
-const ESTIMATED_ANNUAL_NI = {
-  'AAPL': 100e9, 'MSFT': 90e9, 'GOOGL': 100e9,
-  'AMZN': 70e9, 'META': 60e9, 'TSLA': 10e9, 'NVDA': 60e9
-};
-
-const ESTIMATED_SHARES = {
-  'AAPL': 15.5e9, 'MSFT': 7.4e9, 'GOOGL': 5.5e9,
-  'AMZN': 10.3e9, 'META': 2.6e9, 'TSLA': 3.2e9, 'NVDA': 2.5e9
-};
+// 辅助函数：去重获取数据（按end日期合并，取最新filed）
+function getLatestDataByEnd(items) {
+  if (!items) return [];
+  const byEnd = {};
+  items.forEach(q => {
+    const end = q.end;
+    if (!byEnd[end] || (q.filed && byEnd[end].filed && q.filed > byEnd[end].filed)) {
+      byEnd[end] = q;
+    }
+  });
+  return Object.values(byEnd).sort((a, b) => (b.end || '').localeCompare(a.end || ''));
+}
 
 // 解析财务数据
 function parseFinancials(symbol, secData, price) {
   const facts = secData.facts?.['us-gaap'] || {};
   
-  // 辅助函数：去重获取最新数据
-  const getLatestUnique = (field) => {
-    const items = facts[field]?.units?.USD || [];
-    const byEnd = {};
-    items.forEach(q => {
-      if (!byEnd[q.end] || q.filed > byEnd[q.end].filed) {
-        byEnd[q.end] = q;
-      }
-    });
-    return Object.values(byEnd).sort((a, b) => (b.end || '').localeCompare(a.end || ''));
-  };
+  if (verbose) console.log(`\n=== ${symbol} 原始数据调试 ===`);
   
-  // 净利润（季度，去重）
-  const niList = getLatestUnique('NetIncomeLoss').filter(q => q.form === '10-Q');
-  const last4NI = niList.slice(0, 4);
-  const netIncomeAnnual = last4NI.reduce((sum, q) => sum + (q?.val || 0), 0);
+  // 获取净利润数据（年报）
+  const niItems = facts['NetIncomeLoss']?.units?.USD || [];
+  const niData = getLatestDataByEnd(niItems);
+  
+  // 筛选年报 (10-K)
+  const niAnnual = niData.filter(q => q.form === '10-K');
+  
+  if (verbose) {
+    console.log(`净利润(年报)数量: ${niAnnual.length}`);
+    niAnnual.slice(0, 5).forEach(q => {
+      console.log(`  ${q.end?.substring(0, 10)}: $${(q.val / 1e9).toFixed(2)}B (${q.form})`);
+    });
+  }
+  
+  // 取最近两年年报计算增速
+  let netIncomeGrowth = null;
+  if (niAnnual.length >= 2) {
+    const fy1 = niAnnual[0]?.val || 0;  // 最近年份
+    const fy2 = niAnnual[1]?.val || 0;  // 前一年
+    if (fy2 > 0) {
+      netIncomeGrowth = (fy1 - fy2) / fy2;
+      if (verbose) console.log(`净利润增速: (${fy1/1e9}B - ${fy2/1e9}B) / ${fy2/1e9}B = ${(netIncomeGrowth*100).toFixed(1)}%`);
+    }
+  } else if (verbose) {
+    console.log(`警告: 不足2年净利润数据`);
+  }
   
   // 股东权益
-  const seList = getLatestUnique('StockholdersEquity');
-  const equity = seList[0]?.val || null;
+  const seItems = facts['StockholdersEquity']?.units?.USD || [];
+  const seData = getLatestDataByEnd(seItems);
+  const equity = seData[0]?.val || null;
+  
+  if (verbose) {
+    console.log(`股东权益: $${equity ? (equity/1e9).toFixed(2) + 'B' : 'N/A'}`);
+  }
   
   // 总资产
-  const assetsList = getLatestUnique('Assets');
-  const assets = assetsList[0]?.val || null;
+  const assetsItems = facts['Assets']?.units?.USD || [];
+  const assetsData = getLatestDataByEnd(assetsItems);
+  const assets = assetsData[0]?.val || null;
   
   // 经营现金流
-  const cfoList = getLatestUnique('NetCashProvidedByUsedInOperatingActivities');
-  const cfoAnnual = cfoList.slice(0, 4).reduce((sum, q) => sum + (q?.val || 0), 0);
+  const cfoItems = facts['NetCashProvidedByUsedInOperatingActivities']?.units?.USD || [];
+  const cfoData = getLatestDataByEnd(cfoItems);
+  // 最近4个季度
+  const cfoAnnual = cfoData.slice(0, 4).reduce((sum, q) => sum + (q?.val || 0), 0);
   
   // 资本支出
-  const capexList = getLatestUnique('PaymentsToAcquirePropertyPlantAndEquipment');
-  const capexAnnual = capexList.slice(0, 4).reduce((sum, q) => sum + (q?.val || 0), 0);
+  const capexItems = facts['PaymentsToAcquirePropertyPlantAndEquipment']?.units?.USD || [];
+  const capexData = getLatestDataByEnd(capexItems);
+  const capexAnnual = capexData.slice(0, 4).reduce((sum, q) => sum + (q?.val || 0), 0);
+  
+  // 年度净利润（取最近4个季度之和）
+  const niQuarterly = niData.filter(q => q.form === '10-Q').slice(0, 4);
+  const netIncomeAnnual = niQuarterly.reduce((sum, q) => sum + (q?.val || 0), 0);
   
   // 计算派生指标
-  const roe = equity && netIncomeAnnual ? netIncomeAnnual / equity : null;
+  const roe = equity && equity > 0 && netIncomeAnnual > 0 ? netIncomeAnnual / equity : null;
   const debtRatio = assets && equity ? (assets - equity) / assets : null;
   const fcf = cfoAnnual && capexAnnual ? cfoAnnual - capexAnnual : null;
   
-  // PE 计算（使用合理的年度净利润估算）
-  const shares = ESTIMATED_SHARES[symbol] || 10e9;
-  const annualNI = ESTIMATED_ANNUAL_NI[symbol] || netIncomeAnnual; // 优先使用合理的估算值
-  const eps = shares > 0 ? annualNI / shares : null;
-  const pe = price && eps ? price / eps : null;
+  if (verbose) {
+    console.log(`最近4季度净利润: $${(netIncomeAnnual/1e9).toFixed(2)}B`);
+    console.log(`ROE = ${netIncomeAnnual/1e9}B / ${equity/1e9}B = ${roe ? (roe*100).toFixed(1) + '%' : 'N/A'}`);
+  }
   
-  // PEG
-  const peg = pe && roe ? pe / (roe * 100) : null;
+  // PE 计算
+  const shares = {
+    'AAPL': 15.5e9, 'MSFT': 7.4e9, 'GOOGL': 5.5e9,
+    'AMZN': 10.3e9, 'META': 2.6e9, 'TSLA': 3.2e9, 'NVDA': 2.5e9
+  }[symbol] || 10e9;
+  
+  const eps = shares > 0 && netIncomeAnnual > 0 ? netIncomeAnnual / shares : null;
+  const pe = price && eps ? price / eps : null;
+  const peg = pe && netIncomeGrowth ? pe / netIncomeGrowth : null;
   
   if (verbose) {
-    console.log(`[${symbol}] 财务数据:`);
-    console.log(`  使用净利润: $${(annualNI/1e9).toFixed(2)}B (估算)`);
-    console.log(`  股东权益: $${(equity/1e9).toFixed(2)}B`);
-    console.log(`  ROE: ${roe ? (roe*100).toFixed(1) + '%' : 'N/A'}`);
-    console.log(`  PE: ${pe ? pe.toFixed(1) : 'N/A'}`);
+    console.log(`EPS = ${netIncomeAnnual/1e9}B / ${shares/1e9}B = ${eps?.toFixed(2)}`);
+    console.log(`PE = ${price} / ${eps?.toFixed(2)} = ${pe?.toFixed(1)}`);
   }
   
   return {
@@ -166,12 +196,12 @@ function parseFinancials(symbol, secData, price) {
     pe: pe ? parseFloat(pe.toFixed(1)) : null,
     peg: peg ? parseFloat(peg.toFixed(2)) : null,
     roe: roe ? parseFloat(roe.toFixed(4)) : null,
-    net_income_growth: null,
+    net_income_growth: netIncomeGrowth ? parseFloat(netIncomeGrowth.toFixed(4)) : null,
     free_cash_flow: fcf ? parseInt(fcf) : null,
     debt_ratio: debtRatio ? parseFloat(debtRatio.toFixed(4)) : null,
     dividend_yield: null,
     price_used: price,
-    ni_used: annualNI, // 记录使用的净利润值
+    ni_used: netIncomeAnnual,
     updated_at: new Date().toISOString().split('T')[0]
   };
 }
@@ -237,7 +267,7 @@ async function main() {
   
   // 汇总
   for (const d of results) {
-    console.log(`${d.symbol}: PE=${d.pe || 'N/A'}, ROE=${d.roe ? (d.roe*100).toFixed(1)+'%' : 'N/A'}`);
+    console.log(`${d.symbol}: PE=${d.pe || 'N/A'}, ROE=${d.roe ? (d.roe*100).toFixed(1)+'%' : 'N/A'}, 增速=${d.net_income_growth ? (d.net_income_growth*100).toFixed(1)+'%' : 'N/A'}`);
   }
 }
 

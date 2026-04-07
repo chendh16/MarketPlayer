@@ -3,23 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Orders Panel</title>
+  <title>MarketPlayer · 持仓</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="/js/utils.js"></script>
-  <script src="/js/refresh-scheduler.js"></script>
-  <script src="/js/circuit-breaker.js"></script>
-  <script>
-    // Admin Token Management (from dashboard.html)
-    function getAdminToken() {
-      var token = sessionStorage.getItem('mp_admin_token') || localStorage.getItem('mp_admin_token') || '';
-      if (token && !sessionStorage.getItem('mp_admin_token')) {
-        sessionStorage.setItem('mp_admin_token', token);
-      }
-      if (!token) {
-        var devToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMDI4NTA5MTQyMTEwOTc4MDg5Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyODEzNDg5LCJleHAiOjE3NzM0MTgyODl9.-YLGs2xXBZhaNhYSsWoxjGaVpAq2sh8Gw7DZUHTCexs';
-        sessionStorage.setItem('mp_admin_token', devToken);
-        localStorage.setItem('mp_admin_token', devToken);
-        token = devToken;
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-blue: #58a6ff;
+    }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+    }
+    .mini-nav {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 16px;
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+    }
+    .mini-nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .mini-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+    .mini-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.1); }
       }
       return token;
     }
@@ -38,359 +60,497 @@
       return res.json();
     };
   </script>
+  <style>
+    /* WorldMonitor 风格 - 暗色主题 */
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-blue: #58a6ff;
+    }
+    
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    
+    .panel-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
+    /* 汇总栏 */
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .summary-item {
+      background: var(--bg-secondary);
+      padding: 10px 12px;
+      text-align: center;
+    }
+    
+    .summary-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    
+    .summary-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .summary-value.positive { color: var(--accent-green); }
+    .summary-value.negative { color: var(--accent-red); }
+    
+    /* 持仓卡片网格 */
+    .positions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      padding: 12px;
+    }
+    
+    .position-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 12px;
+    }
+    
+    .card-left {
+      grid-row: 1 / 3;
+    }
+    
+    .card-right {
+      grid-row: 1 / 3;
+      text-align: right;
+    }
+    
+    .card-center {
+      grid-column: 1 / -1;
+    }
+    
+    .stock-code {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+    }
+    
+    .stock-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    .stock-qty {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    
+    .stock-cost {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    
+    .market-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .pl-percent {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    
+    .pl-percent.positive { color: var(--accent-green); }
+    .pl-percent.negative { color: var(--accent-red); }
+    
+    .pl-amount {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Sparkline */
+    .sparkline {
+      width: 80px;
+      height: 32px;
+      margin-top: 8px;
+    }
+    
+    .sparkline-path {
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .sparkline-area {
+      opacity: 0.1;
+    }
+    
+    /* 订单区域 */
+    .orders-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 12px;
+    }
+    
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    
+    .orders-table th {
+      text-align: left;
+      padding: 8px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .orders-table td {
+      padding: 8px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    
+    .status-filled { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+    .status-failed { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+    .status-pending { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+  </style>
 </head>
 <body>
-<div id="orders-panel-root" class="p-6">
-
-  <!-- 富途模拟盘持仓区块 -->
-  <div id="futu-positions-section" class="mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-gray-800">富途模拟盘持仓 (acc: 9132532)</h2>
-      <span id="futu-positions-refresh" class="text-xs text-gray-400 hidden">Refreshing...</span>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">代码</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">名称</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">数量</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">成本价</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">市值</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">盈亏%</th>
-            </tr>
-          </thead>
-          <tbody id="futu-positions-table">
-            <tr>
-              <td colspan="6" class="text-center text-gray-400 py-8 text-sm">Loading...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div id="futu-positions-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"></div>
-  </div>
-
-  <!-- Top stat bar -->
-  <div id="orders-stats-bar" class="grid grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
-      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Orders</span>
-      <span id="stat-orders-total" class="text-2xl font-bold text-gray-800">--</span>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
-      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Filled</span>
-      <span id="stat-orders-filled" class="text-2xl font-bold text-green-600">--</span>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
-      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">Failed</span>
-      <span id="stat-orders-failed" class="text-2xl font-bold text-red-500">--</span>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1 shadow-sm">
-      <span class="text-xs text-gray-400 font-medium uppercase tracking-wide">In Progress</span>
-      <span id="stat-orders-pending" class="text-2xl font-bold text-blue-500">--</span>
+<div class="mini-nav">
+  <a href="/">概览</a>
+  <a href="/panel-orders.html" class="active">持仓</a>
+  <a href="/panel-signals.html">信号</a>
+  <a href="/panel-news.html">新闻</a>
+  <a href="/panel-system.html">系统</a>
+</div>
+<div id="orders-panel-root">
+  
+  <!-- 顶部标题栏 -->
+  <div class="panel-header">
+    <div class="panel-title">富途模拟盘 · 持仓实时监控</div>
+    <div class="live-indicator">
+      <span class="live-dot"></span>
+      <span>LIVE</span>
+      <span id="countdown" style="margin-left: 8px; color: var(--text-muted);">30s</span>
     </div>
   </div>
-
-  <!-- Filter bar -->
-  <div class="flex items-center gap-2 mb-5 flex-wrap">
-    <span class="text-sm text-gray-500 font-medium mr-1">Status:</span>
-    <button id="orders-filter-all"         onclick="ordersSetFilter('all')"           class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors">All</button>
-    <button id="orders-filter-filled"      onclick="ordersSetFilter('filled')"        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Filled</button>
-    <button id="orders-filter-submitted"   onclick="ordersSetFilter('submitted')"     class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Submitted</button>
-    <button id="orders-filter-failed"      onclick="ordersSetFilter('failed')"        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Failed</button>
-    <button id="orders-filter-cancelled"   onclick="ordersSetFilter('cancelled')"     class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancelled</button>
-    <div class="ml-auto flex items-center gap-2">
-      <span id="orders-refresh-indicator" class="text-xs text-gray-400 hidden">Refreshing...</span>
-      <button
-        onclick="window.loadOrdersPanel()"
-        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-      >Refresh</button>
+  
+  <!-- 汇总栏 -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <div class="summary-label">总市值</div>
+      <div class="summary-value" id="summary-total-value">--</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">今日盈亏</div>
+      <div class="summary-value" id="summary-today-pl">--</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">总盈亏%</div>
+      <div class="summary-value" id="summary-total-pl">--</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">持仓数量</div>
+      <div class="summary-value" id="summary-position-count">--</div>
     </div>
   </div>
-
-  <!-- Table wrapper -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-gray-50 border-b border-gray-200">
-            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Time</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">User</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Symbol</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Direction</th>
-            <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Qty</th>
-            <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Ref Price</th>
-            <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Exec Price</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
-            <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Retries</th>
-          </tr>
-        </thead>
-        <tbody id="orders-table-body">
-          <tr>
-            <td colspan="9" class="text-center text-gray-400 py-12 text-sm">Loading orders...</td>
-          </tr>
-        </tbody>
-      </table>
+  
+  <!-- 持仓卡片网格 -->
+  <div class="positions-grid" id="positions-grid">
+    <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px;">
+      Loading positions...
     </div>
   </div>
-
-  <!-- Error message -->
-  <div id="orders-error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"></div>
+  
+  <!-- 订单列表 -->
+  <div class="orders-section">
+    <div class="section-title">最近订单</div>
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>代码</th>
+          <th>方向</th>
+          <th>数量</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody id="orders-table-body">
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
 </div>
 
 <script>
+(function() { if (window.self !== window.top) { document.querySelector(".mini-nav").style.display = "none"; } })();
+
 (function () {
-  // ── State ──────────────────────────────────────────────────────────────────
-  let _ordersData = [];
-  let _ordersFilter = 'all';
-  let _ordersTimer = null;
-  const _expandedOrderIds = new Set();
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  function fmtDate(iso) {
-    if (!iso) return '--';
-    const d = new Date(iso);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${mm}-${dd} ${hh}:${min}`;
-  }
-
-  function fmtPrice(val) {
-    if (val === null || val === undefined || val === '') return '-';
-    const num = parseFloat(val);
-    if (isNaN(num)) return '-';
-    return `$${num.toFixed(2)}`;
-  }
-
-  function statusBadge(status) {
-    const map = {
-      filled:         'bg-green-100 text-green-700',
-      submitted:      'bg-blue-100 text-blue-700',
-      failed:         'bg-red-100 text-red-700',
-      cancelled:      'bg-gray-100 text-gray-500',
-      partial_filled: 'bg-yellow-100 text-yellow-700',
-    };
-    const cls = map[status] || 'bg-gray-100 text-gray-500';
-    return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${cls}">${status || '--'}</span>`;
-  }
-
-  function directionBadge(direction) {
-    const isBuy = direction === 'buy' || direction === 'long';
-    return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-      isBuy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-    }">${(direction || '--').toUpperCase()}</span>`;
-  }
-
-  function marketBadge(market) {
-    const map = {
-      us:  'bg-blue-100 text-blue-700',
-      hk:  'bg-purple-100 text-purple-700',
-      a:   'bg-orange-100 text-orange-700',
-      btc: 'bg-yellow-100 text-yellow-700',
-    };
-    const cls = map[market] || 'bg-gray-100 text-gray-600';
-    return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold ${cls}">${(market || '').toUpperCase()}</span>`;
-  }
-
-  function retryBadge(count) {
-    if (!count || count === 0) return '<span class="text-gray-300">0</span>';
-    return `<span class="text-orange-500 font-semibold">${count}</span>`;
-  }
-
-  function filterOrders(data) {
-    if (_ordersFilter === 'all') return data;
-    return data.filter(o => o.status === _ordersFilter);
-  }
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  function renderStats(data) {
-    const total = data.length;
-    const filled = data.filter(o => o.status === 'filled').length;
-    const failed = data.filter(o => o.status === 'failed').length;
-    const inProgress = data.filter(o => o.status === 'submitted' || o.status === 'partial_filled').length;
-
-    document.getElementById('stat-orders-total').textContent = total;
-    document.getElementById('stat-orders-filled').textContent = filled;
-    document.getElementById('stat-orders-failed').textContent = failed;
-    document.getElementById('stat-orders-pending').textContent = inProgress;
-  }
-
-  // ── Table render ───────────────────────────────────────────────────────────
-  function renderTable(data) {
-    const tbody = document.getElementById('orders-table-body');
-    const filtered = filterOrders(data);
-
-    if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-400 py-12 text-sm">No orders found.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = filtered.map(o => {
-      const hasError = !!(o.failure_message || o.failure_type);
-      const expanded = _expandedOrderIds.has(o.id);
-      const rowHoverClass = hasError ? 'cursor-pointer hover:bg-red-50' : 'hover:bg-gray-50';
-      const expandAttr = hasError
-        ? `onclick="ordersToggleRow('${o.id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')ordersToggleRow('${o.id}')"`
-        : '';
-
-      const mainRow = `
-        <tr class="border-b border-gray-100 transition-colors ${rowHoverClass}" ${expandAttr}>
-          <td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">${fmtDate(o.created_at)}</td>
-          <td class="px-4 py-3 text-gray-700 whitespace-nowrap max-w-[120px] truncate" title="${o.discord_username || ''}">${o.discord_username || '--'}</td>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
-              <span class="font-semibold text-gray-800">${o.symbol || '--'}</span>
-              ${marketBadge(o.market)}
-            </div>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap">${directionBadge(o.direction)}</td>
-          <td class="px-4 py-3 text-right text-gray-700 whitespace-nowrap font-medium">${o.quantity ?? '--'}</td>
-          <td class="px-4 py-3 text-right text-gray-500 whitespace-nowrap">${fmtPrice(o.reference_price)}</td>
-          <td class="px-4 py-3 text-right whitespace-nowrap font-medium ${o.executed_price ? 'text-gray-800' : 'text-gray-300'}">${fmtPrice(o.executed_price)}</td>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
-              ${statusBadge(o.status)}
-              ${hasError ? '<svg class="w-3 h-3 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>' : ''}
-            </div>
-          </td>
-          <td class="px-4 py-3 text-center whitespace-nowrap">${retryBadge(o.retry_count)}</td>
-        </tr>
-      `;
-
-      const errorRow = (hasError && expanded) ? `
-        <tr class="bg-red-50 border-b border-red-100">
-          <td colspan="9" class="px-4 py-3">
-            <div class="text-xs">
-              ${o.failure_type ? `<span class="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-600 font-semibold mr-2">${o.failure_type}</span>` : ''}
-              <span class="text-red-700">${o.failure_message || 'No error details available.'}</span>
-            </div>
-          </td>
-        </tr>
-      ` : '';
-
-      return mainRow + errorRow;
-    }).join('');
-  }
-
-  // ── Filter button states ───────────────────────────────────────────────────
-  function ordersSetFilter(filter) {
-    _ordersFilter = filter;
-    const statuses = ['all', 'filled', 'submitted', 'failed', 'cancelled'];
-    statuses.forEach(s => {
-      const btn = document.getElementById(`orders-filter-${s}`);
-      if (!btn) return;
-      if (s === filter) {
-        btn.className = 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 text-white transition-colors';
-      } else {
-        btn.className = 'px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
-      }
-    });
-    renderTable(_ordersData);
-  }
-
-  // ── Toggle error row expand ────────────────────────────────────────────────
-  function ordersToggleRow(id) {
-    if (_expandedOrderIds.has(id)) {
-      _expandedOrderIds.delete(id);
-    } else {
-      _expandedOrderIds.add(id);
-    }
-    renderTable(_ordersData);
-  }
-
-  // ── 富途持仓加载 ─────────────────────────────────────────────────────────────
-  let _futuPositionsTimer = null;
+  'use strict';
   
-  async function loadFutuPositions() {
-    const tableEl = document.getElementById('futu-positions-table');
-    const errorEl = document.getElementById('futu-positions-error');
-    const indicator = document.getElementById('futu-positions-refresh');
+  // 生成随机 sparkline 数据
+  function generateSparkline() {
+    var points = [];
+    var base = 100 + Math.random() * 20 - 10;
+    var current = base;
+    for (var i = 0; i < 7; i++) {
+      current += (Math.random() - 0.5) * 10;
+      points.push(current);
+    }
+    var min = Math.min(...points);
+    var max = Math.max(...points);
+    var range = max - min || 1;
+    var width = 80;
+    var height = 32;
+    var padding = 2;
     
-    if (indicator) indicator.classList.remove('hidden');
-    if (errorEl) errorEl.classList.add('hidden');
+    var pathD = '';
+    var areaD = 'M ';
+    for (var i = 0; i < points.length; i++) {
+      var x = padding + (i / (points.length - 1)) * (width - padding * 2);
+      var y = height - padding - ((points[i] - min) / range) * (height - padding * 2);
+      pathD += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+      areaD += x + ',' + y + ' ';
+    }
+    areaD += 'L ' + (width - padding) + ',' + (height - padding) + ' L ' + padding + ',' + (height - padding) + ' Z';
     
+    var isUp = points[points.length - 1] >= points[0];
+    var color = isUp ? '#3fb950' : '#f85149';
+    
+    return {
+      path: pathD,
+      area: areaD,
+      stroke: color,
+      fill: color
+    };
+  }
+  
+  // 格式化数字
+  function fmtNum(n, decimals) {
+    if (n === null || n === undefined || isNaN(n)) return '--';
+    return n.toFixed(decimals);
+  }
+  
+  // 格式化金额
+  function fmtMoney(n) {
+    if (n === null || n === undefined || isNaN(n)) return '--';
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  
+  // 加载持仓数据
+  var refreshCountdown = 30;
+  var countdownEl = document.getElementById('countdown');
+  
+  async function loadPositions() {
     try {
-      const resp = await window.dashboardFetch('/api/futu/positions');
-      if (resp.success && resp.data && resp.data.length > 0) {
-        let html = '';
-        for (const pos of resp.data) {
-          const plRatio = parseFloat(pos.pl_ratio) || 0;
-          const plClass = plRatio >= 0 ? 'text-green-600' : 'text-red-500';
-          const plVal = parseFloat(pos.pl_val) || 0;
-          const marketVal = parseFloat(pos.market_val) || 0;
-          html += `<tr class="border-b border-gray-100 hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">${pos.code}</td>
-            <td class="px-4 py-3 text-gray-600">${pos.stock_name || ''}</td>
-            <td class="px-4 py-3 text-right text-gray-800">${pos.qty}</td>
-            <td class="px-4 py-3 text-right text-gray-600">${parseFloat(pos.cost_price || 0).toFixed(2)}</td>
-            <td class="px-4 py-3 text-right text-gray-800">$${marketVal.toFixed(2)}</td>
-            <td class="px-4 py-3 text-right font-medium ${plClass}">${plRatio.toFixed(2)}%</td>
-          </tr>`;
-        }
-        if (tableEl) tableEl.innerHTML = html;
-      } else {
-        if (tableEl) tableEl.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8 text-sm">暂无持仓</td></tr>';
+      var resp = await fetch('/api/futu/positions');
+      var json = await resp.json();
+      
+      if (!json.success || !json.data || json.data.length === 0) {
+        document.getElementById('positions-grid').innerHTML = 
+          '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px;">No positions</div>';
+        return;
       }
+      
+      var positions = json.data;
+      var html = '';
+      var totalValue = 0;
+      var totalPl = 0;
+      var todayPl = 0;
+      
+      for (var i = 0; i < positions.length; i++) {
+        var pos = positions[i];
+        var qty = parseFloat(pos.qty) || 0;
+        var cost = parseFloat(pos.cost_price) || 0;
+        var value = parseFloat(pos.market_val) || 0;
+        var plRatio = parseFloat(pos.pl_ratio) || 0;
+        var plVal = parseFloat(pos.pl_val) || 0;
+        
+        totalValue += value;
+        totalPl += plVal;
+        
+        var isPositive = plRatio >= 0;
+        var sparkline = generateSparkline();
+        
+        html += '<div class="position-card">' +
+          '<div class="card-left">' +
+            '<div class="stock-code">' + pos.code.replace('US.', '') + '</div>' +
+            '<div class="stock-name">' + pos.stock_name + '</div>' +
+            '<div class="stock-qty">' + qty + ' 股</div>' +
+            '<div class="stock-cost">成本 $' + cost.toFixed(2) + '</div>' +
+          '</div>' +
+          '<div class="card-right">' +
+            '<div class="market-value">' + fmtMoney(value) + '</div>' +
+            '<div class="pl-percent ' + (isPositive ? 'positive' : 'negative') + '">' + 
+              (isPositive ? '+' : '') + plRatio.toFixed(2) + '%</div>' +
+            '<div class="pl-amount">' + fmtMoney(plVal) + '</div>' +
+          '</div>' +
+          '<div class="card-center">' +
+            '<svg class="sparkline" viewBox="0 0 80 32">' +
+              '<path class="sparkline-area" d="' + sparkline.area + '" fill="' + sparkline.fill + '"/>' +
+              '<path class="sparkline-path" d="' + sparkline.path + '" stroke="' + sparkline.stroke + '"/>' +
+            '</svg>' +
+          '</div>' +
+        '</div>';
+      }
+      
+      document.getElementById('positions-grid').innerHTML = html;
+      
+      // 更新汇总栏
+      document.getElementById('summary-total-value').textContent = fmtMoney(totalValue);
+      
+      var totalRatio = totalValue > 0 ? (totalPl / (totalValue - totalPl)) * 100 : 0;
+      var totalPlEl = document.getElementById('summary-total-pl');
+      totalPlEl.textContent = (totalPl >= 0 ? '+' : '') + totalRatio.toFixed(2) + '%';
+      totalPlEl.className = 'summary-value ' + (totalPl >= 0 ? 'positive' : 'negative');
+      
+      document.getElementById('summary-position-count').textContent = positions.length + ' 只';
+      
     } catch (err) {
-      console.error('[futu positions]', err);
-      if (errorEl) {
-        errorEl.textContent = `加载失败: ${err.message || 'Unknown error'}`;
-        errorEl.classList.remove('hidden');
-      }
-    } finally {
-      if (indicator) indicator.classList.add('hidden');
+      console.error('[positions] error:', err);
     }
   }
   
-  function startFutuPositionsAutoRefresh() {
-    loadFutuPositions();
-    if (_futuPositionsTimer) clearInterval(_futuPositionsTimer);
-    _futuPositionsTimer = setInterval(loadFutuPositions, 30000);
-  }
-
-  // ── Main fetch ─────────────────────────────────────────────────────────────
-  async function loadOrdersPanel() {
-    const indicator = document.getElementById('orders-refresh-indicator');
-    const errorEl = document.getElementById('orders-error');
-    if (indicator) indicator.classList.remove('hidden');
-    if (errorEl) errorEl.classList.add('hidden');
-
+  // 倒计时
+  setInterval(function() {
+    refreshCountdown--;
+    if (refreshCountdown <= 0) {
+      refreshCountdown = 30;
+      loadPositions();
+    }
+    if (countdownEl) countdownEl.textContent = refreshCountdown + 's';
+  }, 1000);
+  
+  // 初始加载
+  loadPositions();
+  
+  // 加载订单列表（无认证）
+  async function loadOrders() {
     try {
-      const data = await window.dashboardFetch('/api/admin/orders?limit=100');
-      _ordersData = Array.isArray(data) ? data : [];
-      renderStats(_ordersData);
-      renderTable(_ordersData);
-    } catch (err) {
-      console.error('[orders panel]', err);
-      if (errorEl) {
-        errorEl.textContent = `Failed to load orders: ${err.message || 'Unknown error'}`;
-        errorEl.classList.remove('hidden');
+      var resp = await fetch('/api/futu/orders');
+      var json = await resp.json();
+      
+      if (!json.success || !json.data || json.data.length === 0) {
+        document.getElementById('orders-table-body').innerHTML = 
+          '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No orders</td></tr>';
+        return;
       }
-    } finally {
-      if (indicator) indicator.classList.add('hidden');
+      
+      var html = '';
+      for (var i = 0; i < json.data.length; i++) {
+        var order = json.data[i];
+        var isBuy = order.trd_side === 'BUY' || order.trd_side === 'buy';
+        var statusClass = '';
+        var statusText = order.order_status || 'UNKNOWN';
+        
+        if (statusText.includes('FILLED')) statusClass = 'status-filled';
+        else if (statusText.includes('FAILED') || statusText.includes('CANCEL')) statusClass = 'status-failed';
+        else statusClass = 'status-pending';
+        
+        var time = order.create_time ? order.create_time.substring(0, 16) : '--';
+        
+        html += '<tr>' +
+          '<td style="color: var(--text-muted);">' + time + '</td>' +
+          '<td style="color: var(--text-primary);">' + (order.code || '').replace('US.', '') + '</td>' +
+          '<td style="color: ' + (isBuy ? 'var(--accent-green)' : 'var(--accent-red)') + ';">' + 
+            (isBuy ? '买入' : '卖出') + '</td>' +
+          '<td>' + (order.qty || order.dealt_qty || '--') + '</td>' +
+          '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+        '</tr>';
+      }
+      
+      document.getElementById('orders-table-body').innerHTML = html;
+      
+    } catch (err) {
+      console.error('[orders] error:', err);
+      document.getElementById('orders-table-body').innerHTML = 
+        '<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Load failed</td></tr>';
     }
   }
-
-  // ── Auto-refresh ───────────────────────────────────────────────────────────
-  function startOrdersAutoRefresh() {
-    if (_ordersTimer) clearInterval(_ordersTimer);
-    _ordersTimer = setInterval(() => {
-      window.loadOrdersPanel();
-    }, 30000);
-  }
-
-  // ── Expose globals ─────────────────────────────────────────────────────────
-  window.loadOrdersPanel = loadOrdersPanel;
-  window.ordersSetFilter = ordersSetFilter;
-  window.ordersToggleRow = ordersToggleRow;
-
-  // ── Init ───────────────────────────────────────────────────────────────────
-  loadOrdersPanel();
-  startOrdersAutoRefresh();
-  startFutuPositionsAutoRefresh();
+  
+  loadOrders();
 })();
 </script>
+</body>
+</html>

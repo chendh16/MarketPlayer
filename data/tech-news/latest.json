@@ -1,48 +1,33 @@
 {
-  "date": "2026-03-16",
+  "date": "2026-04-06",
   "sources": [
     {
       "name": "HackerNews",
       "items": [
         {
-          "title": "Launch HN: Voygr (YC W26) – A better maps API for agents and AI apps",
-          "url": "https://news.ycombinator.com/item?id=47401042",
-          "score": 58
+          "title": "Launch HN: Freestyle – Sandboxes for Coding Agents",
+          "url": "https://www.freestyle.sh/",
+          "score": 181
         },
         {
-          "title": "Starlink Mini as a failover",
-          "url": "https://www.jackpearce.co.uk/posts/starlink-failover/",
-          "score": 163
+          "title": "Show HN: Hippo, biologically inspired memory for AI agents",
+          "url": "https://github.com/kitfunso/hippo-memory",
+          "score": 24
         },
         {
-          "title": "Apideck CLI – An AI-agent interface with much lower context consumption than MCP",
-          "url": "https://www.apideck.com/blog/mcp-server-eating-context-window-cli-alternative",
-          "score": 112
+          "title": "Issue: Claude Code is unusable for complex engineering tasks with Feb updates",
+          "url": "https://github.com/anthropics/claude-code/issues/42796",
+          "score": 688
         },
         {
-          "title": "Nvidia Launches Vera CPU, Purpose-Built for Agentic AI",
-          "url": "https://nvidianews.nvidia.com/news/nvidia-launches-vera-cpu-purpose-built-for-agentic-ai",
-          "score": 96
+          "title": "Agent Reading Test",
+          "url": "https://agentreadingtest.com",
+          "score": 40
         },
         {
-          "title": "Show HN: Claude Code skills that build complete Godot games",
-          "url": "https://github.com/htdt/godogen",
-          "score": 122
-        },
-        {
-          "title": "AirPods Max 2",
-          "url": "https://www.apple.com/airpods-max/",
-          "score": 170
-        },
-        {
-          "title": "Launch HN: Chamber (YC W26) – An AI Teammate for GPU Infrastructure",
-          "url": "https://www.usechamber.io/",
-          "score": 19
-        },
-        {
-          "title": "Speed at the cost of quality: Study of use of Cursor AI in open source projects (2025)",
-          "url": "https://arxiv.org/abs/2511.04427",
-          "score": 85
+          "title": "AI singer now occupies eleven spots on iTunes singles chart",
+          "url": "https://www.showbiz411.com/2026/04/05/itunes-takeover-by-fake-ai-singer-eddie-dalton-now-occupies-eleven-spots-on-chart-despite-not-being-human-or-real-exclusive",
+          "score": 71
         }
       ]
     },
@@ -52,62 +37,62 @@
         {
           "title": "openclaw/openclaw",
           "url": "https://github.com/openclaw/openclaw",
-          "stars": 317406,
-          "score": 317406
-        },
-        {
-          "title": "x1xhlol/system-prompts-and-models-of-ai-tools",
-          "url": "https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools",
-          "stars": 131537,
-          "score": 131537
-        },
-        {
-          "title": "anomalyco/opencode",
-          "url": "https://github.com/anomalyco/opencode",
-          "stars": 123455,
-          "score": 123455
-        },
-        {
-          "title": "google-gemini/gemini-cli",
-          "url": "https://github.com/google-gemini/gemini-cli",
-          "stars": 97984,
-          "score": 97984
-        },
-        {
-          "title": "anthropics/skills",
-          "url": "https://github.com/anthropics/skills",
-          "stars": 95035,
-          "score": 95035
-        },
-        {
-          "title": "obra/superpowers",
-          "url": "https://github.com/obra/superpowers",
-          "stars": 88478,
-          "score": 88478
+          "stars": 350044,
+          "score": 350044
         },
         {
           "title": "affaan-m/everything-claude-code",
           "url": "https://github.com/affaan-m/everything-claude-code",
-          "stars": 80306,
-          "score": 80306
+          "stars": 142648,
+          "score": 142648
+        },
+        {
+          "title": "anomalyco/opencode",
+          "url": "https://github.com/anomalyco/opencode",
+          "stars": 138354,
+          "score": 138354
+        },
+        {
+          "title": "obra/superpowers",
+          "url": "https://github.com/obra/superpowers",
+          "stars": 137401,
+          "score": 137401
+        },
+        {
+          "title": "x1xhlol/system-prompts-and-models-of-ai-tools",
+          "url": "https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools",
+          "stars": 134571,
+          "score": 134571
+        },
+        {
+          "title": "anthropics/skills",
+          "url": "https://github.com/anthropics/skills",
+          "stars": 111594,
+          "score": 111594
         },
         {
           "title": "anthropics/claude-code",
           "url": "https://github.com/anthropics/claude-code",
-          "stars": 78734,
-          "score": 78734
+          "stars": 109896,
+          "score": 109896
+        },
+        {
+          "title": "google-gemini/gemini-cli",
+          "url": "https://github.com/google-gemini/gemini-cli",
+          "stars": 100414,
+          "score": 100414
         },
         {
           "title": "github/spec-kit",
           "url": "https://github.com/github/spec-kit",
-          "stars": 77484,
-          "score": 77484
+          "stars": 85694,
+          "score": 85694
         },
         {
           "title": "openai/codex",
           "url": "https://github.com/openai/codex",
-          "stars": 65667,
-          "score": 65667
+          "stars": 73474,
+          "score": 73474
         }
       ]
     },

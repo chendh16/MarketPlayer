@@ -1,28 +1,23 @@
 /**
  * quant-agent - 量化信号生成 Agent (v2)
- * 职责：
- * 1. 读取 data-agent 的市场数据
- * 2. 基于均线 + RSI + ATR 生成短线信号
- * 3. 更新 signal_candidates 表状态为 research_generated
- * 
- * 信号逻辑调整：
- * - 多头信号：RSI超卖反弹 + 价格在支撑位
- * - 空头信号：RSI超买 + 价格在压力位
+ * 读取 config/system.config.js 获取参数
  */
-
 const fs = require('fs');
 const path = require('path');
+
+// 加载配置
+const config = require('../../config/system.config');
 
 const INPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/data-agent/output.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'agents/fin-chain/quant-agent/output.json');
 
-// 策略参数
+// 策略参数（从配置文件）
 const PARAMS = {
-  fast_period: 11,
-  slow_period: 30,
-  rsi_period: 14,
-  rsi_low: 35,
-  rsi_high: 65,
+  fast_period: config.strategy.fast_period,
+  slow_period: config.strategy.slow_period,
+  rsi_period: config.strategy.rsi_period,
+  rsi_low: config.strategy.rsi_low,
+  rsi_high: config.strategy.rsi_high,
   min_confidence: 0.3
 };
 

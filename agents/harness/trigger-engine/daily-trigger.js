@@ -1,35 +1,19 @@
 /**
  * trigger-engine - daily-trigger.js
  * 多市场定时触发器，支持开盘前/收盘后通知
- * 
- * 用法：
- *   node daily-trigger.js --market=cn --type=open   # A股开盘前
- *   node daily-trigger.js --market=cn --type=close   # A股收盘后
- *   node daily-trigger.js --market=us --type=open   # 美股开盘前
- *   node daily-trigger.js --market=us --type=close  # 美股收盘后
- * 
- * crontab 配置（夏令时）：
- * # A股+港股 开盘前 09:15
- * 15 9 * * 1-5 node daily-trigger.js --market=cn --type=open
- * # A股 收盘后 15:05
- * 5 15 * * 1-5 node daily-trigger.js --market=cn_a --type=close
- * # 港股 收盘后 16:05
- * 5 16 * * 1-5 node daily-trigger.js --market=cn_hk --type=close
- * # 美股 开盘前 21:15 (夏令时21:30开盘)
- * 15 21 * * 1-5 node daily-trigger.js --market=us --type=open
- * # 美股 收盘后 05:15 (次日)
- * 15 5 * * 2-6 node daily-trigger.js --market=us --type=close
+ * 读取 config/system.config.js 获取参数
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
+// 加载配置
+const systemConfig = require('../../../config/system.config');
 const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
 // 解析命令行参数
-const args = process.argv.slice(2);
 let market = 'cn';
 let triggerType = 'open';
-
+const args = process.argv.slice(2);
 for (const arg of args) {
     if (arg.startsWith('--market=')) market = arg.split('=')[1];
     if (arg.startsWith('--type=')) triggerType = arg.split('=')[1];

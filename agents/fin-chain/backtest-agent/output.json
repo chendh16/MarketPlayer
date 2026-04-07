@@ -1,132 +1,22 @@
 {
   "summary": {
-    "signals_tested": 3,
-    "backtests_completed": 3
+    "signals_tested": 1,
+    "backtests_completed": 1
   },
   "results": [
     {
-      "run_id": "bt_1774767384035_AAPL",
-      "strategy_version": "v2_ma_rsi_atr",
-      "symbol": "AAPL",
-      "market": "美股",
-      "start_date": "2025-12-22",
-      "end_date": "2026-03-20",
-      "initial_capital": 100000,
-      "final_capital": 91519.36007676127,
-      "annual_return": -0.35618687677602684,
-      "sharpe": -11.682220373854484,
-      "max_drawdown": 0.049231255249990793,
-      "win_rate": 0,
-      "profit_factor": 0,
-      "trade_count": 3,
-      "trades": [
-        {
-          "type": "BUY",
-          "date": "2025-12-22",
-          "price": 270.97,
-          "idx": 2939
-        },
-        {
-          "type": "SELL",
-          "date": "2026-01-07",
-          "price": 260.32999,
-          "pnl": -0.03926637635162566,
-          "reason": "max_hold_days",
-          "idx": 2949
-        },
-        {
-          "type": "SELL",
-          "date": "2026-03-20",
-          "price": 247.99001,
-          "pnl": -0.08480639923238734,
-          "reason": "end_of_backtest",
-          "idx": 2999
-        }
+      "id": "bt_1775304700717_AAPL",
+      "strategy_params": "{\"version\":\"v1.0.1\"}",
+      "symbols_tested": [
+        "AAPL"
       ],
-      "timestamp": "2026-03-29T06:56:24.035Z"
-    },
-    {
-      "run_id": "bt_1774767384039_TSLA",
-      "strategy_version": "v2_ma_rsi_atr",
-      "symbol": "TSLA",
-      "market": "美股",
-      "start_date": "2025-12-22",
-      "end_date": "2026-03-20",
-      "initial_capital": 100000,
-      "final_capital": 75289.01079759764,
-      "annual_return": -1.0378615465008991,
-      "sharpe": -7.975136709833923,
-      "max_drawdown": 0.05952161603499641,
       "win_rate": 0,
-      "profit_factor": 0,
-      "trade_count": 3,
-      "trades": [
-        {
-          "type": "BUY",
-          "date": "2025-12-22",
-          "price": 488.73001,
-          "idx": 2939
-        },
-        {
-          "type": "SELL",
-          "date": "2025-12-29",
-          "price": 459.64001,
-          "pnl": -0.05952161603499641,
-          "reason": "stop_loss",
-          "idx": 2943
-        },
-        {
-          "type": "SELL",
-          "date": "2026-03-20",
-          "price": 367.95999,
-          "pnl": -0.2471098920240236,
-          "reason": "end_of_backtest",
-          "idx": 2999
-        }
-      ],
-      "timestamp": "2026-03-29T06:56:24.039Z"
-    },
-    {
-      "run_id": "bt_1774767384041_META",
-      "strategy_version": "v2_ma_rsi_atr",
-      "symbol": "META",
-      "market": "美股",
-      "start_date": "2025-12-22",
-      "end_date": "2026-03-20",
-      "initial_capital": 100000,
-      "final_capital": 89744.51549508693,
-      "annual_return": -0.43073034920634884,
-      "sharpe": -7.662348458122699,
-      "max_drawdown": 0.028252550793986114,
-      "win_rate": 0,
-      "profit_factor": 0,
-      "trade_count": 3,
-      "trades": [
-        {
-          "type": "BUY",
-          "date": "2025-12-22",
-          "price": 661.5,
-          "idx": 2939
-        },
-        {
-          "type": "SELL",
-          "date": "2026-01-07",
-          "price": 648.69,
-          "pnl": -0.01936507936507929,
-          "reason": "max_hold_days",
-          "idx": 2949
-        },
-        {
-          "type": "SELL",
-          "date": "2026-03-20",
-          "price": 593.65997,
-          "pnl": -0.10255484504913068,
-          "reason": "end_of_backtest",
-          "idx": 2999
-        }
-      ],
-      "timestamp": "2026-03-29T06:56:24.041Z"
+      "sharpe_ratio": 0,
+      "max_drawdown": 0,
+      "trade_count": 1,
+      "test_period": "2026-03-20 - 2026-03-20",
+      "created_at": "2026-04-04T12:11:40.717Z"
     }
   ],
-  "timestamp": "2026-03-29T06:56:24.041Z"
+  "timestamp": "2026-04-04T12:11:40.736Z"
 }

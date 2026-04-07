@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPlayer · 量化交易系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-blue: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand { display: flex; align-items: baseline; gap: 8px; }
+    .brand-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .brand-sub { font-size: 12px; color: var(--text-muted); }
+    .nav-right { display: flex; align-items: center; gap: 16px; }
+    .live-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+    .live-dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .nav-time { font-size: 12px; color: var(--text-muted); }
+    .nav-tabs {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      padding: 0 20px;
+    }
+    .nav-tab {
+      padding: 12px 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-tab:hover { color: var(--text-primary); }
+    .nav-tab.active {
+      color: var(--accent-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+    .tab-content { display: none; height: calc(100vh - 90px); }
+    .tab-content.active { display: block; }
+    .panel-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--bg-primary);
+    }
+    .overview-section { padding: 20px; }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .overview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .overview-value { font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .overview-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+    .section-title {
+      font-size: 14px; font-weight: 600; color: var(--text-secondary);
+      margin: 20px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .mini-list { display: flex; flex-direction: column; gap: 6px; }
+    .mini-item {
+      display: grid;
+      grid-template-columns: 100px 80px 1fr;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .mini-time { color: var(--text-muted); }
+    .mini-symbol { font-weight: 600; color: var(--text-primary); }
+    .mini-title { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <div class="nav-header">
+    <div class="nav-brand">
+      <span class="brand-name">MarketPlayer</span>
+      <span class="brand-sub">· 量化交易系统</span>
+    </div>
+    <div class="nav-right">
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>LIVE</span>
+      </div>
+      <span class="nav-time" id="nav-time">--:--:--</span>
+    </div>
+  </div>
+  
+  <!-- Tab Navigation -->
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-tab="overview" onclick="switchTab('overview')">概览</div>
+    <div class="nav-tab" data-tab="orders" onclick="switchTab('orders')">持仓</div>
+    <div class="nav-tab" data-tab="signals" onclick="switchTab('signals')">信号</div>
+    <a href="/panel-news.html" class="nav-tab">新闻</a>
+    <a href="/panel-portfolio.html" class="nav-tab">组合</a>
+    <div class="nav-tab" data-tab="system" onclick="switchTab('system')">系统</div>
+  </div>
+  
+  <!-- Overview Tab -->
+  <div id="tab-overview" class="tab-content active">
+    <div class="overview-section">
+      <!-- Stats Cards -->
+      <div class="overview-grid">
+        <div class="overview-card">
+          <div class="overview-value" id="overview-futu-value">--</div>
+          <div class="overview-label">富途总市值</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-value" id="overview-position-count">--</div>
+          <div class="overview-label">持仓数量</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-value" id="overview-signals">--</div>
+          <div class="overview-label">总信号数</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-value" id="overview-news">--</div>
+          <div class="overview-label">今日新闻</div>
+        </div>
+      </div>
+      
+      <!-- Latest Signals -->
+      <div class="section-title">最新信号</div>
+      <div class="mini-list" id="latest-signals">
+        <div class="mini-item" style="color: var(--text-muted);">Loading...</div>
+      </div>
+      
+      <!-- Latest News -->
+      <div class="section-title">最新新闻</div>
+      <div class="mini-list" id="latest-news">
+        <div class="mini-item" style="color: var(--text-muted);">Loading...</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Iframe Tabs -->
+  <div id="tab-orders" class="tab-content">
+    <iframe class="panel-iframe" src="/panel-orders.html"></iframe>
+  </div>
+  <div id="tab-signals" class="tab-content">
+    <iframe class="panel-iframe" src="/panel-signals.html"></iframe>
+  </div>
+  <div id="tab-news" class="tab-content">
+    <iframe class="panel-iframe" src="/panel-news.html"></iframe>
+  </div>
+  <div id="tab-system" class="tab-content">
+    <iframe class="panel-iframe" src="/panel-system.html"></iframe>
+  </div>
+
+<script>
+(function() {
+  var currentTab = 'overview';
+  
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.nav-tab').forEach(function(t) {
+      t.classList.toggle('active', t.dataset.tab === tab);
+    });
+    document.querySelectorAll('.tab-content').forEach(function(c) {
+      c.classList.toggle('active', c.id === 'tab-' + tab);
+    });
+  }
+  window.switchTab = switchTab;
+  
+  // Update time
+  function updateTime() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('nav-time').textContent = h + ':' + m + ':' + s;
+  }
+  setInterval(updateTime, 1000);
+  updateTime();
+  
+  // Load overview data
+  async function loadOverview() {
+    try {
+      // Load futu positions
+      var futuResp = await fetch('/api/futu/positions');
+      var futuJson = await futuResp.json();
+      if (futuJson.success && futuJson.data) {
+        var total = 0;
+        var count = futuJson.data.length;
+        for (var i = 0; i < futuJson.data.length; i++) {
+          total += parseFloat(futuJson.data[i].market_val) || 0;
+        }
+        document.getElementById('overview-futu-value').textContent = '$' + Math.round(total).toLocaleString();
+        document.getElementById('overview-position-count').textContent = count + ' 只';
+      }
+      
+      // Load stats
+      var statsResp = await fetch('/api/dashboard/stats');
+      var statsJson = await statsResp.json();
+      if (statsJson.success) {
+        document.getElementById('overview-signals').textContent = statsJson.data.totalSignals || 0;
+        document.getElementById('overview-news').textContent = statsJson.data.todayNews || 0;
+      }
+      
+      // Load latest signals
+      var signalsResp = await fetch('/api/dashboard/signals');
+      var signalsJson = await signalsResp.json();
+      if (signalsJson.success && signalsJson.data) {
+        var sigs = signalsJson.data.slice(0, 3);
+        var sigHtml = '';
+        for (var i = 0; i < sigs.length; i++) {
+          var s = sigs[i];
+          var time = s.created_at ? s.created_at.substring(5, 16).replace('T', ' ') : '--';
+          sigHtml += '<div class="mini-item">' +
+            '<div class="mini-time">'+time+'</div>' +
+            '<div class="mini-symbol">'+s.symbol+'</div>' +
+            '<div class="mini-title">'+s.direction+' · '+s.confidence+'%</div>' +
+          '</div>';
+        }
+        document.getElementById('latest-signals').innerHTML = sigHtml || '<div class="mini-item">No signals</div>';
+      }
+      
+      // Load latest news
+      var newsResp = await fetch('/api/dashboard/news');
+      var newsJson = await newsResp.json();
+      if (newsJson.success && newsJson.data) {
+        var news = newsJson.data.slice(0, 3);
+        var newsHtml = '';
+        for (var i = 0; i < news.length; i++) {
+          var n = news[i];
+          var time = n.published_at ? n.published_at.substring(5, 10) : '--';
+          newsHtml += '<div class="mini-item">' +
+            '<div class="mini-time">'+time+'</div>' +
+            '<div class="mini-symbol">'+(n.source || '')+'</div>' +
+            '<div class="mini-title">'+n.title.substring(0, 40)+'...</div>' +
+          '</div>';
+        }
+        document.getElementById('latest-news').innerHTML = newsHtml || '<div class="mini-item">No news</div>';
+      }
+    } catch(e) {
+      console.error('Overview load error:', e);
+    }
+  }
+  
+  loadOverview();
+  setInterval(loadOverview, 30000);
+})();
+</script>
+</body>
+</html>

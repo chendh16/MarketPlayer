@@ -1,237 +1,419 @@
-<div id="news-panel-root" class="space-y-4">
-
-  <!-- Stats Bar -->
-  <div id="news-stats-bar" class="grid grid-cols-3 gap-4">
-    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-      <div id="news-stat-today" class="text-2xl font-bold text-gray-800">--</div>
-      <div class="text-xs text-gray-500 mt-1">今日资讯</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-      <div id="news-stat-processed" class="text-2xl font-bold text-green-600">--</div>
-      <div class="text-xs text-gray-500 mt-1">已 AI 处理</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-      <div id="news-stat-pending" class="text-2xl font-bold text-yellow-500">--</div>
-      <div class="text-xs text-gray-500 mt-1">待处理</div>
-    </div>
-  </div>
-
-  <!-- Filter Bar -->
-  <div class="flex items-center gap-3">
-    <span class="text-sm font-medium text-gray-600">过滤：</span>
-    <button
-      id="news-filter-all"
-      onclick="window._newsSetFilter('all')"
-      class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors"
-    >全部</button>
-    <button
-      id="news-filter-pending"
-      onclick="window._newsSetFilter('pending')"
-      class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-    >仅待处理</button>
-  </div>
-
-  <!-- Table -->
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-gray-50 border-b border-gray-200">
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">时间</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">市场</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">标的</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">标题</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">AI 状态</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">AI 摘要</th>
-          </tr>
-        </thead>
-        <tbody id="news-table-body">
-          <tr>
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">加载中...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="flex items-center justify-between text-xs text-gray-500">
-    <span>最后刷新：<span id="news-last-refresh">--</span></span>
-    <button
-      onclick="window.loadNewsPanel()"
-      class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs font-medium"
-    >刷新</button>
-  </div>
-
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPlayer · 市场资讯</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .mini-nav { background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; gap: 16px; font-size: 12px; }
+    .mini-nav a { color: var(--text-secondary); text-decoration: none; padding: 4px 8px; border-radius: 4px; }
+    .mini-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+    .mini-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.1); }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-blue: #58a6ff;
+      --accent-orange: #f0883e;
+      --accent-purple: #a371f7;
+    }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+      font-size: 13px;
+      margin: 0;
+    }
+    .panel-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .live-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+    .live-dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .summary-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+      background: var(--border-color);
+    }
+    .summary-item { background: var(--bg-secondary); padding: 12px; text-align: center; }
+    .summary-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .summary-value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .filter-section {
+      background: var(--bg-secondary); padding: 8px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .filter-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 4px 10px; border-radius: 4px; font-size: 11px;
+      background: var(--bg-card); color: var(--text-secondary);
+      border: 1px solid var(--border-color); cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .filter-btn:hover { background: var(--bg-primary); color: var(--text-primary); }
+    .filter-btn.active { color: white; border-color: transparent; }
+    .filter-btn.active[data-filter="all"] { background: var(--accent-blue); }
+    .filter-btn.active[data-filter="cointelegraph"] { background: #f0883e; }
+    .filter-btn.active[data-filter="reuters"] { background: #00a4e4; }
+    .filter-btn.active[data-filter="bloomberg"] { background: #2800d7; }
+    .filter-btn.active[data-filter="wsj"] { background: #0080c3; }
+    .filter-btn.active[data-filter="cnbc"] { background: #005a8c; }
+    .filter-btn.active[data-filter="financial_times"] { background: #000; border: 1px solid #fff; }
+    .filter-btn.active[data-filter="雪球"] { background: #e62b1f; }
+    .filter-btn.active[data-filter="eastmoney"] { background: #e62b1f; }
+    
+    /* Category colors */
+    .filter-btn.active[data-filter="macro_policy"] { background: #8b5cf6; }
+    .filter-btn.active[data-filter="earnings"] { background: #10b981; }
+    .filter-btn.active[data-filter="geopolitics"] { background: #ef4444; }
+    .filter-btn.active[data-filter="sector_move"] { background: #f59e0b; }
+    .filter-btn.active[data-filter="regulatory"] { background: #6366f1; }
+    .filter-btn.active[data-filter="mergers_acquisitions"] { background: #ec4899; }
+    .filter-btn.active[data-filter="technical"] { background: #06b6d4; }
+    .filter-btn.active[data-filter="general"] { background: #6b7280; }
+    
+    /* Priority colors */
+    .filter-btn.active[data-filter="priority_critical"] { background: #dc2626; }
+    .filter-btn.active[data-filter="priority_high"] { background: #ea580c; }
+    .filter-btn.active[data-filter="priority_medium"] { background: #2563eb; }
+    .filter-btn.active[data-filter="priority_low"] { background: #6b7280; }
+    
+    .news-list { padding: 12px; }
+    .news-item {
+      display: grid;
+      grid-template-columns: 12px 1fr 80px;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .sentiment-dot {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 4px;
+    }
+    .sentiment-positive { background: var(--accent-green); }
+    .sentiment-negative { background: var(--accent-red); }
+    .sentiment-neutral { background: var(--text-muted); }
+    
+    .news-content { min-width: 0; }
+    .news-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .source-tag {
+      display: inline-block; padding: 2px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 500;
+    }
+    .source-cointelegraph { background: rgba(240,136,62,0.2); color: #f0883e; }
+    .source-reuters { background: rgba(0,164,228,0.2); color: #00a4e4; }
+    .source-bloomberg { background: rgba(40,0,215,0.2); color: #6366f1; }
+    .source-wsj { background: rgba(0,128,195,0.2); color: #0080c3; }
+    .source-cnbc { background: rgba(0,90,140,0.2); color: #60a5fa; }
+    .source-financial_times { background: rgba(255,255,255,0.1); color: #e5e7eb; }
+    .source-雪球 { background: rgba(230,43,31,0.2); color: #f87171; }
+    .source-eastmoney { background: rgba(230,43,31,0.2); color: #f87171; }
+    .source-other { background: rgba(110,118,129,0.2); color: var(--text-muted); }
+    
+    .category-tag {
+      display: inline-block; padding: 2px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 500;
+    }
+    .cat-macro_policy { background: rgba(139,92,246,0.2); color: #a78bfa; }
+    .cat-earnings { background: rgba(16,185,129,0.2); color: #34d399; }
+    .cat-geopolitics { background: rgba(239,68,68,0.2); color: #f87171; }
+    .cat-sector_move { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .cat-regulatory { background: rgba(99,102,241,0.2); color: #818cf8; }
+    .cat-mergers_acquisitions { background: rgba(236,72,153,0.2); color: #f472b6; }
+    .cat-technical { background: rgba(6,182,212,0.2); color: #22d3ee; }
+    .cat-general { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    
+    .priority-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 600;
+    }
+    .priority-critical { background: rgba(220,38,38,0.2); color: #f87171; }
+    .priority-high { background: rgba(234,88,12,0.2); color: #fb923c; }
+    .priority-medium { background: rgba(37,99,235,0.2); color: #60a5fa; }
+    .priority-low { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    
+    .news-title {
+      color: var(--text-primary); font-size: 13px; line-height: 1.4;
+      display: block; margin: 4px 0;
+      word-break: break-word;
+    }
+    .news-title:hover { color: var(--accent-blue); }
+    .symbol-tag {
+      display: inline-block; padding: 2px 6px; border-radius: 3px;
+      font-size: 10px; background: rgba(88,166,255,0.15); color: var(--accent-blue);
+      margin-right: 4px; margin-top: 4px;
+    }
+    .news-time { font-size: 11px; color: var(--text-muted); text-align: right; }
+    .loading { text-align: center; color: var(--text-muted); padding: 40px; }
+  </style>
+</head>
+<body>
+<div class="mini-nav">
+  <a href="/">概览</a>
+  <a href="/panel-orders.html">持仓</a>
+  <a href="/panel-signals.html">信号</a>
+  <a href="/panel-news.html" class="active">新闻</a>
+  <a href="/panel-system.html">系统</a>
 </div>
-
+<div id="panel-root">
+  <div class="panel-header">
+    <div class="panel-title">MarketPlayer · 市场资讯</div>
+    <div class="live-indicator">
+      <span class="live-dot"></span><span>LIVE</span>
+      <span id="countdown" style="margin-left: 8px; color: var(--text-muted);">30s</span>
+    </div>
+  </div>
+  <div class="summary-bar">
+    <div class="summary-item"><div class="summary-label">今日新闻</div><div class="summary-value" id="summary-today">--</div></div>
+    <div class="summary-item"><div class="summary-label">总计</div><div class="summary-value" id="summary-total">--</div></div>
+    <div class="summary-item"><div class="summary-label">分类数</div><div class="summary-value" id="summary-categories">--</div></div>
+    <div class="summary-item"><div class="summary-label">来源数</div><div class="summary-value" id="summary-sources">--</div></div>
+  </div>
+  
+  <!-- 来源过滤 -->
+  <div class="filter-section">
+    <div class="filter-label">来源</div>
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all" data-type="source" onclick="setFilter('source', 'all')">全部</button>
+      <button class="filter-btn" data-filter="reuters" data-type="source" onclick="setFilter('source', 'reuters')">Reuters</button>
+      <button class="filter-btn" data-filter="bloomberg" data-type="source" onclick="setFilter('source', 'bloomberg')">Bloomberg</button>
+      <button class="filter-btn" data-filter="wsj" data-type="source" onclick="setFilter('source', 'wsj')">WSJ</button>
+      <button class="filter-btn" data-filter="cnbc" data-type="source" onclick="setFilter('source', 'cnbc')">CNBC</button>
+      <button class="filter-btn" data-filter="financial_times" data-type="source" onclick="setFilter('source', 'financial_times')">FT</button>
+      <button class="filter-btn" data-filter="雪球" data-type="source" onclick="setFilter('source', '雪球')">雪球</button>
+      <button class="filter-btn" data-filter="eastmoney" data-type="source" onclick="setFilter('source', 'eastmoney')">东方财富</button>
+    </div>
+  </div>
+  
+  <!-- 分类过滤 -->
+  <div class="filter-section">
+    <div class="filter-label">分类</div>
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all" data-type="category" onclick="setFilter('category', 'all')">全部</button>
+      <button class="filter-btn" data-filter="macro_policy" data-type="category" onclick="setFilter('category', 'macro_policy')">宏观政策</button>
+      <button class="filter-btn" data-filter="earnings" data-type="category" onclick="setFilter('category', 'earnings')">财报</button>
+      <button class="filter-btn" data-filter="geopolitics" data-type="category" onclick="setFilter('category', 'geopolitics')">地缘政治</button>
+      <button class="filter-btn" data-filter="sector_move" data-type="category" onclick="setFilter('category', 'sector_move')">板块异动</button>
+      <button class="filter-btn" data-filter="regulatory" data-type="category" onclick="setFilter('category', 'regulatory')">监管</button>
+      <button class="filter-btn" data-filter="mergers_acquisitions" data-type="category" onclick="setFilter('category', 'mergers_acquisitions')">并购</button>
+      <button class="filter-btn" data-filter="technical" data-type="category" onclick="setFilter('category', 'technical')">技术面</button>
+      <button class="filter-btn" data-filter="general" data-type="category" onclick="setFilter('category', 'general')">一般</button>
+    </div>
+  </div>
+  
+  <!-- 优先级过滤 -->
+  <div class="filter-section">
+    <div class="filter-label">优先级</div>
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all" data-type="priority" onclick="setFilter('priority', 'all')">全部</button>
+      <button class="filter-btn" data-filter="priority_critical" data-type="priority" onclick="setFilter('priority', 'priority_critical')">🔴 CRITICAL</button>
+      <button class="filter-btn" data-filter="priority_high" data-type="priority" onclick="setFilter('priority', 'priority_high')">🟠 HIGH</button>
+      <button class="filter-btn" data-filter="priority_medium" data-type="priority" onclick="setFilter('priority', 'priority_medium')">🔵 MEDIUM</button>
+      <button class="filter-btn" data-filter="priority_low" data-type="priority" onclick="setFilter('priority', 'priority_low')">⚪ LOW</button>
+    </div>
+  </div>
+  
+  <div class="news-list" id="news-list">
+    <div class="loading">Loading...</div>
+  </div>
+</div>
 <script>
-(function () {
-  /* ── 状态 ── */
-  let _newsAllData = [];
-  let _newsFilter = 'all';
-  let _newsExpandedId = null;
-  let _newsTimerId = null;
+(function() { if (window.self !== window.top) { document.querySelector(".mini-nav").style.display = "none"; } })();
 
-  /* ── 工具函数 ── */
-  function fmtTime(iso) {
+(function() {
+  var filters = { source: 'all', category: 'all', priority: 'all' };
+  var countdown = 30;
+  var countdownEl = document.getElementById('countdown');
+  var allData = [];
+  
+  var categoryLabels = {
+    'macro_policy': '宏观政策',
+    'earnings': '财报',
+    'geopolitics': '地缘政治',
+    'sector_move': '板块异动',
+    'regulatory': '监管',
+    'mergers_acquisitions': '并购',
+    'technical': '技术面',
+    'general': '一般'
+  };
+  
+  var priorityMap = { 1: 'critical', 2: 'high', 3: 'medium', 4: 'low' };
+  var priorityLabels = { 'critical': 'CRITICAL', 'high': 'HIGH', 'medium': 'MEDIUM', 'low': 'LOW' };
+  var priorityIcons = { 'critical': '🔴', 'high': '🟠', 'medium': '🔵', 'low': '⚪' };
+  
+  function setFilter(type, value) {
+    filters[type] = value;
+    document.querySelectorAll('.filter-btn[data-type="' + type + '"]').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.filter === value);
+    });
+    render();
+  }
+  window.setFilter = setFilter;
+  
+  function timeAgo(iso) {
     if (!iso) return '--';
-    const d = new Date(iso);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const HH = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return mm + '-' + dd + ' ' + HH + ':' + min;
+    var d = new Date(iso);
+    var now = new Date();
+    var diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return diff + '秒前';
+    if (diff < 3600) return Math.floor(diff/60) + '分钟前';
+    if (diff < 86400) return Math.floor(diff/3600) + '小时前';
+    return Math.floor(diff/86400) + '天前';
   }
-
-  function marketBadge(market) {
-    const map = {
-      us:  { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'US' },
-      hk:  { bg: 'bg-red-100',    text: 'text-red-700',    label: 'HK' },
-      a:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'A股' },
-      btc: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'BTC' },
-    };
-    const s = map[market] || { bg: 'bg-gray-100', text: 'text-gray-600', label: market || '--' };
-    return '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ' + s.bg + ' ' + s.text + '">' + s.label + '</span>';
+  
+  function getSentiment(text) {
+    if (!text) return 'neutral';
+    var lower = text.toLowerCase();
+    if (lower.includes('positive') || lower.includes('上涨') || lower.includes('利好') || lower.includes('增长')) return 'positive';
+    if (lower.includes('negative') || lower.includes('下跌') || lower.includes('风险') || lower.includes('亏损')) return 'negative';
+    return 'neutral';
   }
-
-  function aiStatusBadge(processed) {
-    if (processed) {
-      return '<span class="inline-flex items-center gap-1 text-green-600 font-medium">&#10003; 已处理</span>';
+  
+  function sourceClass(src) {
+    if (!src) return 'source-other';
+    var s = src.toLowerCase().replace(/ /g, '_');
+    if (s === 'reuters') return 'source-reuters';
+    if (s === 'bloomberg') return 'source-bloomberg';
+    if (s === 'wsj') return 'source-wsj';
+    if (s === 'cnbc') return 'source-cnbc';
+    if (s === 'financial_times') return 'source-financial_times';
+    if (s === '雪球' || s === 'xueqiu') return 'source-雪球';
+    if (s === 'eastmoney') return 'source-eastmoney';
+    if (s === 'cointelegraph') return 'source-cointelegraph';
+    return 'source-other';
+  }
+  
+  function categoryClass(cat) {
+    if (!cat) return 'cat-general';
+    return 'cat-' + cat;
+  }
+  
+  function priorityClass(level) {
+    var p = priorityMap[level] || 'low';
+    return 'priority-' + p;
+  }
+  
+  async function load() {
+    try {
+      var resp = await fetch('/api/dashboard/news');
+      var json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      var data = json.data.map(function(n) {
+        return {
+          title: n.title,
+          source: n.source,
+          published_at: n.publishedAt,
+          ai_summary: n.aiSummary,
+          related_symbols: n.relatedSymbols,
+          sentiment: n.sentiment,
+          alert_level: n.alertLevel,
+          category: n.category
+        };
+      });
+      renderData(data);
+    } catch(e) { 
+      console.error(e); 
+      document.getElementById('news-list').innerHTML = '<div class="loading">Error: '+e.message+'</div>';
     }
-    return '<span class="inline-flex items-center gap-1 text-yellow-500 font-medium">&#9203; 待处理</span>';
   }
-
-  function truncate(str, len) {
-    if (!str) return '<span class="text-gray-300">-</span>';
-    return str.length > len ? str.slice(0, len) + '…' : str;
+  
+  function renderData(data) {
+    allData = data;
+    var today = data.filter(function(n) {
+      var d = new Date(n.published_at);
+      var t = new Date();
+      return d.toDateString() === t.toDateString();
+    }).length;
+    var sources = {};
+    var categories = {};
+    data.forEach(function(n) { 
+      if (n.source) sources[n.source] = true; 
+      if (n.category) categories[n.category] = true;
+    });
+    
+    document.getElementById('summary-today').textContent = today;
+    document.getElementById('summary-total').textContent = data.length;
+    document.getElementById('summary-categories').textContent = Object.keys(categories).length;
+    document.getElementById('summary-sources').textContent = Object.keys(sources).length;
+    
+    render();
   }
-
-  function escHtml(str) {
-    return String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  /* ── 统计条 ── */
-  function renderStats(data) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayItems = data.filter(function (n) { return new Date(n.created_at) >= today; });
-    const processedItems = data.filter(function (n) { return n.ai_processed; });
-    const pendingItems = data.filter(function (n) { return !n.ai_processed; });
-
-    document.getElementById('news-stat-today').textContent = todayItems.length;
-    document.getElementById('news-stat-processed').textContent = processedItems.length;
-    document.getElementById('news-stat-pending').textContent = pendingItems.length;
-  }
-
-  /* ── 过滤切换 ── */
-  window._newsSetFilter = function (filter) {
-    _newsFilter = filter;
-    const btnAll = document.getElementById('news-filter-all');
-    const btnPending = document.getElementById('news-filter-pending');
-    if (filter === 'all') {
-      btnAll.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
-      btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
-    } else {
-      btnPending.className = 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors';
-      btnAll.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors';
+  
+  function matchesFilter(news) {
+    if (filters.source !== 'all' && news.source !== filters.source) return false;
+    if (filters.category !== 'all' && news.category !== filters.category) return false;
+    if (filters.priority !== 'all') {
+      var p = priorityMap[news.alert_level] || 'low';
+      if ('priority_' + p !== filters.priority) return false;
     }
-    renderTable(_newsAllData);
-  };
-
-  /* ── 行展开切换 ── */
-  window._newsToggleRow = function (id) {
-    _newsExpandedId = _newsExpandedId === id ? null : id;
-    renderTable(_newsAllData);
-  };
-
-  /* ── 渲染表格 ── */
-  function renderTable(data) {
-    const filtered = _newsFilter === 'pending'
-      ? data.filter(function (n) { return !n.ai_processed; })
-      : data;
-
-    const tbody = document.getElementById('news-table-body');
-
-    if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">暂无数据</td></tr>';
+    return true;
+  }
+  
+  function render() {
+    var filtered = allData.filter(matchesFilter);
+    
+    if (filtered.length === 0) {
+      document.getElementById('news-list').innerHTML = '<div class="loading">No news matches filters</div>';
       return;
     }
-
-    const rows = filtered.map(function (item) {
-      const isExpanded = _newsExpandedId === item.id;
-      const symbols = Array.isArray(item.symbols) && item.symbols.length
-        ? item.symbols.slice(0, 3).map(escHtml).join(', ')
-        : '<span class="text-gray-300">-</span>';
-
-      const mainRow = '<tr'
-        + ' onclick="window._newsToggleRow(\'' + escHtml(item.id) + '\')"'
-        + ' class="border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition-colors' + (isExpanded ? ' bg-indigo-50' : '') + '"'
-        + '>'
-        + '<td class="px-4 py-3 text-gray-500 whitespace-nowrap">' + fmtTime(item.published_at || item.created_at) + '</td>'
-        + '<td class="px-4 py-3">' + marketBadge(item.market) + '</td>'
-        + '<td class="px-4 py-3 text-gray-700 text-xs">' + symbols + '</td>'
-        + '<td class="px-4 py-3 text-gray-800 font-medium">' + escHtml(truncate(item.title, 60)) + '</td>'
-        + '<td class="px-4 py-3">' + aiStatusBadge(item.ai_processed) + '</td>'
-        + '<td class="px-4 py-3 text-gray-500 text-xs">' + escHtml(truncate(item.ai_summary, 50)) + '</td>'
-        + '</tr>';
-
-      const expandRow = isExpanded
-        ? '<tr class="bg-indigo-50 border-b border-indigo-100">'
-          + '<td colspan="6" class="px-6 py-4">'
-          + '<div class="text-xs font-semibold text-gray-500 mb-1">完整 AI 摘要</div>'
-          + '<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">'
-          + (item.ai_summary ? escHtml(item.ai_summary) : '<span class="text-gray-400 italic">暂无摘要</span>')
-          + '</p>'
-          + '<div class="mt-2 text-xs text-gray-400">来源：' + escHtml(item.source || '--') + ' &nbsp;|&nbsp; 入库时间：' + fmtTime(item.created_at) + '</div>'
-          + '</td>'
-          + '</tr>'
-        : '';
-
-      return mainRow + expandRow;
-    });
-
-    tbody.innerHTML = rows.join('');
-  }
-
-  /* ── 显示错误 ── */
-  function renderError(msg) {
-    const tbody = document.getElementById('news-table-body');
-    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center">'
-      + '<div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">'
-      + '<span class="font-semibold">加载失败：</span>' + escHtml(msg)
-      + '</div>'
-      + '</td></tr>';
-  }
-
-  /* ── 主加载函数 ── */
-  window.loadNewsPanel = async function () {
-    try {
-      const data = await window.dashboardFetch('/api/admin/dashboard/news?limit=50');
-      _newsAllData = Array.isArray(data) ? data : [];
-      renderStats(_newsAllData);
-      renderTable(_newsAllData);
-      const now = new Date();
-      document.getElementById('news-last-refresh').textContent = fmtTime(now.toISOString());
-    } catch (err) {
-      renderError(err && err.message ? err.message : '未知错误');
+    
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var n = filtered[i];
+      var sentiment = getSentiment(n.ai_summary);
+      var syms = n.related_symbols || [];
+      var symHtml = '';
+      for (var j = 0; j < syms.length; j++) {
+        symHtml += '<span class="symbol-tag">'+syms[j]+'</span>';
+      }
+      
+      var p = priorityMap[n.alert_level] || 'low';
+      var catLabel = categoryLabels[n.category] || n.category || '一般';
+      var sourceLabel = n.source || 'other';
+      
+      html += '<div class="news-item">' +
+        '<div class="sentiment-dot sentiment-'+sentiment+'"></div>' +
+        '<div class="news-content">' +
+          '<div class="news-header">' +
+            '<span class="source-tag '+sourceClass(n.source)+'">'+sourceLabel+'</span>' +
+            '<span class="category-tag '+categoryClass(n.category)+'">'+catLabel+'</span>' +
+            '<span class="priority-tag '+priorityClass(n.alert_level)+'">'+priorityIcons[p]+' '+priorityLabels[p]+'</span>' +
+          '</div>' +
+          '<span class="news-title">'+n.title+'</span>' + symHtml +
+        '</div>' +
+        '<div class="news-time">'+timeAgo(n.published_at)+'</div>' +
+      '</div>';
     }
-  };
-
-  /* ── 自动刷新（30s）── */
-  function startAutoRefresh() {
-    if (_newsTimerId) clearInterval(_newsTimerId);
-    _newsTimerId = setInterval(function () {
-      window.loadNewsPanel();
-    }, 30000);
+    document.getElementById('news-list').innerHTML = html;
   }
-
-  /* ── 初始化 ── */
-  window.loadNewsPanel();
-  startAutoRefresh();
+  
+  setInterval(function() {
+    countdown--;
+    if (countdown <= 0) { countdown = 30; load(); }
+    if (countdownEl) countdownEl.textContent = countdown+'s';
+  }, 1000);
+  
+  load();
 })();
 </script>
+</body>
+</html>
