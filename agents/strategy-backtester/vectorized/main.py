@@ -57,15 +57,36 @@ def load_klines(symbol, data_dir):
     
     with open(file_path, 'r') as f:
         data = json.load(f)
-    
-    klines = data.get('klines', [])
+
+    # 处理两种数据格式: {klines: [...]} 或直接 [...]
+    if isinstance(data, list):
+        klines = data
+    else:
+        klines = data.get('klines', [])
+
     if not klines:
         return None
     
-    closes = [float(k.get('close', 0)) for k in klines]
-    highs = [float(k.get('high', 0)) for k in klines]
-    lows = [float(k.get('low', 0)) for k in klines]
-    timestamps = list(range(len(klines)))
+    closes = []
+    highs = []
+    lows = []
+    for k in klines:
+        close_val = k.get('close') or k.get('close_price') or k.get('c') or 0
+        high_val = k.get('high') or k.get('high_price') or k.get('h') or close_val
+        low_val = k.get('low') or k.get('low_price') or k.get('l') or close_val
+
+        try:
+            closes.append(float(close_val))
+            highs.append(float(high_val))
+            lows.append(float(low_val))
+        except (ValueError, TypeError):
+            # 跳过无效数据
+            continue
+
+    if len(closes) < 50:
+        return None
+
+    timestamps = list(range(len(closes)))
     
     return KlinesData(closes, highs, lows, timestamps)
 

@@ -1021,3 +1021,61 @@ watchlist (
 - 港股: 30只
 - A股: 5只
 - 总计: 147只
+
+---
+
+## 股票池管理系统 (2026-04-07)
+
+### 扩展结果
+- 美股: 112只 (原有90只 + 新增22只)
+- 港股: 30只 (原有10只 + 新增20只)
+- A股: 5只
+- 总计: 147只
+
+### 策略覆盖优化
+- learning-trigger.js 改为从 watchlist 动态加载
+- 当前覆盖: 15只有数据的股票
+- 回测性能: 442ms (15只)
+
+### 数据存储
+- K线数据: data/cache/klines/us_{SYMBOL}.json, hk_{SYMBOL}.json
+- 实时行情: data/cache/klines/hk_{SYMBOL}.json
+- 财务数据: data/fundamental/{SYMBOL}_fundamental.json
+
+---
+
+## Watchlist表扩展 (2026-04-07)
+
+### 数据库
+- 文件: watchlist.db (SQLite) + PostgreSQL watchlist 表
+- 表: watchlist (主表)
+
+### 当前数据
+- 美股: 112只
+- 港股: 30只
+- A股: 5只
+- 总计: 147只
+
+---
+
+## 新闻抓取功能实现 (2026-04-07)
+
+### 实现
+- Python 服务运行在 8000 端口
+- 实现 /api/news/fetch 端点
+- 支持3个数据源: 东方财富/GDELT/雪球
+- news_status 表存储抓取结果
+
+### API端点
+- POST /api/news/fetch - 抓取新闻
+- GET /api/news/list - 列表查询
+- GET /health - 健康检查
+
+---
+
+## 数据库修复 (2026-04-07)
+
+### notification_log 表
+- 添加 channel 列 (VARCHAR(50), DEFAULT 'feishu')
+- 添加 status 列 (VARCHAR(20), DEFAULT 'sent')
+- 学习循环通知日志正常写入

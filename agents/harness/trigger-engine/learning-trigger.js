@@ -5,6 +5,7 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 
 // 注入项目根目录到 module.paths
 module.paths.unshift(path.resolve(__dirname, '../../'));
@@ -272,13 +273,38 @@ async function upgradeStrategy(backtestResult, avgSharpe) {
  */
 async function runLearningLoop() {
   console.log('[learning-trigger] ========== 开始每日学习循环 ' + new Date().toISOString() + ' ==========');
-  
+
+  // 加载股票列表
+  let TEST_SYMBOLS = [];
+  try {
+    const watchlistResult = await pool.query(`
+      SELECT symbol FROM watchlist
+      WHERE is_active = true
+      AND market IN ('us', 'hk')
+      ORDER BY market
+    `);
+    TEST_SYMBOLS = watchlistResult.rows.map(r => r.symbol);
+    console.log(`[learning-trigger] 从数据库加载 ${TEST_SYMBOLS.length} 只股票`);
+  } catch (e) {
+    console.log('[learning-trigger] watchlist表查询失败，使用默认列表:', e.message);
+    TEST_SYMBOLS = ['AAPL', 'MSFT', 'TSLA', 'NVDA', 'AMZN', 'GOOGL', 'META'];
+  }
+
+  // 过滤有数据文件的股票
+  const TEST_SYMBOLS_WITH_DATA = TEST_SYMBOLS.filter(sym => {
+    const usFile = 'data/cache/klines/us_' + sym + '.json';
+    const hkFile = 'data/cache/klines/hk_' + sym + '.json';
+    return fs.existsSync(usFile) || fs.existsSync(hkFile);
+  });
+
+  console.log(`[learning-trigger] 有效股票 ${TEST_SYMBOLS_WITH_DATA.length} 只 (有数据文件)`);
+
   try {
     // 第1步：回测 - 优先使用向量化引擎
     let backtestResult;
     try {
       console.log('[learning-trigger] 使用向量化回测引擎...');
-      const vectorizedResults = await runVectorizedBacktest(CURRENT_PARAMS);
+      const vectorizedResults = await runVectorizedBacktest(CURRENT_PARAMS, TEST_SYMBOLS_WITH_DATA);
       
       // 聚合向量化结果
       let totalTrades = 0, totalWins = 0, totalReturns = [];
@@ -394,7 +420,7 @@ runLearningLoop();
 /**
  * 向量化回测调用 - 集成到 learning-trigger
  */
-async function runVectorizedBacktest(params) {
+async function runVectorizedBacktest(params, symbols) {
   const { spawn } = require('child_process');
   const path = require('path');
   
@@ -410,7 +436,7 @@ async function runVectorizedBacktest(params) {
     stop_loss_pct: params.stop_loss_pct || 0.05,
     profit_target_pct: params.profit_target_pct || 0.12,
     max_hold_days: params.max_hold_days || 10,
-    symbols: TEST_SYMBOLS_WITH_DATA,  // 使用动态加载的股票列表
+    symbols: symbols,  // 使用动态加载的股票列表
     data_dir: 'data/cache/klines'
   });
   
@@ -427,11 +453,12 @@ async function runVectorizedBacktest(params) {
     
     proc.on('close', (code) => {
       if (code !== 0) {
-        console.log('[vectorized] Python error:', stderr);
+        console.log('[vectorized] Python stderr:', stderr);
+        console.log('[vectorized] Python stdout:', stdout);
         reject(new Error(`Python exited with code ${code}`));
         return;
       }
-      
+
       try {
         const result = JSON.parse(stdout);
         if (!result.success) {
@@ -440,6 +467,8 @@ async function runVectorizedBacktest(params) {
         }
         resolve(result.results);
       } catch (e) {
+        console.log('[vectorized] JSON parse error:', e.message);
+        console.log('[vectorized] stdout:', stdout.substring(0, 500));
         reject(e);
       }
     });
